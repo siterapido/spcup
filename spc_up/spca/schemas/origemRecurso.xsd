@@ -1,0 +1,660 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<xs:schema elementFormDefault="qualified"
+    	   targetNamespace="http://www.tse.jus.br/2012/XMLSchema/origemRecurso.xsd"
+    	   version="0.1"
+    	   xmlns="http://www.tse.jus.br/2012/XMLSchema/origemRecurso.xsd" 
+    	   xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+	<xs:element name="spcaImportacaoArquivo" type="TpLayoutOrigemRecurso"/>
+
+	<xs:complexType name="TpLayoutOrigemRecurso">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="CABECALHO" type="TpCabecalhoSPCAOrigem" />
+			<xs:element minOccurs="1" name="CORPO" type="TpCorpoSPCAOrigem" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpCabecalhoSPCAOrigem">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="nrCnpjPrestador" type="NumCnpj" />
+			<xs:element maxOccurs="1" minOccurs="1" name="anoExercicio" type="AnoEleicao" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpCorpoSPCAOrigem">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="origens" type="origens" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="origens">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="totalOrigem" type="NumQtd" />
+			<xs:element maxOccurs="unbounded" minOccurs="0"	name="origem" type="origem" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="origem">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="dtEntrada" type="xs:date" />
+			<xs:element maxOccurs="1" minOccurs="1" name="vrOrigem" type="Moeda" />
+			<xs:element maxOccurs="1" minOccurs="1" name="fonteRecurso" type="TpFonteRecurso" />
+			<xs:element maxOccurs="1" minOccurs="1" name="naturezaRecurso" type="TpNaturezaRecurso" />
+			<xs:element maxOccurs="1" minOccurs="1" name="origemRecurso" type="TpOrigemRecurso" />
+			<xs:element maxOccurs="1" minOccurs="1" name="classificacaoReceita" type="TpClassificacaoReceita" />
+			<xs:element maxOccurs="1" minOccurs="0" name="nrLancamentoSPCA" type="TpNrLancamentoSPCA" />
+			<xs:element maxOccurs="1" minOccurs="0" name="nrReciboDoacao"	type="TpNrReciboDoacao" />
+			<xs:element maxOccurs="1" minOccurs="0" name="descricaoResumida" type="TpDescricaoResumida" />
+			<xs:element maxOccurs="1" minOccurs="0" name="doadoresOriginarios" type="doadoresOriginarios" />
+			<xs:element maxOccurs="1" minOccurs="1" name="especieRecurso"	type="especieRecurso" />
+		</xs:sequence>
+	</xs:complexType>
+
+
+	<!-- <BEGIN> TIPO ESPECIE RECURSO -->
+	<xs:complexType name="especieRecurso">
+		<xs:choice maxOccurs="1" minOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="ordemBancaria" type="TpOrdemBancaria" />
+			<xs:element maxOccurs="1" minOccurs="0" name="cartaoCredito" type="TpCartaoCredito" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="depositoCheque" type="TpDepositoCheque" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="depositoEspecie" type="TpDepositoEspecie" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="outrosTitulosCredito" type="TpOutrosTitulosCredito" />
+			<xs:element maxOccurs="1" minOccurs="0" name="avisoCredito"	type="TpAvisoCredito" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="transferenciaEletronicaTEL" type="TpTransferenciaEletronicaTEL" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="transferenciaEletronicaPIX" type="TpTransferenciaEletronicaPIX" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="transferenciaEletronicaTEB" type="TpTransferenciaEletronicaTEB" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="transferenciaEletronicaTED" type="TpTransferenciaEletronicaTED" />
+		</xs:choice>
+	</xs:complexType>
+
+	<xs:complexType name="TpOrdemBancaria">
+		<xs:sequence>
+			<!--OB = ORDEM BANCARIA-->
+			<xs:element name="especieRecurso" type="TpEspecieRecurso" fixed="OB" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpCartaoCredito">
+		<xs:sequence>
+			<!--CC = CARTAO CREDITO -->
+			<xs:element name="especieRecurso" type="TpEspecieRecurso" fixed="CC" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="0" name="nrAutorizacao" type="tpNrAutorizacao" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpDepositoCheque">
+		<xs:sequence>
+			<!--CH = DEPOSITO CHEQUE -->
+			<xs:element name="especieRecurso" type="TpEspecieRecurso" fixed="CH" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="nrExtratoBancario" type="TpNrExtratoBancario" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+			<xs:element minOccurs="1" name="contaBancariaOrigem" type="informacoesBancariasOrigem" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpDepositoEspecie">
+		<xs:sequence>
+			<!--EP = DEPOSITO ESPECIE -->
+			<xs:element name="especieRecurso" type="TpEspecieRecurso" fixed="EP" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpOutrosTitulosCredito">
+		<xs:sequence>
+			<!-- OT = OUTROS TITULOS CREDITO -->
+			<xs:element maxOccurs="1" minOccurs="1"	name="especieRecurso" type="TpEspecieRecurso" fixed="OT" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="descricaoRecibo" type="TpDescricaoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="quantidadeRecibo" type="TpQuantidadeRecibo" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="valorUnitarioRecibo" type="Moeda" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="fonteAvaliacaoRecibo" type="TpFonteAvaliacao" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpAvisoCredito">
+		<xs:sequence>
+			<!-- AC = AVISO CREDITO -->
+			<xs:element name="especieRecurso" type="TpEspecieRecurso" fixed="AC" />
+			<xs:element maxOccurs="1" minOccurs="0" name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrExtratoBancario" type="TpNrExtratoBancario" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpTransferenciaEletronicaTEL">
+		<xs:sequence>
+			<!-- TEL = TRANSFERENCIA ELETRONICA -> Tipo: Transfer�ncia Eletr�nica -->
+			<xs:element maxOccurs="1" minOccurs="1"	name="especieRecurso" type="TpEspecieRecurso" fixed="TEL" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="nrExtratoBancario" type="TpNrExtratoBancario" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpTransferenciaEletronicaTEB">
+		<xs:sequence>
+			<!-- TEB = TRANSFERENCIA ELETRONICA -> Tipo: Boleto  -->
+			<xs:element maxOccurs="1" minOccurs="1"	name="especieRecurso" type="TpEspecieRecurso" fixed="TEB" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="nrExtratoBancario" type="TpNrExtratoBancario" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="TpTransferenciaEletronicaPIX">
+		<xs:sequence>
+			<!-- TEB = TRANSFERENCIA ELETRONICA -> Tipo: PIX  -->
+			<xs:element maxOccurs="1" minOccurs="1"	name="especieRecurso" type="TpEspecieRecurso" fixed="PIX" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="nrExtratoBancario" type="TpNrExtratoBancario" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpTransferenciaEletronicaTED">
+		<xs:sequence>
+			<!-- TED = TRANSFERENCIA ELETRONICA DISPON�VEL -> Tipo: TED/DOC -->
+			<xs:element maxOccurs="1" minOccurs="1"	name="especieRecurso" type="TpEspecieRecurso" fixed="TED" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="nrDocumentoRecibo" type="TpNrDocumentoRecibo" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="nrExtratoBancario" type="TpNrExtratoBancario" />
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="informacoesBancariasDestino" />
+		</xs:sequence>
+	</xs:complexType>
+	<!-- <END> TIPO ESPECIE RECURSO -->
+
+	<!-- <BEGIN> INFORMA��ES BANCARIAS -->
+	<xs:complexType name="informacoesBancariasDestino">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="bancoDestino" type="BancoDestino" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="informacoesBancariasOrigem">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="bancoOrigem" type="BancoOrigem" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="BancoDestino">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="nrBancoDestino" type="TpBanco" />
+			<xs:element minOccurs="1" name="agenciaDestino" type="TpAgencia" />
+			<xs:element minOccurs="0" name="dvAgenciaDestino" type="TpDV" />
+			<xs:element minOccurs="1" name="contaCorrente" type="TpContaCorrente" />
+			<xs:element minOccurs="1" name="dvContaCorrente" type="TpDV" />
+			<xs:element minOccurs="0" maxOccurs="1" name="tpFundoPartidario" type="tipoFundoPartidario" />
+			<xs:element minOccurs="0" maxOccurs="1" name="tpFundoEspecial" type="tipoFundoEspecialFinanciamentoCampanha" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="BancoOrigem">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="nrBancoOrigem" type="TpBanco" />
+			<xs:element minOccurs="1" name="agenciaOrigem" type="TpAgencia" />
+			<xs:element minOccurs="0" name="dvAgenciaOrigem" type="TpDV" />
+			<xs:element minOccurs="1" name="contaCorrente" type="TpContaCorrente" />
+			<xs:element minOccurs="1" name="dvContaCorrente" type="TpDV" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<!-- <END> INFORMA��ES BANCARIAS -->
+
+	<xs:complexType name="doadoresOriginarios">
+		<xs:sequence>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="dadorOriginario" type="doadorOriginario" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="doadorOriginario">
+		<xs:choice maxOccurs="1" minOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="pessoaFisica"	type="TpPessoaFisica" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="pessoaJuridica" type="TpPessoaJuridica" />
+		</xs:choice>
+	</xs:complexType>
+
+	<!-- <BEGIN> CONTA CONTABIL -->
+	<xs:complexType name="TpOrigemRecurso">
+		<xs:choice maxOccurs="1" minOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="cotaFundoEspecialFinanciamentoCampanha" type="TpCotaFundoEspecialFinanciamentoCampanha" />
+			<xs:element maxOccurs="1" minOccurs="0" name="cotaFundoPartidario" type="TpCotaFundoPartidario" />
+			<xs:element maxOccurs="1" minOccurs="0" name="pessoaFisica" type="TpPessoaFisica" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="pessoaJuridica" type="TpPessoaJuridica" />
+			<xs:element maxOccurs="1" minOccurs="0" name="candidato" type="TpCandidato" />
+			<xs:element maxOccurs="1" minOccurs="0" name="partido" type="TpPartido" />
+			<xs:element maxOccurs="1" minOccurs="0"	name="origemNaoIdentificada" type="TpOrigemNaoIdentificada" />
+		</xs:choice>
+	</xs:complexType>
+
+	<xs:complexType name="TpCotaFundoEspecialFinanciamentoCampanha">
+		<xs:sequence>
+			<!--CE = COTAS DO FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA-->
+			<xs:element minOccurs="1" name="tipo" type="TpOrigemRecursoSG" fixed="CE" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="TpCotaFundoPartidario">
+		<xs:sequence>
+			<!--CF = COTAS FUNDO PARTIDARIO-->
+			<xs:element minOccurs="1" name="tipo" type="TpOrigemRecursoSG" fixed="CF" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpPessoaFisica">
+		<xs:sequence>
+			<!-- PF = RECURSOS DE PESSOAS FISICAS-->
+			<xs:element name="tipo" type="TpOrigemRecursoSG"	fixed="PF" />
+			<xs:element minOccurs="1" name="nrCpf" type="NumCpf" />
+			<xs:element minOccurs="1" name="nmPessoa" type="TpNmPessoa" />
+			<xs:element minOccurs="0" name="tituloEleitor"	type="NumTitulo" />
+			<xs:element minOccurs="0" name="nrReciboDoacao" type="TpNrReciboDoacao"/>
+			<xs:element minOccurs="0" name="vrDoacao" type="Moeda"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpPessoaJuridica">
+		<xs:sequence>
+			<!--PJ = RECURSOS DE PESSOAS JURIDICAS-->
+			<xs:element minOccurs="1" name="tipo" type="TpOrigemRecursoSG" fixed="PJ" />
+			<xs:element minOccurs="1" name="nrCnpj" type="NumCnpj" />
+			<xs:element minOccurs="1" name="nmPessoa" type="TpNmPessoa" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpCandidato">
+		<xs:sequence>
+			<!--CA = RECURSOS DE CANDIDATOS-->
+			<xs:element name="tipo" type="TpOrigemRecursoSG"	fixed="CA" />
+			<xs:element minOccurs="1" name="nrCnpj" type="NumCnpj" />
+			<xs:element minOccurs="1" name="candidatura" type="TpCandidatura" />
+			<xs:element minOccurs="1" name="nrCandidato" type="NumCandidato" />
+			
+			<!-- obrigat�rio quando for Fonte recurso = FEFC -->
+			<xs:element minOccurs="0" maxOccurs="1" name="eleicao" type="AnoEleicao" />
+			<xs:element minOccurs="0" maxOccurs="1" name="eleicaoSuplementar" type="SimNao" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpPartido">
+		<xs:sequence>
+			<!--PP = RECURSOS DE PARTIDO POLITICO-->
+			<xs:element minOccurs="1" name="tipo" type="TpOrigemRecursoSG" fixed="PP" />
+			
+			<xs:element minOccurs="1" name="nrCnpj" type="NumCnpj" />
+			<xs:element minOccurs="1" name="esferaPartidaria" type="TpEsferaPartidaria" />
+			<xs:element minOccurs="1" name="eleicao" type="AnoEleicao" />
+			<xs:element minOccurs="1" name="eleicaoSuplementar" type="SimNao" />
+			<xs:element minOccurs="1" name="partido" type="NumPartido" />
+			<xs:element minOccurs="1" name="uf" type="SgUF" />
+			<xs:element minOccurs="0" name="municipio" type="xs:string" />
+			
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- #############	
+	.	PRE -> PRESIDENTE
+	.   VPS -> VICE PRESIDENTE
+	.   GOV -> GOVERNADOR
+	.   VGO -> VICE GOVERNADOR
+	.   SEN -> SENADOR
+	.   1SE -> PRIMEIRO SENADOR
+	.   2SE -> SEGUNDO SENADOR
+	.   PRF -> PREFEITO
+	.   VPF -> VICE PREFEITO
+	.   DEF -> DEPUTADO FEDERAL
+	.   DES -> DEPUTADO ESTADUAL
+	.   DDI -> DEPUTADOR DISTRITAL
+	.   VER -> VEREADOR
+	############# -->
+	<xs:simpleType name="TpCandidatura">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="3" />
+			<xs:pattern value="PRE|VPS|GOV|VGO|SEN|1SE|2SE|PRF|VPF|DEF|DES|DDI|VER" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+	.	0 - Funda��o
+	.	1 - Mulher
+	.	2 - Ordin�rio
+
+	############# -->
+	<xs:simpleType name="tipoFundoPartidario">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="1" />
+			<xs:pattern value="0|1|2" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+	.	1 - Campanha
+	.	2 - Mulher
+
+	############# -->
+	<xs:simpleType name="tipoFundoEspecialFinanciamentoCampanha">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="1" />
+			<xs:pattern value="1|2" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:complexType name="TpOrigemNaoIdentificada">
+		<xs:sequence>
+			<!--NI = ORIGEM N�O IDENTIFICADA-->
+			<xs:element minOccurs="1" name="tipo" type="TpOrigemRecursoSG" fixed="NI" />
+		</xs:sequence>
+	</xs:complexType>
+	<!-- <END> CONTA CONTABIL -->
+	
+	<!-- #############	
+		.	NACIONAL
+		.	DISTRITAL
+		.	ESTADUAL
+		.	ZONAL
+		.	MUNICIPAL
+
+		############# -->
+	<xs:simpleType name="TpEsferaPartidaria">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="9" />
+			<xs:pattern value="NACIONAL|DISTRITAL|ESTADUAL|ZONAL|MUNICIPAL" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="SimNao">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="S|N"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="AnoEleicao">
+		<xs:restriction base="xs:integer">
+			<xs:pattern value="19|20[0-9]{2}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="NumCandidato">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="5" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="NumPartido">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="2" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="SgUF">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="2" />
+			<xs:pattern value="BR|AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+		CE = COTAS DO FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA
+		CF = COTAS FUNDO PARTIDARIO
+		PF = RECURSOS DE PESSOAS FISICAS
+		PJ = RECURSOS DE PESSOAS JURIDICAS
+		PP = RECURSOS DE PARTIDO POLITICO
+		CA = RECURSOS DE CANDIDATOS
+		NI = ORIGEM N�O IDENTIFICADA
+		############# -->
+	<xs:simpleType name="TpOrigemRecursoSG">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="2" />
+			<xs:pattern value="CE|CF|PF|PJ|PP|CA|NI" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- #############	
+		0 = FINANCEIRO
+		1 = ESTIMAVEL
+		############# -->
+	<xs:simpleType name="TpNaturezaRecurso">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="1" />
+			<xs:pattern value="0|1" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- #############	
+		FP =  FUNDO PARTIDARIO
+		OR = OUTROS RECURSOS
+		RC = RECURSO DE CAMPANHA
+		FEFC = FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA
+		############# -->
+	<xs:simpleType name="TpFonteRecurso">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="4" />
+			<xs:pattern value="FP|OR|RC|FEFC" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- #############	
+		CC = CARTAO CREDITO
+		CH = DEPOSITO CHEQUE
+		EP = DEPOSITO ESPECIE
+		OB = ORDEM BANCARIA
+		OT = OUTROS TITULOS CREDITO
+		AC = AVISO CREDITO
+		TEL = TRANSFERENCIA ELETRONICA
+		TEB = TRANSFERENCIA ELETRONICA
+		PIX = PIX
+		TED = TRANSFERENCIA ELETRONICA
+		############# -->
+	<xs:simpleType name="TpEspecieRecurso">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="3" />
+			<xs:pattern value="CC|CH|EP|OB|OT|AC|TEL|TEB|TED|PIX" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpBanco">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="5" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpAgencia">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="5" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpDV">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="2" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpContaCorrente">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="20" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+
+
+	<xs:simpleType name="TpNmPessoa">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1" />
+			<xs:maxLength value="150" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpNrDocumentoRecibo">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="22" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpFonteAvaliacao">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="20" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpDescricaoRecibo">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="50" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="NumQtd">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="9" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpQuantidadeRecibo">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="5" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="tpNrAutorizacao">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="10" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpNrExtratoBancario">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="50" />		
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="NumCpf">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="11" />
+			<xs:pattern value="[0-9]{11}" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="NumTitulo">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="12" />
+			<xs:pattern value="[0-9]{12}" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="NumCnpj">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="14" />
+			<xs:pattern value="[A-Z0-9]{12}[0-9]{2}" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Moeda">
+		<xs:restriction base="xs:decimal">
+			<xs:totalDigits value="19" />
+			<xs:fractionDigits value="2" />
+			<xs:minExclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="TpNrLancamentoSPCA">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="50" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+
+	<xs:simpleType name="TpNrReciboDoacao">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="8" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	
+	
+	
+	<xs:simpleType name="TpDescricaoResumida">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="1000" />			
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- as contas cont�beis  321,323,324,325,326,327,398 n�o ser�o utilizadas para o ano exerc�cios a partir de 2026-->
+	
+	<xs:simpleType name="TpClassificacaoReceita">
+		<xs:restriction base="xs:integer">
+			<xs:enumeration value="300"><xs:annotation><xs:documentation>RECURSOS DE ORIGEM N�O IDENTIFICADA</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="301"><xs:annotation><xs:documentation>REEMBOLSO DE ADIANTAMENTOS A FORNECEDORES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="302"><xs:annotation><xs:documentation>PESSOAL - REEEMBOLSO DE ADIANTAMENTOS A EMPREGADOS - Adiantamentos de 13� sal�rio</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="303"><xs:annotation><xs:documentation>PESSOAL - REEEMBOLSO DE ADIANTAMENTOS A EMPREGADOS - Adiantamentos de f�rias</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="304"><xs:annotation><xs:documentation>PESSOAL - REEEMBOLSO DE ADIANTAMENTOS A EMPREGADOS - Adiantamentos de sal�rios</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="305"><xs:annotation><xs:documentation>PESSOAL - REEEMBOLSO DE ADIANTAMENTOS A EMPREGADOS - Outros adiantamentos a empregados</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="306"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - REEEMBOLSO DE ADIANTAMENTOS DIVERSOS - ADIANTAMENTOS PARA VIAGENS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="307"><xs:annotation><xs:documentation>REEMBOLSO DE OUTROS ADIANTAMENTOS DIVERSOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="308"><xs:annotation><xs:documentation>RECUPERA��O DE DEP�SITOS RESTITU�VEIS E VALORES VINCULADOS - DEP�SITOS EXTRAJUDICIAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="309"><xs:annotation><xs:documentation>RECUPERA��O DE DEP�SITOS RESTITU�VEIS E VALORES VINCULADOS - DEP�SITOS JUDICIAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="310"><xs:annotation><xs:documentation>OBTEN��O DE RECURSOS POR MEIO DE EMPR�STIMOS BANC�RIOS A PAGAR</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="311"><xs:annotation><xs:documentation>OBTEN��O DE RECURSOS POR MEIO DE FINANCIAMENTOS A PAGAR</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="312"><xs:annotation><xs:documentation>OBTEN��O DE RECURSOS POR MEIO DE OUTRAS OBRIGA��ES A PAGAR</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="313"><xs:annotation><xs:documentation>FUNDO PARTID�RIO - DIRE��O NACIONAL - Cotas recebidas em recursos financeiros - Tribunal Superior Eleitoral</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="314"><xs:annotation><xs:documentation>DOA��ES PARA MANUTEN��O DO PARTIDO - PESSOAS F�SICAS - Em recursos financeiros</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="315"><xs:annotation><xs:documentation>DOA��ES PARA MANUTEN��O DO PARTIDO - PESSOAS F�SICAS - Em recursos estim�veis em dinheiro</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="318"><xs:annotation><xs:documentation>CONTRIBUI��ES - De parlamentares</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="319"><xs:annotation><xs:documentation>CONTRIBUI��ES - De filiados</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="320"><xs:annotation><xs:documentation>CONTRIBUI��ES - Outras contribui��es</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="321"><xs:annotation><xs:documentation>DOA��ES PARA CAMPANHAS ELEITORAIS - Pessoas f�sicas</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="323"><xs:annotation><xs:documentation>DOA��ES/TRANSFER�NCIAS PARA CAMPANHAS ELEITORAIS - Recebidas da Dire��o Nacional</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="324"><xs:annotation><xs:documentation>DOA��ES/TRANSFER�NCIAS PARA CAMPANHAS ELEITORAIS - Recebidas de dire��es estaduais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="325"><xs:annotation><xs:documentation>DOA��ES/TRANSFER�NCIAS PARA CAMPANHAS ELEITORAIS - Recebidas de dire��es municipais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="326"><xs:annotation><xs:documentation>DOA��ES/TRANSFER�NCIAS PARA CAMPANHAS ELEITORAIS - Recebidas de candidatos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="327"><xs:annotation><xs:documentation>DOA��ES/TRANSFER�NCIAS PARA CAMPANHAS ELEITORAIS - Recebidas de outros partidos pol�ticos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="328"><xs:annotation><xs:documentation>SOBRAS FINANCEIRAS DE CAMPANHA - candidatos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="329"><xs:annotation><xs:documentation>SOBRAS FINANCEIRAS DE CAMPANHA - comit�s financeiros</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="330"><xs:annotation><xs:documentation>SOBRAS FINANCEIRAS DE CAMPANHA - partidos pol�ticos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="331"><xs:annotation><xs:documentation>SOBRAS DE CAMPANHA - BENS PERMANENTES ESTIM�VEIS EM DINHEIRO - Sobras de campanha estim�veis em dinheiro - candidatos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="332"><xs:annotation><xs:documentation>SOBRAS DE CAMPANHA - BENS PERMANENTES ESTIM�VEIS EM DINHEIRO - Sobras de campanha estim�veis em dinheiro � partidos pol�ticos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="333"><xs:annotation><xs:documentation>TRANSFER�NCIAS DE RECURSOS FINANCEIROS PARA MANUTEN��O DO PARTIDO - Recebidas da Dire��o Nacional</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="334"><xs:annotation><xs:documentation>TRANSFER�NCIAS DE RECURSOS FINANCEIROS PARA MANUTEN��O DO PARTIDO - Recebidas de dire��es estaduais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="335"><xs:annotation><xs:documentation>TRANSFER�NCIAS DE RECURSOS FINANCEIROS PARA MANUTEN��O DO PARTIDO - Recebidas de dire��es municipais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="336"><xs:annotation><xs:documentation>JUROS E OUTRAS RENDAS - Rendimentos de aplica��es financeiras</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="337"><xs:annotation><xs:documentation>JUROS E OUTRAS RENDAS - Descontos obtidos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="338"><xs:annotation><xs:documentation>JUROS E OUTRAS RENDAS - Outras receitas financeiras</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="339"><xs:annotation><xs:documentation>OUTRAS RECEITAS DIVERSAS - Receitas com eventos realizados</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="340"><xs:annotation><xs:documentation>OUTRAS RECEITAS DIVERSAS - Taxas de inscri��o</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="341"><xs:annotation><xs:documentation>OUTRAS RECEITAS DIVERSAS - Outras receitas diversas</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="342"><xs:annotation><xs:documentation>SOBRAS FINANCEIRAS N�O UTILIZADAS PELA FUNDA��O PARTID�RIA</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="343"><xs:annotation><xs:documentation>TRANSFERENCIAS INTRAPARTID�RIAS DE ATIVO IMOBILIZADO OU MATERIAIS PARA DIVULGA��O/COMERCIALIZA��O - Recebidas da Dire��o Nacional</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="344"><xs:annotation><xs:documentation>TRANSFERENCIAS INTRAPARTID�RIAS DE ATIVO IMOBILIZADO OU MATERIAIS PARA DIVULGA��O/COMERCIALIZA��O - Recebidas de dire��es estaduais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="345"><xs:annotation><xs:documentation>TRANSFERENCIAS INTRAPARTID�RIAS DE ATIVO IMOBILIZADO OU MATERIAIS PARA DIVULGA��O/COMERCIALIZA��O - Recebidas de dire��es municipais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="346"><xs:annotation><xs:documentation>TRANSFERENCIAS INTRAPARTID�RIAS DE RECURSOS ESTIM�VEIS EM DINHEIRO - OBRIGA��ES ASSUMIDAS - Doa��es recebidas da Dire��o Nacional</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="347"><xs:annotation><xs:documentation>TRANSFERENCIAS INTRAPARTID�RIAS DE RECURSOS ESTIM�VEIS EM DINHEIRO - OBRIGA��ES ASSUMIDAS - Doa��es recebidas de dire��es estaduais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="348"><xs:annotation><xs:documentation>TRANSFERENCIAS INTRAPARTID�RIAS DE RECURSOS ESTIM�VEIS EM DINHEIRO - OBRIGA��ES ASSUMIDAS - Doa��es recebidas de dire��es municipais</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="349"><xs:annotation><xs:documentation>GANHOS COM ATIVOS - Valor de venda na aliena��o de bens do ativo permanente</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="350"><xs:annotation><xs:documentation>GANHOS COM ATIVOS - Alugu�is</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="351"><xs:annotation><xs:documentation>GANHOS COM ATIVOS - Venda de materiais de divulga��o</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="352"><xs:annotation><xs:documentation>GANHOS COM ATIVOS - Venda de publica��es</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="353"><xs:annotation><xs:documentation>GANHOS COM ATIVOS - Outros ganhos</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="395"><xs:annotation><xs:documentation>RECURSOS RECEBIDOS DE FONTES VEDADAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="396"><xs:annotation><xs:documentation>FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - DIRE��O NACIONAL - Cotas recebidas em recursos financeiros - Tribunal Superior Eleitoral</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="397"><xs:annotation><xs:documentation>DOA��ES PARA MANUTEN��O DO PARTIDO - FINANCIAMENTO COLETIVO - Em recursos financeiros</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="398"><xs:annotation><xs:documentation>DOA��ES PARA CAMPANHAS ELEITORAIS - FINANCIAMENTO COLETIVO</xs:documentation></xs:annotation></xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

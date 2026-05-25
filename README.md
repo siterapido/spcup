@@ -34,3 +34,13 @@ Piloto de ingestão, match e exportação SPCA para prestação de contas partid
 ## Stack
 
 Python 3.12, FastAPI, Typer, SQLAlchemy 2, Alembic, PostgreSQL 16, Pydantic v2.
+
+## SPCA XSD schemas
+
+Schemas live in `spc_up/spca/schemas/`:
+
+- `origemRecurso.xsd` — bundled from the SPCA import guide
+- `aplicacaoRecurso.xsd` — **placeholder**: download from TSE and add to `spc_up/spca/schemas/`
+- `doacaoFinanceira.xsd` — **placeholder**: download from TSE and add to `spc_up/spca/schemas/`
+
+Tests for schemas that are not yet present are skipped via `pytest.mark.skipif`.
