@@ -1,4 +1,4 @@
-"""Build Aplicacao de Recursos XML from confirmed saida movimentacoes."""
+"""Build Aplicação de Recursos XML from confirmed saída movimentacoes."""
 
 from __future__ import annotations
 
@@ -17,30 +17,27 @@ from spc_up.models.entities import (
     PessoaFisica,
     PessoaJuridica,
 )
-from spc_up.services.export.common import format_moeda, write_xml
+from spc_up.services.export.common import (
+    APLICACAO_NS,
+    build_cabecalho,
+    format_moeda,
+    make_aplicacao_root,
+    sub_aplicacao,
+    write_xml,
+)
 
-APLICACAO_NS = "http://www.tse.jus.br/2012/XMLSchema/aplicacaoRecurso.xsd"
-APLICACAO_NSMAP = {None: APLICACAO_NS}
+_DOCUMENTO_TAG = {
+    "BOLETO": "boleto",
+    "CONTRATO": "contrato",
+    "FISCAL": "fiscal",
+    "FATURA": "fatura",
+    "RECIBO": "recibo",
+    "OUTRO": "outro",
+}
 
 _DEFAULT_CD_GASTO = "401"
 _DEFAULT_DETALHE_SITUACAO = 1
-
-
-def _sub(parent: etree._Element, tag: str, text: str | int | None = None) -> etree._Element:
-    element = etree.SubElement(parent, f"{{{APLICACAO_NS}}}{tag}")
-    if text is not None:
-        element.text = str(text)
-    return element
-
-
-def make_aplicacao_root() -> etree._Element:
-    return etree.Element(f"{{{APLICACAO_NS}}}importacaoAplicacaoRecurso", nsmap=APLICACAO_NSMAP)
-
-
-def _build_cabecalho(parent: etree._Element, *, cnpj: str, exercicio: int) -> None:
-    cabecalho = _sub(parent, "CABECALHO")
-    _sub(cabecalho, "nrCnpjPrestador", cnpj)
-    _sub(cabecalho, "anoExercicio", exercicio)
+_DEFAULT_TIPO_DOCUMENTO = "RECIBO"
 
 
 def _fetch_movimentacoes(session: Session, uf: str, exercicio: int) -> list[Movimentacao]:
@@ -64,75 +61,76 @@ def _fetch_movimentacoes(session: Session, uf: str, exercicio: int) -> list[Movi
     )
 
 
-def _append_pessoa(parent: etree._Element, movimentacao: Movimentacao, spca: MovimentacaoSpca) -> None:
-    pessoa = _sub(parent, "pessoa")
-    tipo = (spca.tipo_origem_recurso or "").upper()
+def _append_pessoa(parent: etree._Element, movimentacao: Movimentacao) -> None:
+    pessoa_wrapper = sub_aplicacao(parent, "pessoa")
 
-    if movimentacao.pessoa_juridica is not None or tipo == "PJ":
-        pj: PessoaJuridica | None = movimentacao.pessoa_juridica
-        if pj is None:
-            raise ValueError(f"Movimentacao {movimentacao.id} requires pessoa_juridica for PJ gasto")
-        pj_node = _sub(pessoa, "pessoaJuridica")
-        _sub(pj_node, "nrCnpj", pj.cnpj)
-        _sub(pj_node, "nmPessoa", pj.razao_social)
+    if movimentacao.pessoa_juridica is not None:
+        pj: PessoaJuridica = movimentacao.pessoa_juridica
+        pj_node = sub_aplicacao(pessoa_wrapper, "pessoaJuridica")
+        sub_aplicacao(pj_node, "nrCnpj", pj.cnpj)
+        sub_aplicacao(pj_node, "nmPessoa", pj.razao_social)
         return
 
-    if movimentacao.pessoa_fisica is not None or tipo == "PF":
-        pf: PessoaFisica | None = movimentacao.pessoa_fisica
-        if pf is None:
-            raise ValueError(f"Movimentacao {movimentacao.id} requires pessoa_fisica for PF gasto")
-        pf_node = _sub(pessoa, "pessoaFisica")
-        _sub(pf_node, "nrCpf", pf.cpf)
-        _sub(pf_node, "nmPessoa", pf.nome)
+    if movimentacao.pessoa_fisica is not None:
+        pf: PessoaFisica = movimentacao.pessoa_fisica
+        pf_node = sub_aplicacao(pessoa_wrapper, "pessoaFisica")
+        sub_aplicacao(pf_node, "nrCpf", pf.cpf)
+        sub_aplicacao(pf_node, "nmPessoa", pf.nome)
         return
 
-    raise ValueError(f"Movimentacao {movimentacao.id} requires pessoa_fisica or pessoa_juridica")
+    raise ValueError(
+        f"Movimentacao {movimentacao.id} requires pessoa_fisica or pessoa_juridica for aplicacao"
+    )
 
 
 def _append_dados_documento(
     parent: etree._Element,
-    movimentacao: Movimentacao,
     spca: MovimentacaoSpca,
+    movimentacao: Movimentacao,
 ) -> None:
-    dados_documento = _sub(parent, "dadosDocumento")
-    recibo = _sub(dados_documento, "recibo")
+    tipo = (spca.tipo_documento or _DEFAULT_TIPO_DOCUMENTO).upper()
+    tag = _DOCUMENTO_TAG.get(tipo, "recibo")
+
+    dados = sub_aplicacao(parent, "dadosDocumento")
+    doc = sub_aplicacao(dados, tag)
+
+    if tag == "outro":
+        descricao = spca.descricao_resumida or movimentacao.descricao_raw
+        sub_aplicacao(doc, "descricao", descricao[:20])
 
     if spca.nr_documento:
-        _sub(recibo, "nrDocumento", spca.nr_documento)
+        sub_aplicacao(doc, "nrDocumento", spca.nr_documento)
 
     data_emissao = spca.data_emissao_contratacao or movimentacao.data_movimento
-    _sub(recibo, "dataEmissaoContratacao", data_emissao.isoformat())
-    _sub(recibo, "vrTotalDocumento", format_moeda(movimentacao.valor))
+    sub_aplicacao(doc, "dataEmissaoContratacao", data_emissao.isoformat())
+    sub_aplicacao(doc, "vrTotalDocumento", format_moeda(movimentacao.valor))
 
 
 def _append_detalhe_situacao(
-    parent: etree._Element,
-    *,
-    detalhe_situacao: int,
-    descricao_resumida: str,
-) -> None:
-    if detalhe_situacao != _DEFAULT_DETALHE_SITUACAO:
-        raise ValueError(f"Unsupported detalhe_situacao: {detalhe_situacao}")
-
-    situacao = _sub(parent, "situacao1")
-    if descricao_resumida:
-        _sub(situacao, "descricaoResumida", descricao_resumida)
-
-
-def _append_gasto_conta_contabil(
-    parent: etree._Element,
-    movimentacao: Movimentacao,
+    gasto_conta: etree._Element,
     spca: MovimentacaoSpca,
+    movimentacao: Movimentacao,
 ) -> None:
-    classificacao = _sub(parent, "classificacaoGasto")
-    conta = _sub(classificacao, "gastoContaContabil")
-    cd_gasto = spca.cd_descricao_gasto or _DEFAULT_CD_GASTO
-    _sub(conta, "cdDescricaoGasto", cd_gasto)
-    _sub(conta, "vrGasto", format_moeda(movimentacao.valor))
+    situacao = spca.detalhe_situacao if spca.detalhe_situacao is not None else _DEFAULT_DETALHE_SITUACAO
+    if situacao != 1:
+        return
 
-    detalhe = spca.detalhe_situacao or _DEFAULT_DETALHE_SITUACAO
     descricao = spca.descricao_resumida or movimentacao.descricao_raw
-    _append_detalhe_situacao(conta, detalhe_situacao=detalhe, descricao_resumida=descricao)
+    situacao_node = sub_aplicacao(gasto_conta, "situacao1")
+    sub_aplicacao(situacao_node, "descricaoResumida", descricao)
+
+
+def _append_classificacao_gasto(
+    parent: etree._Element,
+    spca: MovimentacaoSpca,
+    movimentacao: Movimentacao,
+) -> None:
+    classificacao = sub_aplicacao(parent, "classificacaoGasto")
+    gasto_conta = sub_aplicacao(classificacao, "gastoContaContabil")
+    cd_gasto = spca.cd_descricao_gasto or _DEFAULT_CD_GASTO
+    sub_aplicacao(gasto_conta, "cdDescricaoGasto", cd_gasto)
+    sub_aplicacao(gasto_conta, "vrGasto", format_moeda(movimentacao.valor))
+    _append_detalhe_situacao(gasto_conta, spca, movimentacao)
 
 
 def _append_gasto(parent: etree._Element, movimentacao: Movimentacao) -> None:
@@ -140,20 +138,20 @@ def _append_gasto(parent: etree._Element, movimentacao: Movimentacao) -> None:
     if spca is None:
         raise ValueError(f"Movimentacao {movimentacao.id} missing spca payload")
 
-    gasto = _sub(parent, "gasto")
-    _append_pessoa(gasto, movimentacao, spca)
-    _append_dados_documento(gasto, movimentacao, spca)
-    _append_gasto_conta_contabil(gasto, movimentacao, spca)
+    gasto = sub_aplicacao(parent, "gasto")
+    _append_pessoa(gasto, movimentacao)
+    _append_dados_documento(gasto, spca, movimentacao)
+    _append_classificacao_gasto(gasto, spca, movimentacao)
 
 
 def build_aplicacao_xml(session: Session, uf: str, exercicio: int, cnpj: str) -> Path:
-    """Build and persist Aplicacao de Recursos XML for confirmed saidas."""
+    """Build and persist Aplicação de Recursos XML for confirmed saídas."""
     movimentacoes = _fetch_movimentacoes(session, uf, exercicio)
 
     root = make_aplicacao_root()
-    _build_cabecalho(root, cnpj=cnpj, exercicio=exercicio)
+    build_cabecalho(root, cnpj=cnpj, exercicio=exercicio, namespace=APLICACAO_NS)
 
-    corpo = _sub(root, "CORPO")
+    corpo = sub_aplicacao(root, "CORPO")
     for movimentacao in movimentacoes:
         _append_gasto(corpo, movimentacao)
 
