@@ -60,9 +60,12 @@ export default async function DashboardPage({
         </form>
       </Card>
 
-      <p>
+      <p className="flex flex-wrap gap-4">
         <Link href={`/movimentacoes?uf=${uf}&exercicio=${exercicio}`} className="text-slate-900 underline">
           Ver movimentações
+        </Link>
+        <Link href={`/pessoas?uf=${uf}&exercicio=${exercicio}`} className="text-slate-900 underline">
+          Pessoas (PF/PJ)
         </Link>
       </p>
 

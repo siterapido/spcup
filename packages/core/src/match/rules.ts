@@ -7,6 +7,11 @@ import {
 } from "@spc-up/db";
 import { eq } from "drizzle-orm";
 
+import {
+  isStubNome,
+  STUB_PF_NOME,
+  STUB_PJ_RAZAO,
+} from "../cadastro/constants";
 import { DEFAULT_WEIGHTS, evaluateMovimentacao } from "../confidence";
 import { normalizeCnpj, normalizeCpf } from "../normalize";
 import { MOVIMENTACAO_STATUS } from "../ingest/types";
@@ -17,9 +22,6 @@ const CPF_PATTERN =
   /\b(?:\d{3}\.?\d{3}\.?\d{3}-?\d{2}|\d{11})\b/g;
 const CNPJ_PATTERN =
   /\b(?:\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|[A-Za-z0-9]{2}\.?[A-Za-z0-9]{3}\.?[A-Za-z0-9]{3}\/?[A-Za-z0-9]{4}-?\d{2})\b/g;
-
-const STUB_PF_NOME = "DESCONHECIDO";
-const STUB_PJ_RAZAO = "DESCONHECIDA";
 
 type DocType = "CPF" | "CNPJ";
 
@@ -181,20 +183,26 @@ export async function applyDeterministicMatch(
     const pessoa = await getOrCreatePessoaFisica(db, cpf);
     pessoaFisicaId = pessoa.id;
     pessoaJuridicaId = null;
+    const cadastroReal = !isStubNome("PF", pessoa.nome);
     evidencias.push({
-      tipo: "CPF_EXATO",
+      tipo: cadastroReal ? "CPF_CADASTRO" : "CPF_EXATO",
       peso: DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45,
-      detalhe: `CPF ${cpf} extraido da descricao`,
+      detalhe: cadastroReal
+        ? `CPF ${cpf} vinculado ao cadastro`
+        : `CPF ${cpf} extraido da descricao`,
     });
   } else if (cnpjs.length === 1) {
     const cnpj = cnpjs[0]!;
     const pessoa = await getOrCreatePessoaJuridica(db, cnpj);
     pessoaJuridicaId = pessoa.id;
     pessoaFisicaId = null;
+    const cadastroReal = !isStubNome("PJ", pessoa.razaoSocial);
     evidencias.push({
-      tipo: "CNPJ_EXATO",
+      tipo: cadastroReal ? "CNPJ_CADASTRO" : "CNPJ_EXATO",
       peso: DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45,
-      detalhe: `CNPJ ${cnpj} extraido da descricao`,
+      detalhe: cadastroReal
+        ? `CNPJ ${cnpj} vinculado ao cadastro`
+        : `CNPJ ${cnpj} extraido da descricao`,
     });
   }
 

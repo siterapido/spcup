@@ -43,6 +43,38 @@ export const pessoaJuridica = pgTable("pessoa_juridica", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const CADASTRO_CONFLITO_STATUS = {
+  PENDENTE: "PENDENTE",
+  RESOLVIDO: "RESOLVIDO",
+  IGNORADO: "IGNORADO",
+} as const;
+
+export const CADASTRO_CONFLITO_RESOLUCAO = {
+  MANTER_NOME: "MANTER_NOME",
+  ATUALIZAR_NOME: "ATUALIZAR_NOME",
+} as const;
+
+export const cadastroConflito = pgTable(
+  "cadastro_conflito",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tipo: varchar("tipo", { length: 2 }).notNull(),
+    documento: varchar("documento", { length: 14 }).notNull(),
+    nomeExistente: varchar("nome_existente", { length: 255 }).notNull(),
+    nomeProposto: varchar("nome_proposto", { length: 255 }).notNull(),
+    origem: varchar("origem", { length: 10 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("PENDENTE"),
+    resolucao: varchar("resolucao", { length: 20 }),
+    ufContexto: varchar("uf_contexto", { length: 2 }).notNull(),
+    exercicioContexto: integer("exercicio_contexto").notNull(),
+    pessoaFisicaId: uuid("pessoa_fisica_id").references(() => pessoaFisica.id),
+    pessoaJuridicaId: uuid("pessoa_juridica_id").references(() => pessoaJuridica.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [index("ix_cadastro_conflito_status").on(table.status)],
+);
+
 export const contaBancaria = pgTable("conta_bancaria", {
   id: uuid("id").primaryKey().defaultRandom(),
   diretorioEstadualId: uuid("diretorio_estadual_id")
@@ -186,6 +218,17 @@ export const pessoaJuridicaRelations = relations(pessoaJuridica, ({ many }) => (
   movimentacoes: many(movimentacao),
 }));
 
+export const cadastroConflitoRelations = relations(cadastroConflito, ({ one }) => ({
+  pessoaFisica: one(pessoaFisica, {
+    fields: [cadastroConflito.pessoaFisicaId],
+    references: [pessoaFisica.id],
+  }),
+  pessoaJuridica: one(pessoaJuridica, {
+    fields: [cadastroConflito.pessoaJuridicaId],
+    references: [pessoaJuridica.id],
+  }),
+}));
+
 export const arquivoIngestaoRelations = relations(arquivoIngestao, ({ one, many }) => ({
   diretorioEstadual: one(diretorioEstadual, {
     fields: [arquivoIngestao.diretorioEstadualId],
@@ -249,6 +292,8 @@ export type PessoaFisica = typeof pessoaFisica.$inferSelect;
 export type NewPessoaFisica = typeof pessoaFisica.$inferInsert;
 export type PessoaJuridica = typeof pessoaJuridica.$inferSelect;
 export type NewPessoaJuridica = typeof pessoaJuridica.$inferInsert;
+export type CadastroConflito = typeof cadastroConflito.$inferSelect;
+export type NewCadastroConflito = typeof cadastroConflito.$inferInsert;
 export type ContaBancaria = typeof contaBancaria.$inferSelect;
 export type NewContaBancaria = typeof contaBancaria.$inferInsert;
 export type ArquivoIngestao = typeof arquivoIngestao.$inferSelect;

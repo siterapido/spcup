@@ -80,5 +80,23 @@ export {
 } from "./match/rules";
 export { generatePendenciasCsv, CSV_COLUMNS } from "./report/pendencias";
 export { normalizeCnpj, normalizeCpf, normalizeName } from "./normalize";
+export {
+  CADASTRO_TIPO,
+  countPessoaMovimentacoes,
+  getPessoa,
+  importCadastroBatch,
+  listCadastroConflitos,
+  listPessoaMovimentacoes,
+  parseCadastroSpreadsheet,
+  rematchPendingMovimentacoes,
+  resolveCadastroConflito,
+  searchPessoas,
+  upsertPessoa,
+  type CadastroRow,
+  type CadastroTipo,
+  type ConflitoResolucao,
+  type ImportCadastroResult,
+  type UpsertPessoaContext,
+} from "./cadastro";
 
 export const CORE_PACKAGE = "@spc-up/core";

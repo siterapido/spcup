@@ -53,6 +53,7 @@ Estados enviam arquivos → Equipe nacional ingere → Revisa pendências → Co
 |-----------|----------|
 | [docs/deploy-vercel-neon.md](docs/deploy-vercel-neon.md) | Vercel, Neon, Blob, seeds, `gru1`, `AUTH_URL` |
 | [docs/piloto-checklist.md](docs/piloto-checklist.md) | Piloto 1 semana (TypeScript) |
+| [docs/superpowers/specs/2026-05-26-cadastro-pf-pj-design.md](docs/superpowers/specs/2026-05-26-cadastro-pf-pj-design.md) | Cadastro PF/PJ, importação e perfil |
 | [docs/spca-fontes.md](docs/spca-fontes.md) | Fontes SPCA / XSD |
 | `docs/superpowers/specs/2026-05-25-spc-up-prestacao-contas-design.md` | Regras de negócio |
 | `docs/superpowers/specs/2026-05-25-nextjs-vercel-neon-migration-design.md` | Design migração |
