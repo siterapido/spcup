@@ -83,9 +83,11 @@ function FileTypeIcon({ suffix }: { suffix: string }) {
 function AttachmentPreview({
   file,
   onRemove,
+  disabled,
 }: {
   file: File;
   onRemove: () => void;
+  disabled?: boolean;
 }) {
   const suffix = suffixOf(file.name);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -134,14 +136,16 @@ function AttachmentPreview({
             {kindLabel(suffix)} · {formatBytes(file.size)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted transition-colors duration-150 ease-out-quart hover:bg-slate-100 hover:text-up-black focus:outline-none focus:ring-1 focus:ring-up-black"
-          aria-label={`Remover ${file.name}`}
-        >
-          Remover
-        </button>
+        {!disabled ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-muted transition-colors duration-150 ease-out-quart hover:bg-slate-100 hover:text-up-black focus:outline-none focus:ring-1 focus:ring-up-black"
+            aria-label={`Remover ${file.name}`}
+          >
+            Remover
+          </button>
+        ) : null}
       </div>
 
       {suffix === ".pdf" && objectUrl ? (
@@ -177,6 +181,7 @@ export type AttachmentDropzoneProps = {
   accept?: string;
   label?: string;
   hint?: string;
+  disabled?: boolean;
 };
 
 export function AttachmentDropzone({
@@ -185,6 +190,7 @@ export function AttachmentDropzone({
   accept = DEFAULT_ACCEPT,
   label = "Anexos (PDF, Excel, OFX)",
   hint = "Arraste arquivos aqui ou clique para escolher. Formatos: PDF, XLS, XLSX, OFX.",
+  disabled = false,
 }: AttachmentDropzoneProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -193,6 +199,7 @@ export function AttachmentDropzone({
 
   const addFiles = useCallback(
     (incoming: File[]) => {
+      if (disabled) return;
       const { accepted, rejected } = filterAllowed(incoming);
       if (rejected.length > 0) {
         setRejectMsg(
@@ -207,7 +214,7 @@ export function AttachmentDropzone({
         onChange(mergeFiles(files, accepted));
       }
     },
-    [files, onChange],
+    [disabled, files, onChange],
   );
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,35 +240,56 @@ export function AttachmentDropzone({
       </span>
 
       <div
-        role="button"
-        tabIndex={0}
+        role={disabled ? undefined : "button"}
+        tabIndex={disabled ? undefined : 0}
         aria-labelledby={`${inputId}-label`}
         aria-describedby={`${inputId}-hint`}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            openPicker();
-          }
-        }}
-        onClick={openPicker}
-        onDragEnter={(e) => {
-          e.preventDefault();
-          setDragActive(true);
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragActive(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-          setDragActive(false);
-        }}
-        onDrop={onDrop}
-        className={`relative cursor-pointer rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors duration-150 ease-out-quart focus:outline-none focus:ring-2 focus:ring-up-black focus:ring-offset-2 ${
-          dragActive
-            ? "border-up-yellow bg-amber-50/60"
-            : "border-border bg-slate-50/50 hover:border-up-black/30 hover:bg-slate-50"
+        aria-disabled={disabled || undefined}
+        onKeyDown={
+          disabled
+            ? undefined
+            : (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openPicker();
+                }
+              }
+        }
+        onClick={disabled ? undefined : openPicker}
+        onDragEnter={
+          disabled
+            ? undefined
+            : (e) => {
+                e.preventDefault();
+                setDragActive(true);
+              }
+        }
+        onDragOver={
+          disabled
+            ? undefined
+            : (e) => {
+                e.preventDefault();
+                setDragActive(true);
+              }
+        }
+        onDragLeave={
+          disabled
+            ? undefined
+            : (e) => {
+                e.preventDefault();
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setDragActive(false);
+              }
+        }
+        onDrop={disabled ? undefined : onDrop}
+        className={`relative rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors duration-150 ease-out-quart ${
+          disabled
+            ? "cursor-not-allowed border-border bg-slate-100/80 opacity-70"
+            : `cursor-pointer focus:outline-none focus:ring-2 focus:ring-up-black focus:ring-offset-2 ${
+                dragActive
+                  ? "border-up-yellow bg-amber-50/60"
+                  : "border-border bg-slate-50/50 hover:border-up-black/30 hover:bg-slate-50"
+              }`
         }`}
       >
         <input
@@ -298,6 +326,7 @@ export function AttachmentDropzone({
               <AttachmentPreview
                 key={fileKey(file)}
                 file={file}
+                disabled={disabled}
                 onRemove={() => onChange(files.filter((f) => fileKey(f) !== fileKey(file)))}
               />
             ))}

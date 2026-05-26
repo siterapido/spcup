@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AttachmentDropzone } from "@/components/prestacao/attachment-dropzone";
+import { SubmissionProgressPanel } from "@/components/prestacao/submission-progress-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { usePrestacaoSubmit } from "@/hooks/use-prestacao-submit";
 const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
@@ -22,9 +24,18 @@ export function PrestacaoWizard() {
   const [municipais, setMunicipais] = useState<Municipal[]>([]);
   const [exercicio, setExercicio] = useState("2025");
   const [files, setFiles] = useState<File[]>([]);
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [estadualPlaceholder, setEstadualPlaceholder] = useState(false);
+  const {
+    phase,
+    progress,
+    statusLabel,
+    steps,
+    isProcessing,
+    submit,
+  } = usePrestacaoSubmit();
+
+  const showSubmitProgress = phase !== "idle";
 
   const loadMunicipais = useCallback(async () => {
     if (tipo !== "MUNICIPAL" || uf.length !== 2) return;
@@ -56,83 +67,21 @@ export function PrestacaoWizard() {
   }, [tipo, uf]);
 
   async function onSubmit() {
-    setLoading(true);
     setMessage(null);
     try {
-      const sessaoRes = await fetch("/api/prestacao/sessoes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uf: uf.toUpperCase(),
-          tipoPrestador: tipo,
-          diretorioMunicipalId: tipo === "MUNICIPAL" ? municipalId : undefined,
-          exercicio: Number.parseInt(exercicio, 10),
-        }),
+      const { sessaoId, warningMessage } = await submit({
+        uf,
+        tipo,
+        municipalId: tipo === "MUNICIPAL" ? municipalId : undefined,
+        exercicio,
+        files,
       });
-      const sessaoJson = await sessaoRes.json();
-      if (!sessaoRes.ok) {
-        setMessage(sessaoJson.error ?? "Erro ao criar sessão");
-        return;
+      if (warningMessage) {
+        setMessage(warningMessage);
       }
-
-      if (files.length > 0) {
-        const data = new FormData();
-        for (const file of files) {
-          data.append("files", file);
-        }
-        const upRes = await fetch(`/api/prestacao/sessoes/${sessaoJson.id}/upload`, {
-          method: "POST",
-          body: data,
-        });
-        const upJson = await upRes.json();
-        if (!upRes.ok) {
-          setMessage(upJson.error ?? "Erro no upload");
-          return;
-        }
-
-        let uploadMsg: string | null = null;
-        if (upJson.erros?.length) {
-          uploadMsg = `Upload parcial: ${upJson.erros.join("; ")}`;
-        }
-
-        type ArquivoUp = {
-          nome: string;
-          movimentacoes_criadas: number;
-          linhas_ignoradas_sem_doc?: number;
-        };
-        const arquivos = (upJson.arquivos ?? []) as ArquivoUp[];
-        const arquivoParts = arquivos
-          .filter(
-            (a) =>
-              a.movimentacoes_criadas === 0 ||
-              ((a.linhas_ignoradas_sem_doc ?? 0) > 0),
-          )
-          .map((a) => {
-            const n = a.movimentacoes_criadas;
-            const movLabel =
-              n === 1 ? "1 movimentação" : `${n} movimentações`;
-            const ignored = a.linhas_ignoradas_sem_doc ?? 0;
-            let part = `${a.nome}: ${movLabel}`;
-            if (ignored > 0) {
-              part += `; ${ignored === 1 ? "1 linha" : `${ignored} linhas`} sem CPF/CNPJ válido`;
-            }
-            return part;
-          });
-        if (arquivoParts.length > 0) {
-          const resumoArquivos = arquivoParts.join(" · ");
-          uploadMsg = uploadMsg ? `${uploadMsg} · ${resumoArquivos}` : resumoArquivos;
-        }
-
-        if (uploadMsg) {
-          setMessage(uploadMsg);
-        }
-      }
-
-      router.push(`/prestacao/${sessaoJson.id}/kanban`);
-    } catch {
-      setMessage("Erro de rede.");
-    } finally {
-      setLoading(false);
+      router.push(`/prestacao/${sessaoId}/kanban`);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Erro de rede.");
     }
   }
 
@@ -286,14 +235,44 @@ export function PrestacaoWizard() {
 
       {step === 5 && (
         <div className="mt-4 space-y-3">
-          <AttachmentDropzone files={files} onChange={setFiles} />
-          {message && <p className="text-sm text-red-700">{message}</p>}
+          <AttachmentDropzone
+            files={files}
+            onChange={setFiles}
+            disabled={isProcessing}
+          />
+          {showSubmitProgress ? (
+            <SubmissionProgressPanel
+              progress={progress}
+              statusLabel={statusLabel}
+              steps={steps}
+              fileNames={files.map((f) => f.name)}
+            />
+          ) : null}
+          {message && (
+            <p
+              className={`text-sm ${
+                phase === "error" ? "text-red-700" : "text-amber-900"
+              }`}
+              role={phase === "error" ? "alert" : undefined}
+            >
+              {message}
+            </p>
+          )}
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setStep(4)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() => setStep(4)}
+            >
               Voltar
             </Button>
-            <Button type="button" disabled={loading} onClick={() => void onSubmit()}>
-              {loading ? "Processando…" : "Iniciar prestação"}
+            <Button
+              type="button"
+              disabled={isProcessing}
+              onClick={() => void onSubmit()}
+            >
+              {isProcessing ? "Processando…" : "Iniciar prestação"}
             </Button>
           </div>
         </div>
