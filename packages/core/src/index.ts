@@ -73,12 +73,42 @@ export {
 } from "./prestacao/kanban";
 export { updateMovimentacaoStatus } from "./prestacao/status";
 export {
+  assignPessoaToMovimentacao,
+  getMovimentacaoDetalhe,
+  reprocessarIaMovimentacao,
+  type AssignPessoaInput,
+  type MovimentacaoDetalhe,
+} from "./prestacao/movimentacao-review";
+export {
+  VALID_UFS,
+  isPlaceholderCnpjPrestador,
+  isValidUf,
+  type UfSigla,
+} from "./prestacao/constants";
+export {
+  getDiretorioEstadualByUf,
+  importDiretoriosEstaduais,
+  listDiretoriosEstaduais,
+  updateDiretorioEstadualById,
+  upsertDiretorioEstadualByUf,
+  type DiretorioEstadualInput,
+  type ImportEstadualRow,
+} from "./prestacao/estadual";
+export {
   importDiretoriosMunicipais,
   listDiretoriosMunicipais,
+  updateDiretorioMunicipalById,
   upsertDiretorioMunicipal,
   type DiretorioMunicipalInput,
   type ImportMunicipalRow,
 } from "./prestacao/municipal";
+export {
+  assignPessoaToMovimentacao,
+  getMovimentacaoDetalhe,
+  reprocessarIaMovimentacao,
+  type AssignPessoaInput,
+  type MovimentacaoDetalhe,
+} from "./prestacao/movimentacao-review";
 export { parseExcel } from "./ingest/excel";
 export {
   ingestPdf,
