@@ -28,8 +28,10 @@ export async function GET(request: Request) {
   }
 
   const q = url.searchParams.get("q") ?? undefined;
+  const ativoOnlyParam = url.searchParams.get("ativoOnly");
+  const ativoOnly = ativoOnlyParam === "false" ? false : true;
   const db = getDb();
-  const items = await listDiretoriosMunicipais(db, uf, { q, ativoOnly: true });
+  const items = await listDiretoriosMunicipais(db, uf, { q, ativoOnly });
 
   return NextResponse.json({
     items: items.map((d) => ({

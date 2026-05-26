@@ -116,3 +116,22 @@ export async function importDiretoriosMunicipais(
 
   return { criados, atualizados, erros };
 }
+
+export async function updateDiretorioMunicipalById(
+  db: Db,
+  id: string,
+  input: Partial<DiretorioMunicipalInput>,
+): Promise<DiretorioMunicipal> {
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (input.nomeMunicipio != null) patch.nomeMunicipio = input.nomeMunicipio;
+  if (input.codigoIbge !== undefined) patch.codigoIbge = input.codigoIbge;
+  if (input.cnpjPrestador != null) patch.cnpjPrestador = normalizeCnpj(input.cnpjPrestador);
+  if (input.ativo != null) patch.ativo = input.ativo;
+  const [updated] = await db
+    .update(diretorioMunicipal)
+    .set(patch)
+    .where(eq(diretorioMunicipal.id, id))
+    .returning();
+  if (!updated) throw new Error("Diretório municipal não encontrado");
+  return updated;
+}
