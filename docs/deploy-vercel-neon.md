@@ -10,13 +10,13 @@ Guia passo a passo para publicar `apps/web` na Vercel com Postgres (Neon) e arma
 
 ## 1. Vincular projeto Vercel (`apps/web`)
 
-O monorepo usa `vercel.json` na raiz com **Root Directory** `apps/web` e região **`gru1`** (São Paulo).
+O monorepo usa **`apps/web/vercel.json`** (install/build com `cd ../..`) e **Root Directory** `apps/web` no dashboard — **não** defina `rootDirectory` em outro `vercel.json` na raiz (conflito gera erro imediato de *project configuration*).
 
 1. No dashboard Vercel: **Add New → Project** → importe o repositório Git.
-2. Em **Root Directory**, selecione **`apps/web`** (ou confirme que o Vercel leu `vercel.json` na raiz do repo).
+2. Em **Root Directory**, selecione **`apps/web`**.
 3. **Framework Preset:** Next.js.
-4. **Build Command:** `pnpm --filter web build` (já em `vercel.json`).
-5. **Install Command:** `pnpm install` (raiz do monorepo).
+4. **Build Command:** `cd ../.. && pnpm --filter web build` (em `apps/web/vercel.json`).
+5. **Install Command:** `cd ../.. && pnpm install` (raiz do monorepo).
 6. Salve e faça o primeiro deploy (pode falhar até as env vars estarem configuradas).
 
 Alternativa CLI (na raiz do repo):
@@ -98,11 +98,7 @@ Local: `AUTH_URL=http://localhost:3000` (`apps/web/.env.example`).
 
 ## 7. Região `gru1`
 
-`vercel.json` na raiz fixa:
-
-```json
-"regions": ["gru1"]
-```
+`apps/web/vercel.json` define `"regions": ["gru1"]` (não use `vercel.json` na raiz do monorepo).
 
 Isso coloca Serverless Functions na região de São Paulo (menor latência para usuários no Brasil). Confirme no plano Vercel que a região está disponível; se o deploy reclamar, ajuste temporariamente e reabra issue de infra.
 
