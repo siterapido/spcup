@@ -12,7 +12,7 @@ export default function ConflitosPage() {
         </Link>
       </p>
       <h1 className="mt-4 text-2xl font-semibold">Conflitos de nome</h1>
-      <p className="mt-1 text-sm text-slate-600">
+      <p className="mt-1 text-sm text-muted">
         Revise propostas que divergem do cadastro existente antes de atualizar nomes.
       </p>
       <Card className="mt-6">

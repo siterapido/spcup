@@ -44,7 +44,11 @@ export async function POST(
     .set({ status: SESSAO_STATUS.EM_PROCESSAMENTO })
     .where(eq(sessaoPrestacao.id, sessaoId));
 
-  const results: Array<{ nome: string; movimentacoes_criadas: number }> = [];
+  const results: Array<{
+    nome: string;
+    movimentacoes_criadas: number;
+    linhas_ignoradas_sem_doc?: number;
+  }> = [];
   const errors: string[] = [];
 
   for (const file of files) {
@@ -90,6 +94,9 @@ export async function POST(
       results.push({
         nome: file.name,
         movimentacoes_criadas: result.movimentacoes_criadas,
+        ...(result.linhas_ignoradas_sem_doc != null && result.linhas_ignoradas_sem_doc > 0
+          ? { linhas_ignoradas_sem_doc: result.linhas_ignoradas_sem_doc }
+          : {}),
       });
     } catch (error) {
       errors.push(

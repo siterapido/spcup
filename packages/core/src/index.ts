@@ -50,7 +50,13 @@ export {
   writeXml,
   xmlToBuffer,
 } from "./export/common";
-export { extractStructuredFromPdf, type ExtractStructuredOptions } from "./ai/openrouter";
+export {
+  extractStructuredFromPdf,
+  extractTransactionsFromPdfFile,
+  extractTransactionsFromPdfText,
+  type ExtratoExtraction,
+  type ExtractStructuredOptions,
+} from "./ai/openrouter";
 export {
   createSessao,
   getSessao,
@@ -74,7 +80,14 @@ export {
   type ImportMunicipalRow,
 } from "./prestacao/municipal";
 export { parseExcel } from "./ingest/excel";
-export { ingestPdf, rowFromExtraction } from "./ingest/pdf";
+export {
+  ingestPdf,
+  ingestPdfExtrato,
+  rowFromExtraction,
+  rowsFromExtratoTransactions,
+  type IngestPdfExtratoResult,
+} from "./ingest/pdf";
+export { extractPdfText, MAX_EXTRATO_PAGES, MIN_TEXT_CHARS } from "./ingest/pdf-text";
 export { computeHashMovimento, parseOfx, persistTransactions } from "./ingest/ofx";
 export {
   INGEST_EXTENSIONS,
@@ -87,6 +100,7 @@ export {
   resolveIngestPaths,
   storeUpload,
   type IngestBufferParams,
+  type IngestBufferResult,
   type IngestFileParams,
 } from "./ingest/pipeline";
 export {
@@ -122,19 +136,24 @@ export { normalizeCnpj, normalizeCpf, normalizeName } from "./normalize";
 export {
   CADASTRO_TIPO,
   countPessoaMovimentacoes,
+  extractSpreadsheetHeaders,
   getPessoa,
   importCadastroBatch,
   listCadastroConflitos,
   listPessoaMovimentacoes,
+  parseCadastroColumnMap,
   parseCadastroSpreadsheet,
   rematchPendingMovimentacoes,
   resolveCadastroConflito,
   searchPessoas,
+  suggestCadastroColumnMap,
   upsertPessoa,
+  type CadastroColumnMap,
   type CadastroRow,
   type CadastroTipo,
   type ConflitoResolucao,
   type ImportCadastroResult,
+  type SpreadsheetHeadersResult,
   type UpsertPessoaContext,
 } from "./cadastro";
 

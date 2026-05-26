@@ -1,10 +1,10 @@
 import type { HTMLAttributes } from "react";
 
 const tones = {
-  success: "bg-emerald-100 text-emerald-800",
-  danger: "bg-red-100 text-red-800",
-  neutral: "bg-slate-100 text-slate-700",
-  warn: "bg-amber-100 text-amber-800",
+  success: "bg-status-success-bg text-status-success-text",
+  danger: "bg-status-danger-bg text-status-danger-text",
+  neutral: "bg-surface-page text-muted",
+  warn: "bg-status-warn-bg text-status-warn-text",
 } as const;
 
 export function Badge({

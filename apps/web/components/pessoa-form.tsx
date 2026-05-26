@@ -7,19 +7,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function PessoaForm({
-  defaultUf = "SP",
-  defaultExercicio = 2025,
-}: {
-  defaultUf?: string;
-  defaultExercicio?: number;
-}) {
+export function PessoaForm() {
   const router = useRouter();
   const [tipo, setTipo] = useState<"PF" | "PJ">("PF");
   const [documento, setDocumento] = useState("");
   const [nome, setNome] = useState("");
-  const [uf, setUf] = useState(defaultUf);
-  const [exercicio, setExercicio] = useState(String(defaultExercicio));
   const [message, setMessage] = useState<string | null>(null);
   const [conflitoId, setConflitoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,13 +25,7 @@ export function PessoaForm({
       const res = await fetch("/api/pessoas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo,
-          documento,
-          nome,
-          uf: uf.toUpperCase(),
-          exercicio: Number.parseInt(exercicio, 10),
-        }),
+        body: JSON.stringify({ tipo, documento, nome }),
       });
       const json = await res.json();
       if (res.status === 409) {
@@ -65,12 +51,13 @@ export function PessoaForm({
       <label className="block text-sm">
         Tipo
         <select
-          className="mt-1 block w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full max-w-xs rounded-md border border-border-input bg-surface-card px-3 py-2 text-sm text-up-black focus:border-up-black focus:outline-none focus:ring-1 focus:ring-up-black"
           value={tipo}
           onChange={(e) => setTipo(e.target.value as "PF" | "PJ")}
+          required
         >
-          <option value="PF">Pessoa física</option>
-          <option value="PJ">Pessoa jurídica</option>
+          <option value="PF">Pessoa física (CPF)</option>
+          <option value="PJ">Pessoa jurídica (CNPJ)</option>
         </select>
       </label>
       <label className="block text-sm">
@@ -81,16 +68,6 @@ export function PessoaForm({
         Nome
         <Input className="mt-1 max-w-md" value={nome} onChange={(e) => setNome(e.target.value)} required />
       </label>
-      <div className="flex flex-wrap gap-3">
-        <label className="text-sm">
-          UF (re-match)
-          <Input className="mt-1 w-20" maxLength={2} value={uf} onChange={(e) => setUf(e.target.value)} />
-        </label>
-        <label className="text-sm">
-          Exercício
-          <Input className="mt-1 w-28" type="number" value={exercicio} onChange={(e) => setExercicio(e.target.value)} />
-        </label>
-      </div>
       {message ? <p className="text-sm text-red-600">{message}</p> : null}
       {conflitoId ? (
         <p className="text-sm">

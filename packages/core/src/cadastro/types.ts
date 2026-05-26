@@ -26,3 +26,14 @@ export interface ParseCadastroResult {
   ok: CadastroRow[];
   erros: Array<{ linha: number; motivo: string }>;
 }
+
+export interface CadastroColumnMap {
+  documento: string;
+  nome: string;
+  tipo?: string;
+}
+
+export interface SpreadsheetHeadersResult {
+  headers: string[];
+  suggestedMap: Partial<CadastroColumnMap>;
+}

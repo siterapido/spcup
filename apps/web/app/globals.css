@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --up-black: 15 23 42;
+    --up-black-hover: 30 41 59;
+    --up-white: 250 250 250;
+    --up-yellow: 248 146 14;
+    --surface-page: 248 250 252;
+    --surface-card: 255 255 255;
+    --text-muted: 71 85 105;
+    --border-default: 226 232 240;
+    --border-input: 203 213 225;
+    --status-success-bg: 209 250 229;
+    --status-success-text: 6 95 70;
+    --status-danger-bg: 254 226 226;
+    --status-danger-text: 153 27 27;
+    --status-warn-bg: 254 243 199;
+    --status-warn-text: 146 64 14;
+  }
+
+  body {
+    @apply bg-surface-page text-up-black antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

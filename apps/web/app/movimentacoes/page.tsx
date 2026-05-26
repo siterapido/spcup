@@ -13,7 +13,7 @@ export default async function MovimentacoesPage({
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <h1 className="text-2xl font-semibold">Movimentações</h1>
-      <p className="mt-1 text-sm text-slate-600">
+      <p className="mt-1 text-sm text-muted">
         Revise pendências e confirme lançamentos antes da exportação SPCA.
       </p>
       <Card className="mt-6">

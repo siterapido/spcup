@@ -16,10 +16,13 @@ import {
 import type { CadastroRow, UpsertPessoaResult } from "./types";
 
 export interface UpsertPessoaContext {
-  uf: string;
-  exercicio: number;
+  uf?: string;
+  exercicio?: number;
   origem: "IMPORT" | "MANUAL";
 }
+
+const SEM_CONTEXTO_UF = "—";
+const SEM_CONTEXTO_EXERCICIO = 0;
 
 async function findPessoaFisica(db: Db, cpf: string) {
   const rows = await db
@@ -44,7 +47,8 @@ export async function upsertPessoa(
   row: Pick<CadastroRow, "tipo" | "documento" | "nome">,
   ctx: UpsertPessoaContext,
 ): Promise<UpsertPessoaResult> {
-  const uf = ctx.uf.toUpperCase();
+  const uf = ctx.uf?.toUpperCase() ?? SEM_CONTEXTO_UF;
+  const exercicio = ctx.exercicio ?? SEM_CONTEXTO_EXERCICIO;
   const documento =
     row.tipo === "PF" ? normalizeCpf(row.documento) : normalizeCnpj(row.documento);
   const nome = normalizeName(row.nome);
@@ -87,7 +91,7 @@ export async function upsertPessoa(
         nomeProposto: nome,
         origem: ctx.origem,
         ufContexto: uf,
-        exercicioContexto: ctx.exercicio,
+        exercicioContexto: exercicio,
         pessoaFisicaId: existing.id,
       })
       .returning();
@@ -135,7 +139,7 @@ export async function upsertPessoa(
       nomeProposto: nome,
       origem: ctx.origem,
       ufContexto: uf,
-      exercicioContexto: ctx.exercicio,
+      exercicioContexto: exercicio,
       pessoaJuridicaId: existing.id,
     })
     .returning();

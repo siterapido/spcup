@@ -73,8 +73,42 @@ export function PrestacaoWizard() {
           setMessage(upJson.error ?? "Erro no upload");
           return;
         }
+
+        let uploadMsg: string | null = null;
         if (upJson.erros?.length) {
-          setMessage(`Upload parcial: ${upJson.erros.join("; ")}`);
+          uploadMsg = `Upload parcial: ${upJson.erros.join("; ")}`;
+        }
+
+        type ArquivoUp = {
+          nome: string;
+          movimentacoes_criadas: number;
+          linhas_ignoradas_sem_doc?: number;
+        };
+        const arquivos = (upJson.arquivos ?? []) as ArquivoUp[];
+        const arquivoParts = arquivos
+          .filter(
+            (a) =>
+              a.movimentacoes_criadas === 0 ||
+              ((a.linhas_ignoradas_sem_doc ?? 0) > 0),
+          )
+          .map((a) => {
+            const n = a.movimentacoes_criadas;
+            const movLabel =
+              n === 1 ? "1 movimentação" : `${n} movimentações`;
+            const ignored = a.linhas_ignoradas_sem_doc ?? 0;
+            let part = `${a.nome}: ${movLabel}`;
+            if (ignored > 0) {
+              part += `; ${ignored === 1 ? "1 linha" : `${ignored} linhas`} sem CPF/CNPJ válido`;
+            }
+            return part;
+          });
+        if (arquivoParts.length > 0) {
+          const resumoArquivos = arquivoParts.join(" · ");
+          uploadMsg = uploadMsg ? `${uploadMsg} · ${resumoArquivos}` : resumoArquivos;
+        }
+
+        if (uploadMsg) {
+          setMessage(uploadMsg);
         }
       }
 

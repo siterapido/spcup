@@ -69,7 +69,7 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
   }
 
   if (!perfil) {
-    return <p className="text-sm text-slate-500">Carregando…</p>;
+    return <p className="text-sm text-muted">Carregando…</p>;
   }
 
   return (
@@ -77,7 +77,7 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
       <div>
         <Badge tone="neutral">{perfil.tipo}</Badge>
         <h2 className="mt-2 text-xl font-semibold">{perfil.nome}</h2>
-        <p className="text-sm text-slate-600">{perfil.documento_mascarado}</p>
+        <p className="text-sm text-muted">{perfil.documento_mascarado}</p>
         {resumo ? (
           <p className="mt-2 text-sm">
             {resumo.total} movimentação(ões) ·{" "}
@@ -121,7 +121,7 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
         </tbody>
       </Table>
       {items.length === 0 ? (
-        <p className="text-sm text-slate-500">Sem movimentações vinculadas.</p>
+        <p className="text-sm text-muted">Sem movimentações vinculadas.</p>
       ) : null}
     </div>
   );

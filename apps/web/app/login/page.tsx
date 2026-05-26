@@ -41,7 +41,7 @@ function LoginForm() {
         <CardTitle>SPC UP — Entrar</CardTitle>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <label className="block text-sm">
-            <span className="font-medium text-slate-700">Email</span>
+            <span className="font-medium text-up-black">Email</span>
             <Input
               type="email"
               required
@@ -52,7 +52,7 @@ function LoginForm() {
             />
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-slate-700">Senha</span>
+            <span className="font-medium text-up-black">Senha</span>
             <Input
               type="password"
               required
@@ -74,7 +74,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="p-12 text-center text-slate-500">Carregando…</main>}>
+    <Suspense fallback={<main className="p-12 text-center text-muted">Carregando…</main>}>
       <LoginForm />
     </Suspense>
   );

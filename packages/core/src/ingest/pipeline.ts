@@ -13,7 +13,7 @@ import { storageRoot as resolveStorageRoot } from "../export/common";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { parseExcel } from "./excel";
 import { fileHashBuffer } from "./hash";
-import { ingestPdf } from "./pdf";
+import { ingestPdfExtrato } from "./pdf";
 import { parseOfx, persistTransactions } from "./ofx";
 import {
   ARQUIVO_INGESTAO_STATUS,
@@ -142,15 +142,16 @@ export async function ingestFile(
     let createdCount: number;
 
     if (suffix === ".pdf") {
-      const matched = await ingestPdf(
+      const { movimentacoes } = await ingestPdfExtrato(
         db,
         uf,
         params.exercicio,
         arquivo.id,
         buffer,
         prestador,
+        { filename: path.basename(source) },
       );
-      createdCount = matched.length;
+      createdCount = movimentacoes.length;
     } else {
       const rows = await parseIngestFile(source);
       const created = await persistTransactions(
@@ -234,11 +235,17 @@ async function parseIngestBuffer(
   throw new Error(`Formato não suportado: ${suffix}`);
 }
 
+export interface IngestBufferResult {
+  movimentacoes_criadas: number;
+  ids: string[];
+  linhas_ignoradas_sem_doc?: number;
+}
+
 /** Ingest from in-memory buffer (web upload + Vercel Blob URL). */
 export async function ingestFileBuffer(
   db: Db,
   params: IngestBufferParams,
-): Promise<{ movimentacoes_criadas: number; ids: string[] }> {
+): Promise<IngestBufferResult> {
   const uf = params.uf.toUpperCase();
   const suffix = path.extname(params.filename).toLowerCase();
   if (!INGEST_EXTENSIONS.has(suffix)) {
@@ -269,17 +276,23 @@ export async function ingestFileBuffer(
 
   try {
     let matchedIds: string[];
+    let linhasIgnoradasSemDoc: number | undefined;
 
     if (suffix === ".pdf") {
-      const matched = await ingestPdf(
-        db,
-        uf,
-        params.exercicio,
-        arquivo.id,
-        params.buffer,
-        prestador,
-      );
-      matchedIds = matched.map((m) => m.id);
+      const { movimentacoes, linhasIgnoradasSemDoc: skipped } =
+        await ingestPdfExtrato(
+          db,
+          uf,
+          params.exercicio,
+          arquivo.id,
+          params.buffer,
+          prestador,
+          { filename: params.filename },
+        );
+      matchedIds = movimentacoes.map((m) => m.id);
+      if (skipped > 0) {
+        linhasIgnoradasSemDoc = skipped;
+      }
     } else {
       const rows = await parseIngestBuffer(params.buffer, params.filename);
       const created = await persistTransactions(
@@ -305,6 +318,9 @@ export async function ingestFileBuffer(
     return {
       movimentacoes_criadas: matchedIds.length,
       ids: matchedIds,
+      ...(linhasIgnoradasSemDoc != null && linhasIgnoradasSemDoc > 0
+        ? { linhas_ignoradas_sem_doc: linhasIgnoradasSemDoc }
+        : {}),
     };
   } catch (error) {
     await db

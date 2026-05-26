@@ -104,7 +104,7 @@ export function MovimentacoesTable({
 
       {message ? <p className="text-sm text-red-600">{message}</p> : null}
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-card">
         <Table>
           <thead>
             <tr>
@@ -149,7 +149,7 @@ export function MovimentacoesTable({
           </tbody>
         </Table>
         {!items.length && !loading ? (
-          <p className="p-4 text-sm text-slate-500">Nenhuma movimentação encontrada.</p>
+          <p className="p-4 text-sm text-muted">Nenhuma movimentação encontrada.</p>
         ) : null}
       </div>
     </div>

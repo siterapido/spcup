@@ -7,12 +7,19 @@ export {
   type CadastroTipo,
 } from "./constants";
 export type {
+  CadastroColumnMap,
   CadastroRow,
   ImportCadastroResult,
   ParseCadastroResult,
+  SpreadsheetHeadersResult,
   UpsertPessoaResult,
 } from "./types";
-export { parseCadastroSpreadsheet } from "./parse";
+export {
+  extractSpreadsheetHeaders,
+  parseCadastroColumnMap,
+  parseCadastroSpreadsheet,
+  suggestCadastroColumnMap,
+} from "./parse";
 export { upsertPessoa, type UpsertPessoaContext } from "./upsert";
 export { importCadastroBatch } from "./import";
 export { rematchPendingMovimentacoes } from "./rematch";

@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-26T18:00:00.000Z",
+  "title": "Design System: SPC UP",
+  "extensions": {
+    "colorMeta": {
+      "up-black": {
+        "role": "primary",
+        "displayName": "UP Ink",
+        "canonical": "oklch(23% 0.03 264)",
+        "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"]
+      },
+      "up-yellow": {
+        "role": "primary",
+        "displayName": "UP Signal Yellow",
+        "canonical": "oklch(72% 0.17 55)",
+        "tonalRamp": ["#422006", "#713f12", "#a16207", "#ca8a04", "#F8920E", "#facc15", "#fde047", "#fef9c3"]
+      },
+      "surface-page": {
+        "role": "neutral",
+        "displayName": "Page Mist",
+        "canonical": "oklch(98% 0.005 264)",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f8fafc"]
+      },
+      "surface-card": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "oklch(100% 0 0)",
+        "tonalRamp": ["#0f172a", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#ffffff"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Título de página único por rota." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de card e seções." },
+      "body": { "displayName": "Body", "purpose": "Texto corrido e células de tabela." },
+      "label": { "displayName": "Label", "purpose": "Badges e metadados." }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Separação leve em cards; única sombra padrão."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Transições de hover em botões e links (ease-out-quart)."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal: enviar, entrar, confirmar.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">Entrar</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; font-size: 0.875rem; font-weight: 500; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; background-color: #0f172a; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.15s cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-primary:hover { background-color: #1e293b; } .ds-btn-primary:focus-visible { outline: 2px solid #475569; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Ações secundárias: aplicar filtro, cancelar.",
+      "html": "<button type=\"button\" class=\"ds-btn-outline\">Aplicar</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; font-size: 0.875rem; font-weight: 500; font-family: ui-sans-serif, system-ui, sans-serif; color: #0f172a; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; transition: background-color 0.15s cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-outline:hover { background-color: #f8fafc; } .ds-btn-outline:focus-visible { outline: 2px solid #475569; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "description": "Entrada padrão em formulários e filtros.",
+      "html": "<input type=\"text\" class=\"ds-input\" placeholder=\"UF\" />",
+      "css": ".ds-input { width: 100%; padding: 8px 12px; font-size: 0.875rem; font-family: ui-sans-serif, system-ui, sans-serif; color: #0f172a; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); } .ds-input:focus { border-color: #64748b; outline: none; box-shadow: 0 0 0 1px #64748b; } .ds-input::placeholder { color: #94a3b8; }"
+    },
+    {
+      "name": "Status Badge Success",
+      "kind": "chip",
+      "refersTo": "badge-success",
+      "description": "Export liberado, estados positivos.",
+      "html": "<span class=\"ds-badge ds-badge-success\">liberada</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 2px 10px; font-size: 0.75rem; font-weight: 500; font-family: ui-sans-serif, system-ui, sans-serif; border-radius: 9999px; } .ds-badge-success { background-color: #d1fae5; color: #065f46; }"
+    },
+    {
+      "name": "Status Badge Danger",
+      "kind": "chip",
+      "refersTo": "badge-danger",
+      "description": "Export bloqueado, erros críticos.",
+      "html": "<span class=\"ds-badge ds-badge-danger\">bloqueada</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 2px 10px; font-size: 0.75rem; font-weight: 500; font-family: ui-sans-serif, system-ui, sans-serif; border-radius: 9999px; } .ds-badge-danger { background-color: #fee2e2; color: #991b1b; }"
+    },
+    {
+      "name": "Card Container",
+      "kind": "card",
+      "description": "Agrupa upload, filtros e export no dashboard.",
+      "html": "<div class=\"ds-card\"><h2 class=\"ds-card-title\">Upload</h2><p class=\"ds-card-body\">Envie extratos da UF selecionada.</p></div>",
+      "css": ".ds-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); } .ds-card-title { margin: 0 0 8px; font-size: 1.125rem; font-weight: 500; color: #0f172a; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-card-body { margin: 0; font-size: 0.875rem; color: #475569; line-height: 1.5; }"
+    },
+    {
+      "name": "App Navigation",
+      "kind": "nav",
+      "description": "Header autenticado com links e detalhe amarelo no ativo.",
+      "html": "<header class=\"ds-nav\"><a class=\"ds-nav-brand\" href=\"/\">SPC UP</a><nav class=\"ds-nav-links\"><a class=\"ds-nav-link ds-nav-link-active\" href=\"/\">Dashboard</a><a class=\"ds-nav-link\" href=\"/movimentacoes\">Movimentações</a></nav></header>",
+      "css": ".ds-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: #ffffff; border-bottom: 1px solid #e2e8f0; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-nav-brand { font-size: 1.125rem; font-weight: 600; color: #0f172a; text-decoration: none; letter-spacing: -0.025em; } .ds-nav-links { display: flex; gap: 16px; align-items: center; } .ds-nav-link { font-size: 0.875rem; color: #475569; text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; transition: color 0.15s cubic-bezier(0.25, 1, 0.5, 1); } .ds-nav-link:hover { color: #0f172a; } .ds-nav-link-active { color: #0f172a; border-bottom-color: #F8920E; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Sala de Registro",
+    "overview": "Ambiente de trabalho institucional: mesa clara, documentos legíveis, estados de pendência visíveis. Neutro estilo Notion, marca UP contida em preto/branco com amarelo esparso.",
+    "keyCharacteristics": [
+      "Tema claro para escritório",
+      "Amarelo UP ≤10% da superfície",
+      "Profundidade por borda, não sombra dramática",
+      "Tabelas e formulários no centro",
+      "Status com cor + texto"
+    ],
+    "rules": [
+      {
+        "name": "The Yellow Sparingly Rule",
+        "body": "Amarelo UP em ≤10% da área visível de qualquer tela.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Pure Black Rule",
+        "body": "Não usar #000 nem #fff crus; usar up-black e up-white tintados.",
+        "section": "colors"
+      },
+      {
+        "name": "The Table-First Rule",
+        "body": "Em telas de dados, text-sm e cabeçalhos medium vencem display grande.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Superfícies em repouso são planas; sombra só separa bloco levemente.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do manter fundo surface-page e blocos brancos com borda hairline",
+      "Do usar amarelo UP só para acento de marca",
+      "Do combinar Badge + texto para estados de export",
+      "Do limitar largura de conteúdo para leitura",
+      "Do respeitar prefers-reduced-motion"
+    ],
+    "donts": [
+      "Don't usar gradientes decorativos, hero metrics ou grids de cards idênticos (SaaS startup)",
+      "Don't usar dark neon ou estética crypto",
+      "Don't usar consumer colorido ou gamificação",
+      "Don't usar glassmorphism, bordas laterais coloridas, texto em gradiente (feito por IA)",
+      "Don't empilhar botões ou microtipografia de ERP legado",
+      "Don't aninhar cards",
+      "Don't indicar erro só com cor"
+    ]
+  }
+}

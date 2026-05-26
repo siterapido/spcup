@@ -69,7 +69,11 @@ export async function resolveCadastroConflito(
     .where(eq(cadastroConflito.id, conflitoId))
     .returning();
 
-  if (resolucao === "ATUALIZAR_NOME") {
+  if (
+    resolucao === "ATUALIZAR_NOME" &&
+    conflito.ufContexto !== "—" &&
+    conflito.exercicioContexto !== 0
+  ) {
     await rematchPendingMovimentacoes(
       db,
       conflito.ufContexto,

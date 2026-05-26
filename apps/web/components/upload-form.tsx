@@ -48,7 +48,7 @@ export function UploadForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm">
-          <span className="font-medium text-slate-700">UF</span>
+          <span className="font-medium text-up-black">UF</span>
           <Input
             name="uf"
             maxLength={2}
@@ -59,7 +59,7 @@ export function UploadForm({
           />
         </label>
         <label className="block text-sm">
-          <span className="font-medium text-slate-700">Exercício</span>
+          <span className="font-medium text-up-black">Exercício</span>
           <Input
             name="exercicio"
             type="number"
@@ -71,7 +71,7 @@ export function UploadForm({
         </label>
       </div>
       <label className="block text-sm">
-        <span className="font-medium text-slate-700">Arquivo (OFX / Excel / PDF)</span>
+        <span className="font-medium text-up-black">Arquivo (OFX / Excel / PDF)</span>
         <Input
           name="file"
           type="file"
@@ -83,7 +83,7 @@ export function UploadForm({
       <Button type="submit" disabled={loading}>
         {loading ? "Enviando…" : "Enviar"}
       </Button>
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-muted">{message}</p> : null}
     </form>
   );
 }

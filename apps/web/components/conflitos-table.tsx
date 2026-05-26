@@ -79,7 +79,9 @@ export function ConflitosTable() {
               <Td>{item.nome_existente}</Td>
               <Td>{item.nome_proposto}</Td>
               <Td>
-                {item.uf_contexto}/{item.exercicio_contexto}
+                {item.uf_contexto === "—" || item.exercicio_contexto === 0
+                  ? "—"
+                  : `${item.uf_contexto}/${item.exercicio_contexto}`}
               </Td>
               <Td className="space-x-2">
                 <Button
@@ -111,7 +113,7 @@ export function ConflitosTable() {
         </tbody>
       </Table>
       {items.length === 0 && !loading ? (
-        <p className="text-sm text-slate-500">Nenhum conflito pendente.</p>
+        <p className="text-sm text-muted">Nenhum conflito pendente.</p>
       ) : null}
     </div>
   );

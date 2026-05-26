@@ -7,8 +7,8 @@ import { upsertPessoa } from "./upsert";
 export async function importCadastroBatch(
   db: Db,
   rows: CadastroRow[],
-  uf: string,
-  exercicio: number,
+  uf?: string,
+  exercicio?: number,
 ): Promise<ImportCadastroResult> {
   const result: ImportCadastroResult = {
     inseridos: 0,
@@ -47,7 +47,7 @@ export async function importCadastroBatch(
     }
   }
 
-  if (result.inseridos + result.atualizados > 0) {
+  if (uf && exercicio != null && result.inseridos + result.atualizados > 0) {
     await rematchPendingMovimentacoes(db, uf, exercicio);
   }
 

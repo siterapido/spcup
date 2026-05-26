@@ -35,4 +35,5 @@
 ## Critério de sucesso
 
 - ≥ 80% movimentações estruturadas (OFX/Excel) com score ≥ 0,85 após revisão
+- Extrato PDF 1–3 páginas; linhas sem CPF/CNPJ válido não viram movimentação
 - 3 XMLs validam no XSD e importam no SPCA sem erro crítico

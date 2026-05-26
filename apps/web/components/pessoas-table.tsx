@@ -63,7 +63,7 @@ export function PessoasTable() {
         <label className="text-sm">
           Tipo
           <select
-            className="mt-1 block rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full max-w-[8rem] rounded-md border border-border-input bg-surface-card px-3 py-2 text-sm text-up-black focus:border-up-black focus:outline-none focus:ring-1 focus:ring-up-black"
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
           >
@@ -113,7 +113,7 @@ export function PessoasTable() {
         </tbody>
       </Table>
       {items.length === 0 && !loading ? (
-        <p className="text-sm text-slate-500">Nenhum cadastro encontrado.</p>
+        <p className="text-sm text-muted">Nenhum cadastro encontrado.</p>
       ) : null}
     </div>
   );

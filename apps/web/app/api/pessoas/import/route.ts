@@ -1,4 +1,8 @@
-import { importCadastroBatch, parseCadastroSpreadsheet } from "@spc-up/core";
+import {
+  importCadastroBatch,
+  parseCadastroColumnMap,
+  parseCadastroSpreadsheet,
+} from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 import { NextResponse } from "next/server";
 
@@ -10,30 +14,41 @@ export async function POST(request: Request) {
 
   const form = await request.formData();
   const file = form.get("file");
-  const uf = String(form.get("uf") ?? "")
-    .trim()
-    .toUpperCase();
+  const ufRaw = form.get("uf");
   const exercicioRaw = form.get("exercicio");
+  const columnMapRaw = form.get("columnMap");
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });
   }
-  if (!uf || exercicioRaw == null) {
-    return NextResponse.json(
-      { error: "uf e exercicio são obrigatórios" },
-      { status: 400 },
-    );
-  }
 
-  const exercicio = Number.parseInt(String(exercicioRaw), 10);
-  if (Number.isNaN(exercicio)) {
-    return NextResponse.json({ error: "exercicio inválido" }, { status: 400 });
+  const uf = ufRaw != null ? String(ufRaw).trim().toUpperCase() : undefined;
+  let exercicio: number | undefined;
+  if (exercicioRaw != null && String(exercicioRaw).trim() !== "") {
+    exercicio = Number.parseInt(String(exercicioRaw), 10);
+    if (Number.isNaN(exercicio)) {
+      return NextResponse.json({ error: "exercicio inválido" }, { status: 400 });
+    }
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  let columnMap = null;
+  if (columnMapRaw != null && String(columnMapRaw).trim() !== "") {
+    try {
+      columnMap = parseCadastroColumnMap(JSON.parse(String(columnMapRaw)));
+    } catch {
+      return NextResponse.json({ error: "columnMap inválido" }, { status: 400 });
+    }
+    if (columnMap == null) {
+      return NextResponse.json(
+        { error: "Mapeamento inválido: documento e nome são obrigatórios" },
+        { status: 400 },
+      );
+    }
+  }
 
   try {
-    const parsed = await parseCadastroSpreadsheet(buffer, file.name);
+    const parsed = await parseCadastroSpreadsheet(buffer, file.name, columnMap ?? undefined);
     const db = getDb();
     const result = await importCadastroBatch(db, parsed.ok, uf, exercicio);
 
