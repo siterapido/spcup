@@ -25,6 +25,17 @@ export type SubmitStep = {
   status: SubmitStepStatus;
 };
 
+export type UploadErroResposta = {
+  nome: string;
+  codigo: string;
+  mensagem: string;
+};
+
+export type FileErrorDisplay = {
+  nome: string;
+  mensagem: string;
+};
+
 const STEPS_IDLE: SubmitStep[] = [
   { id: "session", label: "Criar sessão", status: "pending" },
   { id: "upload", label: "Enviar arquivos", status: "pending" },
@@ -44,6 +55,15 @@ export type PrestacaoSubmitResult = {
   sessaoId: string;
   warningMessage: string | null;
 };
+
+export function shouldBlockRedirect(
+  status: number,
+  totalMovimentacoes: number,
+  errosCount: number,
+): boolean {
+  if (status === 422) return true;
+  return totalMovimentacoes === 0 && errosCount > 0;
+}
 
 function setStepStatus(
   steps: SubmitStep[],
@@ -81,14 +101,18 @@ type ArquivoUp = {
   linhas_ignoradas_sem_doc?: number;
 };
 
+function formatUploadErrors(erros: UploadErroResposta[]): string {
+  return erros.map((e) => `${e.nome}: ${e.mensagem}`).join(" · ");
+}
+
 function buildUploadWarning(upJson: {
-  erros?: string[];
+  erros?: UploadErroResposta[];
   arquivos?: ArquivoUp[];
 }): string | null {
-  let uploadMsg: string | null = null;
-  if (upJson.erros?.length) {
-    uploadMsg = `Upload parcial: ${upJson.erros.join("; ")}`;
-  }
+  const erros = upJson.erros ?? [];
+  let uploadMsg: string | null =
+    erros.length > 0 ? `Upload parcial: ${formatUploadErrors(erros)}` : null;
+
   const arquivos = upJson.arquivos ?? [];
   const arquivoParts = arquivos
     .filter(
@@ -119,6 +143,7 @@ export function usePrestacaoSubmit() {
   const [statusLabel, setStatusLabel] = useState("");
   const [steps, setSteps] = useState<SubmitStep[]>(STEPS_IDLE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fileErrors, setFileErrors] = useState<FileErrorDisplay[]>([]);
   const [activeFileName, setActiveFileName] = useState<string | null>(null);
 
   const reset = useCallback(() => {
@@ -127,6 +152,7 @@ export function usePrestacaoSubmit() {
     setStatusLabel("");
     setSteps(STEPS_IDLE);
     setErrorMessage(null);
+    setFileErrors([]);
     setActiveFileName(null);
   }, []);
 
@@ -145,15 +171,15 @@ export function usePrestacaoSubmit() {
         let sessaoRes: Response;
         try {
           sessaoRes = await fetch("/api/prestacao/sessoes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            uf: input.uf.toUpperCase(),
-            tipoPrestador: input.tipo,
-            diretorioMunicipalId:
-              input.tipo === "MUNICIPAL" ? input.municipalId : undefined,
-            exercicio: Number.parseInt(input.exercicio, 10),
-          }),
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uf: input.uf.toUpperCase(),
+              tipoPrestador: input.tipo,
+              diretorioMunicipalId:
+                input.tipo === "MUNICIPAL" ? input.municipalId : undefined,
+              exercicio: Number.parseInt(input.exercicio, 10),
+            }),
           });
         } catch {
           const msg = "Erro de rede ao criar sessão.";
@@ -249,11 +275,42 @@ export function usePrestacaoSubmit() {
             throw new Error(msg);
           }
 
-          let upJson: { error?: string; erros?: string[]; arquivos?: ArquivoUp[] };
+          let upJson: {
+            error?: string;
+            erros?: UploadErroResposta[];
+            arquivos?: ArquivoUp[];
+            total_movimentacoes?: number;
+          };
           try {
             upJson = JSON.parse(body) as typeof upJson;
           } catch {
             upJson = { error: "Resposta inválida do servidor" };
+          }
+
+          const erros = upJson.erros ?? [];
+          const totalMov = upJson.total_movimentacoes ?? 0;
+          const displayErrors = erros.map((e) => ({
+            nome: e.nome,
+            mensagem: e.mensagem,
+          }));
+
+          if (shouldBlockRedirect(status, totalMov, erros.length)) {
+            const msg =
+              formatUploadErrors(erros) ||
+              upJson.error ||
+              "Nenhum arquivo foi processado com sucesso.";
+            currentSteps = setStepStatus(
+              setStepStatus(currentSteps, "upload", "error"),
+              "ingest",
+              "error",
+            );
+            setSteps(currentSteps);
+            setPhase("error");
+            setProgress(85);
+            setErrorMessage(msg);
+            setFileErrors(displayErrors);
+            setStatusLabel(msg);
+            throw new Error(msg);
           }
 
           if (status < 200 || status >= 300) {
@@ -278,6 +335,9 @@ export function usePrestacaoSubmit() {
           setSteps(currentSteps);
           setProgress(92);
           warningMessage = buildUploadWarning(upJson);
+          if (displayErrors.length > 0) {
+            setFileErrors(displayErrors);
+          }
         } else {
           currentSteps = setStepStatus(
             setStepStatus(currentSteps, "upload", "done"),
@@ -303,7 +363,7 @@ export function usePrestacaoSubmit() {
         const msg = error instanceof Error ? error.message : "Erro de rede.";
         setPhase((p) => (p === "error" ? p : "error"));
         setErrorMessage((m) => m ?? msg);
-        setStatusLabel((l) => (l || msg));
+        setStatusLabel((l) => l || msg);
         throw error;
       }
     },
@@ -319,6 +379,7 @@ export function usePrestacaoSubmit() {
     statusLabel,
     steps,
     errorMessage,
+    fileErrors,
     activeFileName,
     isProcessing,
     submit,

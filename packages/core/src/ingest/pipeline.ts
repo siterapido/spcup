@@ -13,6 +13,8 @@ import { storageRoot as resolveStorageRoot } from "../export/common";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { parseExcel } from "./excel";
 import { fileHashBuffer } from "./hash";
+import { toIngestError } from "./errors";
+import { ingestLog } from "./log";
 import { ingestPdfExtrato } from "./pdf";
 import { parseOfx, persistTransactions } from "./ofx";
 import {
@@ -176,14 +178,22 @@ export async function ingestFile(
 
     return createdCount;
   } catch (error) {
+    const ingErr = toIngestError(error);
+    ingestLog("error", {
+      fase: "persist",
+      arquivoId: arquivo.id,
+      filename: path.basename(source),
+      codigoErro: ingErr.detail.codigo,
+      causa: ingErr.detail.causaTecnica,
+    });
     await db
       .update(arquivoIngestao)
       .set({
         status: ARQUIVO_INGESTAO_STATUS.ERRO,
-        erroMensagem: error instanceof Error ? error.message : String(error),
+        erroMensagem: ingErr.detail.mensagem,
       })
       .where(eq(arquivoIngestao.id, arquivo.id));
-    throw error;
+    throw ingErr;
   }
 }
 
@@ -323,14 +333,23 @@ export async function ingestFileBuffer(
         : {}),
     };
   } catch (error) {
+    const ingErr = toIngestError(error);
+    ingestLog("error", {
+      fase: "persist",
+      arquivoId: arquivo.id,
+      sessaoId: prestador.sessaoPrestacaoId,
+      filename: params.filename,
+      codigoErro: ingErr.detail.codigo,
+      causa: ingErr.detail.causaTecnica,
+    });
     await db
       .update(arquivoIngestao)
       .set({
         status: ARQUIVO_INGESTAO_STATUS.ERRO,
-        erroMensagem: error instanceof Error ? error.message : String(error),
+        erroMensagem: ingErr.detail.mensagem,
       })
       .where(eq(arquivoIngestao.id, arquivo.id));
-    throw error;
+    throw ingErr;
   }
 }
 

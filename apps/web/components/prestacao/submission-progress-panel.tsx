@@ -49,11 +49,17 @@ function StepIcon({ status }: { status: SubmitStep["status"] }) {
   );
 }
 
+export type FileErrorItem = {
+  nome: string;
+  mensagem: string;
+};
+
 export type SubmissionProgressPanelProps = {
   progress: number;
   statusLabel: string;
   steps: SubmitStep[];
   fileNames: string[];
+  fileErrors?: FileErrorItem[];
 };
 
 export function SubmissionProgressPanel({
@@ -61,6 +67,7 @@ export function SubmissionProgressPanel({
   statusLabel,
   steps,
   fileNames,
+  fileErrors = [],
 }: SubmissionProgressPanelProps) {
   const clamped = Math.min(100, Math.max(0, progress));
 
@@ -125,6 +132,24 @@ export function SubmissionProgressPanel({
             </span>
           ))}
         </div>
+      ) : null}
+
+      {fileErrors.length > 0 ? (
+        <ul
+          className="mt-3 space-y-2 border-t border-border-default pt-3"
+          role="alert"
+          aria-label="Erros no processamento"
+        >
+          {fileErrors.map((item) => (
+            <li
+              key={item.nome}
+              className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+            >
+              <span className="font-medium">{item.nome}</span>
+              <span className="text-red-800"> — {item.mensagem}</span>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

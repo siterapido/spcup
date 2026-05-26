@@ -31,8 +31,11 @@ export function PrestacaoWizard() {
     progress,
     statusLabel,
     steps,
+    errorMessage,
+    fileErrors,
     isProcessing,
     submit,
+    reset,
   } = usePrestacaoSubmit();
 
   const showSubmitProgress = phase !== "idle";
@@ -80,8 +83,8 @@ export function PrestacaoWizard() {
         setMessage(warningMessage);
       }
       router.push(`/prestacao/${sessaoId}/kanban`);
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Erro de rede.");
+    } catch {
+      /* hook sets errorMessage / fileErrors */
     }
   }
 
@@ -246,19 +249,20 @@ export function PrestacaoWizard() {
               statusLabel={statusLabel}
               steps={steps}
               fileNames={files.map((f) => f.name)}
+              fileErrors={fileErrors}
             />
           ) : null}
-          {message && (
+          {(message || errorMessage) && (
             <p
               className={`text-sm ${
                 phase === "error" ? "text-red-700" : "text-amber-900"
               }`}
               role={phase === "error" ? "alert" : undefined}
             >
-              {message}
+              {phase === "error" ? errorMessage : message}
             </p>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
@@ -267,6 +271,11 @@ export function PrestacaoWizard() {
             >
               Voltar
             </Button>
+            {phase === "error" ? (
+              <Button type="button" variant="outline" onClick={() => reset()}>
+                Tentar novamente
+              </Button>
+            ) : null}
             <Button
               type="button"
               disabled={isProcessing}

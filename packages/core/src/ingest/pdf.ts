@@ -12,6 +12,8 @@ import {
 } from "../ai/openrouter";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { normalizeCnpj, normalizeCpf } from "../normalize";
+import { toIngestError } from "./errors";
+import { ingestLog } from "./log";
 import { extractPdfText } from "./pdf-text";
 import { persistTransactions } from "./ofx";
 import {
@@ -133,26 +135,57 @@ export async function ingestPdfExtrato(
   options?: ExtractStructuredOptions,
 ): Promise<IngestPdfExtratoResult> {
   const { buffer, filename } = await resolvePdfBuffer(pathOrBuffer, options?.filename);
+  const t0 = Date.now();
 
-  const { text, hasEnoughText } = await extractPdfText(buffer);
-  const extraction = hasEnoughText
-    ? await extractTransactionsFromPdfText(text, { ...options, filename })
-    : await extractTransactionsFromPdfFile(buffer, { ...options, filename });
+  ingestLog("info", { fase: "inicio", arquivoId, filename });
 
-  const { rows, linhasIgnoradasSemDoc } = rowsFromExtratoTransactions(extraction);
+  try {
+    ingestLog("info", { fase: "pdf_text", arquivoId, filename });
+    const { text, hasEnoughText } = await extractPdfText(buffer);
+    ingestLog("info", {
+      fase: "pdf_text",
+      arquivoId,
+      filename,
+      duracaoMs: Date.now() - t0,
+    });
 
-  if (rows.length === 0) {
-    return { movimentacoes: [], linhasIgnoradasSemDoc };
+    const extraction = hasEnoughText
+      ? await extractTransactionsFromPdfText(text, { ...options, filename })
+      : await extractTransactionsFromPdfFile(buffer, { ...options, filename });
+
+    ingestLog("info", {
+      fase: hasEnoughText ? "openrouter_text" : "openrouter_vision",
+      arquivoId,
+      filename,
+    });
+
+    const { rows, linhasIgnoradasSemDoc } = rowsFromExtratoTransactions(extraction);
+
+    if (rows.length === 0) {
+      ingestLog("info", { fase: "concluido", arquivoId, filename, duracaoMs: Date.now() - t0 });
+      return { movimentacoes: [], linhasIgnoradasSemDoc };
+    }
+
+    const created = await persistTransactions(db, uf, exercicio, arquivoId, rows, prestador);
+
+    const movimentacoes: Movimentacao[] = [];
+    for (const movimentacao of created) {
+      movimentacoes.push(await applyAiMatchToMovimentacao(db, movimentacao.id));
+    }
+
+    ingestLog("info", { fase: "concluido", arquivoId, filename, duracaoMs: Date.now() - t0 });
+    return { movimentacoes, linhasIgnoradasSemDoc };
+  } catch (error) {
+    const ingErr = toIngestError(error);
+    ingestLog("error", {
+      fase: "pdf_text",
+      arquivoId,
+      filename,
+      codigoErro: ingErr.detail.codigo,
+      causa: ingErr.detail.causaTecnica,
+    });
+    throw ingErr;
   }
-
-  const created = await persistTransactions(db, uf, exercicio, arquivoId, rows, prestador);
-
-  const movimentacoes: Movimentacao[] = [];
-  for (const movimentacao of created) {
-    movimentacoes.push(await applyAiMatchToMovimentacao(db, movimentacao.id));
-  }
-
-  return { movimentacoes, linhasIgnoradasSemDoc };
 }
 
 /** Map OpenRouter extraction JSON to a normalized ingest row. */

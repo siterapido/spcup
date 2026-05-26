@@ -54,9 +54,18 @@ export {
   extractStructuredFromPdf,
   extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
+  resolveExtratoModel,
   type ExtratoExtraction,
   type ExtractStructuredOptions,
 } from "./ai/openrouter";
+export {
+  classifyIngestError,
+  toIngestError,
+  IngestError,
+  type IngestErrorCodigo,
+  type IngestErrorDetail,
+} from "./ingest/errors";
+export { ingestLog, type IngestFase, type IngestLogFields } from "./ingest/log";
 export {
   createSessao,
   getSessao,

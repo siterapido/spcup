@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
+  resolveExtratoModel,
 } from "./openrouter";
 
 const SAMPLE_EXTRATO = {
@@ -32,6 +33,35 @@ function mockOpenRouterResponse(payload: Record<string, unknown>) {
     }),
   };
 }
+
+describe("resolveExtratoModel", () => {
+  const prevPdf = process.env.OPENROUTER_PDF_MODEL;
+  const prevModel = process.env.OPENROUTER_MODEL;
+
+  afterEach(() => {
+    if (prevPdf === undefined) {
+      delete process.env.OPENROUTER_PDF_MODEL;
+    } else {
+      process.env.OPENROUTER_PDF_MODEL = prevPdf;
+    }
+    if (prevModel === undefined) {
+      delete process.env.OPENROUTER_MODEL;
+    } else {
+      process.env.OPENROUTER_MODEL = prevModel;
+    }
+  });
+
+  it("does not fall back to OPENROUTER_MODEL (Kimi)", () => {
+    delete process.env.OPENROUTER_PDF_MODEL;
+    process.env.OPENROUTER_MODEL = "moonshotai/kimi-k2.6";
+    expect(resolveExtratoModel()).toBe("anthropic/claude-sonnet-4");
+  });
+
+  it("uses OPENROUTER_PDF_MODEL when set", () => {
+    process.env.OPENROUTER_PDF_MODEL = "google/gemini-2.5-pro";
+    expect(resolveExtratoModel()).toBe("google/gemini-2.5-pro");
+  });
+});
 
 describe("extrato extraction (OpenRouter)", () => {
   it("extractTransactionsFromPdfText returns items; body is text-only", async () => {

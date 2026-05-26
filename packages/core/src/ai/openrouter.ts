@@ -245,11 +245,10 @@ async function resolvePdfInput(
   };
 }
 
-function resolveExtratoModel(options?: ExtractStructuredOptions): string {
+export function resolveExtratoModel(options?: ExtractStructuredOptions): string {
   return (
     options?.model ??
     process.env.OPENROUTER_PDF_MODEL ??
-    process.env.OPENROUTER_MODEL ??
     "anthropic/claude-sonnet-4"
   );
 }
