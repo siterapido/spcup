@@ -10,8 +10,9 @@ import type {
 } from "./types";
 
 type CadastroField = "tipo" | "documento" | "nome";
+type RequiredCadastroField = "documento" | "nome";
 
-const REQUIRED_FIELDS: CadastroField[] = ["documento", "nome"];
+const REQUIRED_FIELDS: RequiredCadastroField[] = ["documento", "nome"];
 
 const HEADER_ALIASES: Record<string, CadastroField> = {
   tipo: "tipo",
