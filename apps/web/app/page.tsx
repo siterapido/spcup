@@ -1,11 +1,11 @@
 import Link from "next/link";
 
+import { SystemStatsPanel } from "@/components/dashboard/system-stats-panel";
 import { UploadForm } from "@/components/upload-form";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { canExport, listRecentSessoes } from "@spc-up/core";
+import { getSystemStats, listRecentSessoes } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 
 export default async function DashboardPage({
@@ -17,30 +17,46 @@ export default async function DashboardPage({
   const uf = (params.uf ?? "SP").toUpperCase();
   const exercicio = Number.parseInt(params.exercicio ?? "2025", 10);
 
-  let exportavel = false;
+  let stats: Awaited<ReturnType<typeof getSystemStats>> | null = null;
   let sessoesRecentes: Awaited<ReturnType<typeof listRecentSessoes>> = [];
   try {
     const db = getDb();
-    exportavel = await canExport(db, uf, exercicio);
+    stats = await getSystemStats(db, { uf, exercicio });
     sessoesRecentes = await listRecentSessoes(db, 8);
   } catch {
-    exportavel = false;
+    stats = null;
   }
 
+  const exportavel = stats?.scoped.exportavel ?? false;
+
   return (
-    <main className="mx-auto max-w-3xl space-y-8 px-6 py-10">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Prestação de Contas</h1>
-        <p className="mt-2 text-muted">
-          UF <strong>{uf}</strong> · Exercício <strong>{exercicio}</strong>
-        </p>
-        <p className="mt-2">
-          Exportação SPCA:{" "}
-          <Badge tone={exportavel ? "success" : "danger"}>
-            {exportavel ? "liberada" : "bloqueada (há pendências)"}
-          </Badge>
-        </p>
+    <main className="mx-auto max-w-6xl space-y-8 px-6 py-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Prestação de Contas</h1>
+          <p className="mt-1 text-sm text-muted">Painel operacional — equipe nacional</p>
+        </div>
+        <form className="flex flex-wrap items-end gap-3" method="get">
+          <label className="block text-sm">
+            UF
+            <Input name="uf" defaultValue={uf} maxLength={2} className="mt-1 w-20" />
+          </label>
+          <label className="block text-sm">
+            Exercício
+            <Input
+              name="exercicio"
+              type="number"
+              defaultValue={exercicio}
+              className="mt-1 w-28"
+            />
+          </label>
+          <Button type="submit" variant="outline" className="mb-0.5">
+            Aplicar filtro
+          </Button>
+        </form>
       </div>
+
+      {stats ? <SystemStatsPanel stats={stats} /> : null}
 
       <Card>
         <CardTitle>Fluxo guiado</CardTitle>
@@ -55,10 +71,16 @@ export default async function DashboardPage({
             Nova prestação
           </Link>
           <Link
+            href="/admin/diretorios-estaduais"
+            className="inline-flex items-center justify-center rounded-md border border-border-default bg-white px-4 py-2 text-sm font-medium text-up-black hover:bg-slate-50"
+          >
+            Diretórios estaduais
+          </Link>
+          <Link
             href="/admin/diretorios-municipais"
             className="inline-flex items-center justify-center rounded-md border border-border-default bg-white px-4 py-2 text-sm font-medium text-up-black hover:bg-slate-50"
           >
-            Cadastro municipal
+            Diretórios municipais
           </Link>
         </div>
       </Card>
@@ -85,37 +107,21 @@ export default async function DashboardPage({
         </Card>
       )}
 
-      <details className="mt-8 rounded-md border border-border-default p-4">
+      <details className="rounded-md border border-border-default p-4">
         <summary className="cursor-pointer text-sm font-medium">
           Operações por UF (legado)
         </summary>
         <div className="mt-4 space-y-8">
-          <Card>
-            <CardTitle>Filtro UF / exercício</CardTitle>
-            <form className="mt-4 flex flex-wrap gap-3" method="get">
-              <Input name="uf" defaultValue={uf} maxLength={2} className="w-20" />
-              <Input
-                name="exercicio"
-                type="number"
-                defaultValue={exercicio}
-                className="w-28"
-              />
-              <Button type="submit" variant="outline">
-                Aplicar
-              </Button>
-            </form>
-          </Card>
-
-          <p className="flex flex-wrap gap-4">
+          <p className="flex flex-wrap gap-4 text-sm">
             <Link
               href={`/movimentacoes?uf=${uf}&exercicio=${exercicio}`}
-              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4 hover:text-up-black-hover"
+              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4"
             >
               Ver movimentações
             </Link>
             <Link
               href={`/pessoas?uf=${uf}&exercicio=${exercicio}`}
-              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4 hover:text-up-black-hover"
+              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4"
             >
               Pessoas (PF/PJ)
             </Link>
@@ -131,8 +137,7 @@ export default async function DashboardPage({
           <Card>
             <CardTitle>Exportar XML SPCA</CardTitle>
             <p className="mt-2 text-sm text-muted">
-              Baixa ZIP com 3 XMLs (origem, aplicação, doação) quando a exportação estiver
-              liberada.
+              Baixa ZIP com 3 XMLs (origem, aplicação, doação) quando a exportação estiver liberada.
             </p>
             <div className="mt-4">
               {exportavel ? (
