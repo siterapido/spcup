@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Table, Td, Th } from "@/components/ui/table";
 
 interface PessoaItem {
@@ -113,7 +114,10 @@ export function PessoasTable() {
         </tbody>
       </Table>
       {items.length === 0 && !loading ? (
-        <p className="text-sm text-muted">Nenhum cadastro encontrado.</p>
+        <EmptyState
+          title="Nenhum cadastro encontrado"
+          description="Ajuste a busca ou cadastre uma nova pessoa."
+        />
       ) : null}
     </div>
   );

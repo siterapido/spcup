@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const links = [
   { href: "/", label: "Dashboard", isActive: (path: string) => path === "/" },
@@ -29,6 +30,16 @@ export function AppNav() {
   const pathname = usePathname();
   const prestacaoActive = pathname.startsWith("/prestacao");
   const adminActive = pathname.startsWith("/admin");
+  const [conflitosPendentes, setConflitosPendentes] = useState(0);
+
+  useEffect(() => {
+    void fetch("/api/pessoas/conflitos/count")
+      .then((res) => res.json())
+      .then((json: { pendentes?: number }) => {
+        setConflitosPendentes(json.pendentes ?? 0);
+      })
+      .catch(() => setConflitosPendentes(0));
+  }, [pathname]);
 
   return (
     <nav className="flex flex-wrap items-center gap-1 sm:gap-2" aria-label="Principal">
@@ -37,6 +48,11 @@ export function AppNav() {
         return (
           <Link key={href} href={href} className={navLinkClass(active)} aria-current={active ? "page" : undefined}>
             {label}
+            {href === "/pessoas" && conflitosPendentes > 0 ? (
+              <span className="ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-up-yellow px-1.5 py-0.5 text-xs font-medium text-up-black">
+                {conflitosPendentes}
+              </span>
+            ) : null}
           </Link>
         );
       })}

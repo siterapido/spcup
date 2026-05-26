@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Table, Td, Th } from "@/components/ui/table";
 
 interface ConflitoItem {
@@ -113,7 +114,10 @@ export function ConflitosTable() {
         </tbody>
       </Table>
       {items.length === 0 && !loading ? (
-        <p className="text-sm text-muted">Nenhum conflito pendente.</p>
+        <EmptyState
+          title="Nenhum conflito pendente"
+          description="Divergências de nome na importação ou cadastro aparecem aqui para revisão."
+        />
       ) : null}
     </div>
   );
