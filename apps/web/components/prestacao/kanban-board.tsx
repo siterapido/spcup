@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { ReviewDrawer } from "@/components/prestacao/review-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 
 interface KanbanCard {
   id: string;
@@ -44,6 +45,7 @@ const COLUMNS = [
   { key: "PENDENTE_REVISAO", label: "Revisão" },
   { key: "CONFIRMADO", label: "Confirmado" },
   { key: "EXPORTADO", label: "Exportado" },
+  { key: "REJEITADO", label: "Rejeitado" },
 ] as const;
 
 function confiancaTone(v: number): "success" | "warn" | "danger" {
@@ -57,6 +59,7 @@ export function KanbanBoard({ sessaoId }: { sessaoId: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,20 +82,6 @@ export function KanbanBoard({ sessaoId }: { sessaoId: string }) {
     void load();
   }, [load]);
 
-  async function moveCard(id: string, status: string) {
-    const res = await fetch(`/api/movimentacoes/${id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? "Não foi possível mover o card");
-      return;
-    }
-    await load();
-  }
-
   async function confirmSelected() {
     const ids = [...selected];
     const res = await fetch("/api/movimentacoes/confirm", {
@@ -106,15 +95,17 @@ export function KanbanBoard({ sessaoId }: { sessaoId: string }) {
       return;
     }
     setSelected(new Set());
-    setMessage(`${json.confirmadas?.length ?? 0} confirmada(s).`);
+    const blocked = (json.blocked ?? []) as string[];
+    const confirmadas = json.confirmadas ?? 0;
+    let msg = `${confirmadas} confirmada(s).`;
+    if (blocked.length > 0) {
+      msg += ` ${blocked.length} bloqueada(s) para exportação.`;
+    }
+    if (json.erros?.length) {
+      msg += ` ${json.erros.join("; ")}`;
+    }
+    setMessage(msg);
     await load();
-  }
-
-  function cardsByStatus(status: string): KanbanCard[] {
-    if (!data) return [];
-    return data.arquivos.flatMap((a) =>
-      a.movimentacoes.filter((m) => m.status === status),
-    );
   }
 
   if (loading) {
@@ -163,100 +154,83 @@ export function KanbanBoard({ sessaoId }: { sessaoId: string }) {
 
       {message && <p className="text-sm text-muted">{message}</p>}
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="flex gap-4 overflow-x-auto pb-2">
         {COLUMNS.map((col) => (
-          <div key={col.key} className="min-w-0">
+          <div key={col.key} className="min-w-[220px] flex-1">
             <h2 className="mb-2 text-sm font-medium text-up-black">{col.label}</h2>
-            <div className="space-y-2">
-              {cardsByStatus(col.key).map((card) => (
-                <Card key={card.id} className="p-3">
-                  <div className="flex items-start gap-2">
-                    {col.key === "PENDENTE_REVISAO" && (
-                      <input
-                        type="checkbox"
-                        className="mt-1"
-                        checked={selected.has(card.id)}
-                        onChange={(e) => {
-                          const next = new Set(selected);
-                          if (e.target.checked) next.add(card.id);
-                          else next.delete(card.id);
-                          setSelected(next);
-                        }}
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">
-                        R$ {card.valor} · {card.dataMovimento}
-                      </p>
-                      <p className="text-xs text-muted">{card.direcao}</p>
-                      {card.pessoaResumo && (
-                        <p className="mt-1 text-xs">{card.pessoaResumo}</p>
-                      )}
-                      <p className="mt-1">
-                        <Badge tone={confiancaTone(card.confiancaGlobal)}>
-                          {Math.round(card.confiancaGlobal * 100)}% confiança
-                        </Badge>
-                      </p>
-                      {card.lacunas.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {card.lacunas.map((l) => (
-                            <Badge key={l} tone="warn">
-                              {l}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      {card.iaIndisponivel && (
-                        <Badge tone="danger">IA indisponível</Badge>
-                      )}
-                      {card.justificativaIa && (
-                        <p className="mt-2 text-xs text-muted line-clamp-2">
-                          {card.justificativaIa}
-                        </p>
-                      )}
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {COLUMNS.filter((c) => c.key !== card.status).map((c) => (
-                          <button
-                            key={c.key}
-                            type="button"
-                            className="text-xs underline text-up-black"
-                            onClick={() => void moveCard(card.id, c.key)}
-                          >
-                            → {c.label}
-                          </button>
-                        ))}
-                        {card.status !== "REJEITADO" && (
-                          <button
-                            type="button"
-                            className="text-xs underline text-red-800"
-                            onClick={() => void moveCard(card.id, "REJEITADO")}
-                          >
-                            Rejeitar
-                          </button>
-                        )}
-                      </div>
+            <div className="space-y-4">
+              {data.arquivos.map((arq) => {
+                const cards = arq.movimentacoes.filter((m) => m.status === col.key);
+                if (cards.length === 0) return null;
+                return (
+                  <div key={`${col.key}-${arq.id}`}>
+                    <p className="mb-1 truncate text-xs font-medium text-muted">
+                      {arq.nomeArquivo}
+                    </p>
+                    <div className="space-y-2">
+                      {cards.map((card) => (
+                        <Card
+                          key={card.id}
+                          className="cursor-pointer p-3 transition-colors hover:bg-slate-50"
+                          onClick={() => setDrawerId(card.id)}
+                        >
+                          <div className="flex items-start gap-2">
+                            {col.key === "PENDENTE_REVISAO" && (
+                              <input
+                                type="checkbox"
+                                className="mt-1"
+                                checked={selected.has(card.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  const next = new Set(selected);
+                                  if (e.target.checked) next.add(card.id);
+                                  else next.delete(card.id);
+                                  setSelected(next);
+                                }}
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium">
+                                R$ {card.valor} · {card.dataMovimento}
+                              </p>
+                              <p className="text-xs text-muted">{card.direcao}</p>
+                              {card.pessoaResumo && (
+                                <p className="mt-1 text-xs">{card.pessoaResumo}</p>
+                              )}
+                              <p className="mt-1">
+                                <Badge tone={confiancaTone(card.confiancaGlobal)}>
+                                  {Math.round(card.confiancaGlobal * 100)}%
+                                </Badge>
+                              </p>
+                              {card.lacunas.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {card.lacunas.slice(0, 2).map((l) => (
+                                    <Badge key={l} tone="warn">
+                                      {l}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
                     </div>
                   </div>
-                </Card>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
 
-      <Card>
-        <CardTitle>Agrupamento por arquivo</CardTitle>
-        <div className="mt-3 space-y-2">
-          {data.arquivos.map((arq) => (
-            <details key={arq.id} className="rounded-md border border-border-default p-2">
-              <summary className="cursor-pointer text-sm font-medium">
-                {arq.nomeArquivo} · {arq.movimentacoes.length} movimentação(ões) ·{" "}
-                {arq.status}
-              </summary>
-            </details>
-          ))}
-        </div>
-      </Card>
+      <ReviewDrawer
+        movimentacaoId={drawerId}
+        sessaoId={sessaoId}
+        open={drawerId != null}
+        onClose={() => setDrawerId(null)}
+        onUpdated={() => void load()}
+      />
     </div>
   );
 }

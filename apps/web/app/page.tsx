@@ -85,62 +85,70 @@ export default async function DashboardPage({
         </Card>
       )}
 
-      <Card>
-        <CardTitle>Filtro UF / exercício</CardTitle>
-        <form className="mt-4 flex flex-wrap gap-3" method="get">
-          <Input name="uf" defaultValue={uf} maxLength={2} className="w-20" />
-          <Input
-            name="exercicio"
-            type="number"
-            defaultValue={exercicio}
-            className="w-28"
-          />
-          <Button type="submit" variant="outline">
-            Aplicar
-          </Button>
-        </form>
-      </Card>
+      <details className="mt-8 rounded-md border border-border-default p-4">
+        <summary className="cursor-pointer text-sm font-medium">
+          Operações por UF (legado)
+        </summary>
+        <div className="mt-4 space-y-8">
+          <Card>
+            <CardTitle>Filtro UF / exercício</CardTitle>
+            <form className="mt-4 flex flex-wrap gap-3" method="get">
+              <Input name="uf" defaultValue={uf} maxLength={2} className="w-20" />
+              <Input
+                name="exercicio"
+                type="number"
+                defaultValue={exercicio}
+                className="w-28"
+              />
+              <Button type="submit" variant="outline">
+                Aplicar
+              </Button>
+            </form>
+          </Card>
 
-      <p className="flex flex-wrap gap-4">
-        <Link
-          href={`/movimentacoes?uf=${uf}&exercicio=${exercicio}`}
-          className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4 hover:text-up-black-hover"
-        >
-          Ver movimentações
-        </Link>
-        <Link
-          href={`/pessoas?uf=${uf}&exercicio=${exercicio}`}
-          className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4 hover:text-up-black-hover"
-        >
-          Pessoas (PF/PJ)
-        </Link>
-      </p>
-
-      <Card>
-        <CardTitle>Upload</CardTitle>
-        <div className="mt-4">
-          <UploadForm defaultUf={uf} defaultExercicio={exercicio} />
-        </div>
-      </Card>
-
-      <Card>
-        <CardTitle>Exportar XML SPCA</CardTitle>
-        <p className="mt-2 text-sm text-muted">
-          Baixa ZIP com 3 XMLs (origem, aplicação, doação) quando a exportação estiver liberada.
-        </p>
-        <div className="mt-4">
-          {exportavel ? (
-            <a
-              href={`/api/export/${uf}/${exercicio}`}
-              className="inline-flex items-center justify-center rounded-md bg-up-black px-4 py-2 text-sm font-medium text-up-white transition-colors duration-150 ease-out-quart hover:bg-up-black-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-up-black focus-visible:ring-offset-2"
+          <p className="flex flex-wrap gap-4">
+            <Link
+              href={`/movimentacoes?uf=${uf}&exercicio=${exercicio}`}
+              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4 hover:text-up-black-hover"
             >
-              Baixar ZIP
-            </a>
-          ) : (
-            <Button disabled>Baixar ZIP (bloqueado)</Button>
-          )}
+              Ver movimentações
+            </Link>
+            <Link
+              href={`/pessoas?uf=${uf}&exercicio=${exercicio}`}
+              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4 hover:text-up-black-hover"
+            >
+              Pessoas (PF/PJ)
+            </Link>
+          </p>
+
+          <Card>
+            <CardTitle>Upload</CardTitle>
+            <div className="mt-4">
+              <UploadForm defaultUf={uf} defaultExercicio={exercicio} />
+            </div>
+          </Card>
+
+          <Card>
+            <CardTitle>Exportar XML SPCA</CardTitle>
+            <p className="mt-2 text-sm text-muted">
+              Baixa ZIP com 3 XMLs (origem, aplicação, doação) quando a exportação estiver
+              liberada.
+            </p>
+            <div className="mt-4">
+              {exportavel ? (
+                <a
+                  href={`/api/export/${uf}/${exercicio}`}
+                  className="inline-flex items-center justify-center rounded-md bg-up-black px-4 py-2 text-sm font-medium text-up-white transition-colors duration-150 ease-out-quart hover:bg-up-black-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-up-black focus-visible:ring-offset-2"
+                >
+                  Baixar ZIP
+                </a>
+              ) : (
+                <Button disabled>Baixar ZIP (bloqueado)</Button>
+              )}
+            </div>
+          </Card>
         </div>
-      </Card>
+      </details>
     </main>
   );
 }

@@ -25,6 +25,7 @@ export function PrestacaoWizard() {
   const [files, setFiles] = useState<FileList | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [estadualPlaceholder, setEstadualPlaceholder] = useState(false);
 
   const loadMunicipais = useCallback(async () => {
     if (tipo !== "MUNICIPAL" || uf.length !== 2) return;
@@ -38,6 +39,22 @@ export function PrestacaoWizard() {
   useEffect(() => {
     void loadMunicipais();
   }, [loadMunicipais]);
+
+  useEffect(() => {
+    if (tipo !== "ESTADUAL" || uf.length !== 2) {
+      setEstadualPlaceholder(false);
+      return;
+    }
+    void fetch(
+      `/api/admin/diretorios-estaduais?uf=${encodeURIComponent(uf.toUpperCase())}`,
+    )
+      .then((r) => r.json())
+      .then((json) => {
+        const row = (json.items ?? [])[0];
+        setEstadualPlaceholder(Boolean(row?.placeholder));
+      })
+      .catch(() => setEstadualPlaceholder(false));
+  }, [tipo, uf]);
 
   async function onSubmit() {
     setLoading(true);
@@ -214,9 +231,20 @@ export function PrestacaoWizard() {
               )}
             </label>
           ) : (
-            <p className="text-sm text-muted">
-              Prestador: diretório estadual de <strong>{uf}</strong> (CNPJ vinculado à UF).
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-muted">
+                Prestador: diretório estadual de <strong>{uf}</strong> (CNPJ vinculado à UF).
+              </p>
+              {estadualPlaceholder && (
+                <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                  CNPJ do prestador estadual ainda é placeholder. Configure o CNPJ real em{" "}
+                  <a href="/admin/diretorios-estaduais" className="font-medium underline">
+                    Diretórios estaduais
+                  </a>
+                  .
+                </p>
+              )}
+            </div>
           )}
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => setStep(2)}>

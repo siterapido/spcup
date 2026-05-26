@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AppHeader } from "@/components/app-header";
+import { OperacaoSubnav } from "@/components/layout/operacao-subnav";
 import { auth } from "@/auth";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -23,7 +24,10 @@ export default async function RootLayout({
       <body className="min-h-screen">
         <Providers>
           {session?.user ? (
-            <AppHeader email={session.user.email} />
+            <>
+              <AppHeader email={session.user.email} />
+              <OperacaoSubnav />
+            </>
           ) : null}
           {children}
         </Providers>
