@@ -24,6 +24,7 @@ export function PrestacaoWizard() {
   const [municipais, setMunicipais] = useState<Municipal[]>([]);
   const [exercicio, setExercicio] = useState("2025");
   const [files, setFiles] = useState<File[]>([]);
+  const [consolidarExtratos, setConsolidarExtratos] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [estadualPlaceholder, setEstadualPlaceholder] = useState(false);
   const {
@@ -72,17 +73,18 @@ export function PrestacaoWizard() {
   async function onSubmit() {
     setMessage(null);
     try {
-      const { sessaoId, warningMessage } = await submit({
+      const { sessaoId, warningMessage, redirectPath } = await submit({
         uf,
         tipo,
         municipalId: tipo === "MUNICIPAL" ? municipalId : undefined,
         exercicio,
         files,
+        consolidarExtratos,
       });
       if (warningMessage) {
         setMessage(warningMessage);
       }
-      router.push(`/prestacao/${sessaoId}/kanban`);
+      router.push(redirectPath);
     } catch {
       /* hook sets errorMessage / fileErrors */
     }
@@ -243,6 +245,22 @@ export function PrestacaoWizard() {
             onChange={setFiles}
             disabled={isProcessing}
           />
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={consolidarExtratos}
+              disabled={isProcessing}
+              onChange={(e) => setConsolidarExtratos(e.target.checked)}
+            />
+            <span>
+              Consolidar extratos (PIX + completo, etc.)
+              <span className="mt-0.5 block text-xs text-muted">
+                Cruza PDFs com cadastro da UF e mostra confiança antes do kanban.
+                Importe pessoas em Cadastro antes.
+              </span>
+            </span>
+          </label>
           {showSubmitProgress ? (
             <SubmissionProgressPanel
               progress={progress}

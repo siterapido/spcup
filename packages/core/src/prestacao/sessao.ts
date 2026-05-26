@@ -19,6 +19,7 @@ export interface CreateSessaoInput {
   tipoPrestador: TipoPrestadorSessao;
   diretorioMunicipalId?: string;
   exercicio: number;
+  consolidarExtratos?: boolean;
 }
 
 export interface PrestadorResolvido {
@@ -82,6 +83,7 @@ export async function createSessao(
         diretorioMunicipalId: municipal.id,
         exercicio: input.exercicio,
         status: SESSAO_STATUS.ABERTA,
+        consolidarExtratos: input.consolidarExtratos ?? false,
       })
       .returning();
     if (!sessao) {
@@ -105,6 +107,7 @@ export async function createSessao(
       diretorioEstadualId: estadual.id,
       exercicio: input.exercicio,
       status: SESSAO_STATUS.ABERTA,
+      consolidarExtratos: input.consolidarExtratos ?? false,
     })
     .returning();
   if (!sessao) {

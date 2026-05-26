@@ -82,6 +82,25 @@ describe("extractStructuredFromPdf", () => {
     expect(sleep).toHaveBeenCalledWith(1000);
   });
 
+  it("parses JSON wrapped in markdown fences", async () => {
+    const pdfPath = await writePdf();
+    const fenced = "```json\n" + JSON.stringify(SAMPLE_EXTRACTION) + "\n```";
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: fenced } }],
+      }),
+    });
+
+    const result = await extractStructuredFromPdf(pdfPath, {
+      fetch: mockFetch,
+      apiKey: "test-key",
+    });
+
+    expect(result).toEqual(SAMPLE_EXTRACTION);
+  });
+
   it("requires api key", async () => {
     const pdfPath = await writePdf();
     const mockFetch = vi.fn();

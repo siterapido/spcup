@@ -11,6 +11,7 @@ import {
   type ExtractStructuredOptions,
 } from "../ai/openrouter";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
+import { extractDocumentCandidates } from "../match/rules";
 import { normalizeCnpj, normalizeCpf } from "../normalize";
 import { toIngestError } from "./errors";
 import { ingestLog } from "./log";
@@ -57,7 +58,45 @@ function docLabelFromExtratoItem(item: Record<string, unknown>): string | null {
       return null;
     }
   }
+
+  const text = [item.descricao, item.nome]
+    .map((part) => (part == null ? "" : String(part).trim()))
+    .filter(Boolean)
+    .join(" ");
+  const candidates = extractDocumentCandidates(text);
+  if (candidates.length === 1) {
+    const doc = candidates[0]!;
+    return doc.docType === "CPF"
+      ? `CPF ${doc.normalized}`
+      : `CNPJ ${doc.normalized}`;
+  }
+
   return null;
+}
+
+function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransactionRow | null {
+  const nome = String(item.nome ?? item.descricao ?? "").trim();
+  if (nome.length < 3) {
+    return null;
+  }
+
+  const valorNum = Number(item.valor);
+  if (Number.isNaN(valorNum)) {
+    return null;
+  }
+
+  const direcao = String(item.direcao).trim().toUpperCase() as MovimentacaoDirecao;
+  if (direcao !== MOVIMENTACAO_DIRECAO.ENTRADA && direcao !== MOVIMENTACAO_DIRECAO.SAIDA) {
+    return null;
+  }
+
+  return {
+    dataMovimento: parseExtractionDate(String(item.data)),
+    valor: Math.abs(valorNum).toFixed(2),
+    descricaoRaw: nome,
+    direcao,
+    nrExtratoBancario: null,
+  };
 }
 
 /** Build a parsed row from an extrato line; `docLabel` is appended to description (no fake CPF in memo). */
@@ -97,11 +136,16 @@ export function rowsFromExtratoTransactions(extraction: ExtratoExtraction): {
 
   for (const item of extraction.transacoes) {
     const docLabel = docLabelFromExtratoItem(item);
-    if (docLabel == null) {
-      linhasIgnoradasSemDoc += 1;
+    if (docLabel != null) {
+      rows.push(rowFromExtratoItem(item, docLabel));
       continue;
     }
-    rows.push(rowFromExtratoItem(item, docLabel));
+    const semDoc = rowFromExtratoItemSemDoc(item);
+    if (semDoc != null) {
+      rows.push(semDoc);
+      continue;
+    }
+    linhasIgnoradasSemDoc += 1;
   }
 
   return { rows, linhasIgnoradasSemDoc };
@@ -157,6 +201,7 @@ export async function ingestPdfExtrato(
       fase: hasEnoughText ? "openrouter_text" : "openrouter_vision",
       arquivoId,
       filename,
+      transacoesExtraidas: extraction.transacoes.length,
     });
 
     const { rows, linhasIgnoradasSemDoc } = rowsFromExtratoTransactions(extraction);

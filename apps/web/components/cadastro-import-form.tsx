@@ -25,6 +25,7 @@ export function CadastroImportForm() {
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [columnMap, setColumnMap] = useState<ColumnMap>(EMPTY_MAP);
+  const [headerless, setHeaderless] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export function CadastroImportForm() {
     setImportResult(null);
     setErrorMessage(null);
     setHeaders([]);
+    setHeaderless(false);
     setColumnMap(EMPTY_MAP);
 
     try {
@@ -51,6 +53,7 @@ export function CadastroImportForm() {
 
       const nextHeaders = (json.headers as string[]) ?? [];
       const suggested = (json.suggestedMap as Partial<ColumnMap>) ?? {};
+      setHeaderless(Boolean(json.headerless));
       setHeaders(nextHeaders);
       setColumnMap({
         documento: suggested.documento ?? "",
@@ -136,6 +139,12 @@ export function CadastroImportForm() {
       />
       {previewLoading ? <p className="text-sm text-muted">Lendo colunas…</p> : null}
       {previewError ? <p className="text-sm text-red-600">{previewError}</p> : null}
+      {headerless ? (
+        <p className="text-sm text-muted">
+          Planilha sem linha de cabeçalho detectada (layout nome | documento | tipo). Mapeamento
+          sugerido já aplicado — confira e importe.
+        </p>
+      ) : null}
       {headers.length > 0 ? (
         <div className="space-y-3 rounded-md border border-border p-4">
           <p className="text-sm font-medium">Mapeamento de colunas</p>

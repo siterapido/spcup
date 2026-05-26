@@ -64,7 +64,7 @@ describe("rowFromExtraction", () => {
 });
 
 describe("rowsFromExtratoTransactions", () => {
-  it("keeps rows with valid CPF and skips lines without doc (regra B)", () => {
+  it("keeps rows with valid CPF; nome-only lines become rows for match por nome", () => {
     const extraction = {
       transacoes: [
         {
@@ -84,11 +84,12 @@ describe("rowsFromExtratoTransactions", () => {
     };
 
     const { rows, linhasIgnoradasSemDoc } = rowsFromExtratoTransactions(extraction);
-    expect(rows).toHaveLength(1);
-    expect(linhasIgnoradasSemDoc).toBe(1);
+    expect(rows).toHaveLength(2);
+    expect(linhasIgnoradasSemDoc).toBe(0);
     expect(rows[0]!.valor).toBe("100.00");
     expect(rows[0]!.descricaoRaw).toBe("Deposito CPF 39053344705");
     expect(rows[0]!.direcao).toBe("ENTRADA");
+    expect(rows[1]!.descricaoRaw).toBe("Sem doc");
   });
 });
 

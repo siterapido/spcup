@@ -19,7 +19,7 @@ const MENSAGENS: Record<IngestErrorCodigo, string> = {
   OPENROUTER_FALHA:
     "Não foi possível ler o extrato com IA. Tente novamente em alguns minutos.",
   PDF_INVALIDO: "Arquivo PDF inválido ou corrompido.",
-  PDF_MUITAS_PAGINAS: "Extrato com mais de 3 páginas. Divida o arquivo.",
+  PDF_MUITAS_PAGINAS: "Extrato com muitas páginas. Divida o arquivo.",
   PDF_SEM_TEXTO_E_VISAO_FALHOU:
     "Não foi possível extrair dados deste PDF (scan ou formato não suportado).",
   STORAGE_FALHA: "Falha ao salvar o arquivo. Tente novamente.",
@@ -43,7 +43,7 @@ export function classifyIngestError(error: unknown): IngestErrorDetail {
   let codigo: IngestErrorCodigo = "INGESTAO_DESCONHECIDA";
   if (causaTecnica.includes("OPENROUTER_API_KEY")) {
     codigo = "OPENROUTER_NAO_CONFIGURADO";
-  } else if (/mais de 3 páginas/i.test(causaTecnica)) {
+  } else if (/mais de \d+ páginas/i.test(causaTecnica)) {
     codigo = "PDF_MUITAS_PAGINAS";
   } else if (/openrouter http/i.test(causaTecnica) || msg.includes("abort")) {
     codigo = "OPENROUTER_FALHA";

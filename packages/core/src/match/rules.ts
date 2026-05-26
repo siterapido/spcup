@@ -13,7 +13,7 @@ import {
   STUB_PJ_RAZAO,
 } from "../cadastro/constants";
 import { DEFAULT_WEIGHTS, evaluateMovimentacao } from "../confidence";
-import { normalizeCnpj, normalizeCpf } from "../normalize";
+import { normalizeCnpj, normalizeCpf, normalizeName } from "../normalize";
 import { MOVIMENTACAO_STATUS } from "../ingest/types";
 
 const DEFAULT_CONFIANCA_LIMITE_ALTA = 0.85;
@@ -78,6 +78,40 @@ async function getOrCreatePessoaFisica(db: Db, cpf: string): Promise<PessoaFisic
     throw new Error(`Failed to create pessoa_fisica for CPF ${cpf}`);
   }
   return created;
+}
+
+async function findUniquePessoaByNome(
+  db: Db,
+  rawNome: string,
+): Promise<
+  | { kind: "PF"; id: string; nome: string }
+  | { kind: "PJ"; id: string; nome: string }
+  | null
+> {
+  const nome = normalizeName(rawNome);
+  if (!nome) {
+    return null;
+  }
+
+  const pfs = await db
+    .select({ id: pessoaFisica.id, nome: pessoaFisica.nome })
+    .from(pessoaFisica)
+    .where(eq(pessoaFisica.nome, nome))
+    .limit(2);
+  if (pfs.length === 1) {
+    return { kind: "PF", id: pfs[0]!.id, nome: pfs[0]!.nome };
+  }
+
+  const pjs = await db
+    .select({ id: pessoaJuridica.id, nome: pessoaJuridica.razaoSocial })
+    .from(pessoaJuridica)
+    .where(eq(pessoaJuridica.razaoSocial, nome))
+    .limit(2);
+  if (pjs.length === 1) {
+    return { kind: "PJ", id: pjs[0]!.id, nome: pjs[0]!.nome };
+  }
+
+  return null;
 }
 
 async function getOrCreatePessoaJuridica(
@@ -204,6 +238,27 @@ export async function applyDeterministicMatch(
         ? `CNPJ ${cnpj} vinculado ao cadastro`
         : `CNPJ ${cnpj} extraido da descricao`,
     });
+  } else if (cpfs.length === 0 && cnpjs.length === 0) {
+    const byNome = await findUniquePessoaByNome(db, current.descricaoRaw);
+    if (byNome?.kind === "PF") {
+      pessoaFisicaId = byNome.id;
+      pessoaJuridicaId = null;
+      const cadastroReal = !isStubNome("PF", byNome.nome);
+      evidencias.push({
+        tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
+        peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
+        detalhe: `Nome vinculado ao cadastro: ${byNome.nome}`,
+      });
+    } else if (byNome?.kind === "PJ") {
+      pessoaJuridicaId = byNome.id;
+      pessoaFisicaId = null;
+      const cadastroReal = !isStubNome("PJ", byNome.nome);
+      evidencias.push({
+        tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
+        peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
+        detalhe: `Razão social vinculada ao cadastro: ${byNome.nome}`,
+      });
+    }
   }
 
   if (evidencias.length > 0) {

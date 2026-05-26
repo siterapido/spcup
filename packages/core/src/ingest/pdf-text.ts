@@ -1,7 +1,9 @@
 import pdfParse from "pdf-parse";
 
+import { assertExtratoPageLimit } from "./pdf-split";
+
 export const MIN_TEXT_CHARS = 200;
-export const MAX_EXTRATO_PAGES = 3;
+export { MAX_EXTRATO_PAGES } from "./pdf-split";
 
 export interface PdfTextExtraction {
   text: string;
@@ -12,11 +14,7 @@ export interface PdfTextExtraction {
 export async function extractPdfText(buffer: Buffer): Promise<PdfTextExtraction> {
   const parsed = await pdfParse(buffer);
   const numpages = parsed.numpages ?? 0;
-  if (numpages > MAX_EXTRATO_PAGES) {
-    throw new Error(
-      `Extrato com mais de ${MAX_EXTRATO_PAGES} páginas; divida o arquivo ou use a CLI.`,
-    );
-  }
+  assertExtratoPageLimit(numpages);
   const text = (parsed.text ?? "").trim();
   return {
     text,

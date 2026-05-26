@@ -76,6 +76,31 @@ describe("parseCadastroSpreadsheet", () => {
     await expect(parseCadastroSpreadsheet(csv, "bad.csv")).rejects.toThrow(/documento/i);
   });
 
+  it("parses xlsx without header row (nome | documento | tipo)", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Pessoas");
+    sheet.addRow(["Maria Souza", "123.456.789-09", "Pessoa Física", "Validado"]);
+    sheet.addRow(["Empresa Alias LTDA", "11.222.333/0001-81", "Pessoa Jurídica", ""]);
+    const buf = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    const preview = await extractSpreadsheetHeaders(buf, "sem-cabecalho.xlsx");
+    expect(preview.headerless).toBe(true);
+    expect(preview.suggestedMap).toMatchObject({
+      nome: "nome",
+      documento: "documento",
+      tipo: "tipo",
+    });
+
+    const result = await parseCadastroSpreadsheet(buf, "sem-cabecalho.xlsx", {
+      documento: "documento",
+      nome: "nome",
+      tipo: "tipo",
+    });
+    expect(result.ok).toHaveLength(2);
+    expect(result.ok[0]?.nome).toBe("MARIA SOUZA");
+    expect(result.ok[1]?.tipo).toBe("PJ");
+  });
+
   it("parses csv with semicolon delimiter", async () => {
     const csv = Buffer.from(
       "tipo;documento;nome\nPF;12345678909;Maria Souza\n",

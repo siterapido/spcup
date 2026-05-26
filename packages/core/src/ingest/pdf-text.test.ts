@@ -47,6 +47,6 @@ describe("extractPdfText", () => {
       numpages: MAX_EXTRATO_PAGES + 1,
     } as Awaited<ReturnType<typeof pdfParse>>);
 
-    await expect(extractPdfText(stubBuffer)).rejects.toThrow(/mais de 3 páginas/i);
+    await expect(extractPdfText(stubBuffer)).rejects.toThrow(/mais de \d+ páginas/i);
   });
 });

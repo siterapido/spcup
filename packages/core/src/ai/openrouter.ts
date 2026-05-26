@@ -1,10 +1,29 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  dedupeExtratoTransactions,
+  getPdfPageCount,
+  shouldBatchPdfVision,
+  splitPdfIntoBatches,
+} from "../ingest/pdf-split";
+import {
+  readExtratoPdfCache,
+  readExtratoTextCache,
+  writeExtratoPdfCache,
+  writeExtratoTextCache,
+} from "./openrouter-cache";
+
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_TIMEOUT_MS = 60_000;
+const DEFAULT_PDF_TIMEOUT_MS = 180_000;
 const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = 1000;
+/** Cap model output size (extrato lists are bounded; saves cost on runaway completions). */
+const DEFAULT_MAX_TOKENS = 8192;
+/** Text-path statements above this are truncated before the API call. */
+export const MAX_EXTRATO_TEXT_CHARS = 24_000;
+const DEFAULT_PDF_MODEL = "moonshotai/kimi-k2.6";
 
 const EXTRACTION_SCHEMA = {
   type: "object",
@@ -61,11 +80,18 @@ const EXTRATO_ARRAY_SCHEMA = {
 } as const;
 
 const EXTRATO_SYSTEM_PROMPT =
-  "You extract bank statement transactions from Brazilian financial documents (PDF or plain text). " +
-  "Return every distinct transaction row: data (YYYY-MM-DD), valor (BRL amount as number), " +
-  "direcao (ENTRADA for credits, SAIDA for debits), and descricao (concise description). " +
-  "Include cpf, cnpj, or nome only when clearly present in the source. " +
-  "Normalize CPF/CNPJ to digits only. Do not invent transactions.";
+  "Extrato bancário BR. JSON transacoes: data (YYYY-MM-DD), valor, direcao (ENTRADA|SAIDA), descricao. " +
+  "Preencha cpf/cnpj (só dígitos) quando aparecer na linha; senão nome do contraparte. Não invente linhas.";
+
+const KIMI_EXTRATO_SYSTEM_PROMPT =
+  "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
+  'Responda APENAS JSON: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
+  '"descricao":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
+  "Use ENTRADA para crédito e SAIDA para débito. cpf/cnpj só dígitos se visíveis; senão preencha nome. " +
+  "Não invente linhas.";
+
+const KIMI_EXTRATO_USER_PDF =
+  "Extraia todas as transações visíveis neste extrato. Retorne somente o JSON.";
 
 export interface ExtractStructuredOptions {
   fetch?: typeof fetch;
@@ -73,6 +99,45 @@ export interface ExtractStructuredOptions {
   model?: string;
   filename?: string;
   sleep?: (ms: number) => Promise<void>;
+  timeoutMs?: number;
+}
+
+/** Kimi on OpenRouter works better with json_object + schema in prompt (not strict json_schema). */
+export function isKimiModel(model: string): boolean {
+  return /kimi/i.test(model);
+}
+
+function extratoSystemPrompt(model: string): string {
+  return isKimiModel(model) ? KIMI_EXTRATO_SYSTEM_PROMPT : EXTRATO_SYSTEM_PROMPT;
+}
+
+function buildStructuredResponseFormat(
+  model: string,
+  name: string,
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  if (isKimiModel(model)) {
+    return { type: "json_object" };
+  }
+  return {
+    type: "json_schema",
+    json_schema: {
+      name,
+      strict: true,
+      schema,
+    },
+  };
+}
+
+export function resolvePdfTimeoutMs(): number {
+  const raw = process.env.OPENROUTER_PDF_TIMEOUT_MS;
+  if (raw != null && raw.trim() !== "") {
+    const n = Number.parseInt(raw, 10);
+    if (Number.isFinite(n) && n > 0) {
+      return n;
+    }
+  }
+  return DEFAULT_PDF_TIMEOUT_MS;
 }
 
 export interface ExtratoExtraction {
@@ -87,8 +152,21 @@ function encodePdf(buffer: Buffer): string {
   return `data:application/pdf;base64,${buffer.toString("base64")}`;
 }
 
+function resolveMaxTokens(): number {
+  const raw = process.env.OPENROUTER_MAX_TOKENS;
+  if (raw == null || raw.trim() === "") {
+    return DEFAULT_MAX_TOKENS;
+  }
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_TOKENS;
+}
+
+function withMaxTokens(payload: Record<string, unknown>): Record<string, unknown> {
+  return { ...payload, max_tokens: resolveMaxTokens() };
+}
+
 function buildPayload(buffer: Buffer, filename: string, model: string): Record<string, unknown> {
-  return {
+  return withMaxTokens({
     model,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
@@ -119,32 +197,29 @@ function buildPayload(buffer: Buffer, filename: string, model: string): Record<s
         schema: EXTRACTION_SCHEMA,
       },
     },
-  };
+  });
 }
 
 function buildExtratoTextPayload(statementText: string, model: string): Record<string, unknown> {
-  return {
+  return withMaxTokens({
     model,
     messages: [
-      { role: "system", content: EXTRATO_SYSTEM_PROMPT },
+      { role: "system", content: extratoSystemPrompt(model) },
       {
         role: "user",
         content:
-          "Extract all bank transactions from the following statement text.\n\n" +
+          "Extraia todas as transações do texto abaixo.\n\n" +
           "---\n" +
           statementText +
           "\n---",
       },
     ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "extrato_transacoes",
-        strict: true,
-        schema: EXTRATO_ARRAY_SCHEMA,
-      },
-    },
-  };
+    response_format: buildStructuredResponseFormat(
+      model,
+      "extrato_transacoes",
+      EXTRATO_ARRAY_SCHEMA as unknown as Record<string, unknown>,
+    ),
+  });
 }
 
 function buildExtratoFilePayload(
@@ -152,16 +227,16 @@ function buildExtratoFilePayload(
   filename: string,
   model: string,
 ): Record<string, unknown> {
-  return {
+  return withMaxTokens({
     model,
     messages: [
-      { role: "system", content: EXTRATO_SYSTEM_PROMPT },
+      { role: "system", content: extratoSystemPrompt(model) },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: "Extract all bank transactions from this PDF bank statement.",
+            text: isKimiModel(model) ? KIMI_EXTRATO_USER_PDF : "Extract all bank transactions from this PDF bank statement.",
           },
           {
             type: "file",
@@ -173,15 +248,35 @@ function buildExtratoFilePayload(
         ],
       },
     ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "extrato_transacoes",
-        strict: true,
-        schema: EXTRATO_ARRAY_SCHEMA,
-      },
-    },
-  };
+    response_format: buildStructuredResponseFormat(
+      model,
+      "extrato_transacoes",
+      EXTRATO_ARRAY_SCHEMA as unknown as Record<string, unknown>,
+    ),
+  });
+}
+
+function trimExtratoText(statementText: string): string {
+  const trimmed = statementText.trim();
+  if (trimmed.length <= MAX_EXTRATO_TEXT_CHARS) {
+    return trimmed;
+  }
+  return trimmed.slice(0, MAX_EXTRATO_TEXT_CHARS);
+}
+
+/** Extract JSON object/array from model text (fences, prose prefix, bare arrays). */
+function extractJsonFromText(raw: string): unknown {
+  let text = raw.trim();
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced) {
+    text = fenced[1].trim();
+  } else {
+    const start = text.search(/[\[{]/);
+    if (start > 0) {
+      text = text.slice(start);
+    }
+  }
+  return JSON.parse(text);
 }
 
 function parseResponseBody(body: unknown): Record<string, unknown> {
@@ -210,12 +305,16 @@ function parseResponseBody(body: unknown): Record<string, unknown> {
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    parsed = extractJsonFromText(content);
   } catch {
     throw new Error("OpenRouter response content is not valid JSON");
   }
 
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+  if (Array.isArray(parsed)) {
+    return { transacoes: parsed };
+  }
+
+  if (typeof parsed !== "object" || parsed === null) {
     throw new Error("OpenRouter response JSON must be an object");
   }
 
@@ -246,11 +345,7 @@ async function resolvePdfInput(
 }
 
 export function resolveExtratoModel(options?: ExtractStructuredOptions): string {
-  return (
-    options?.model ??
-    process.env.OPENROUTER_PDF_MODEL ??
-    "anthropic/claude-sonnet-4"
-  );
+  return options?.model ?? process.env.OPENROUTER_PDF_MODEL ?? DEFAULT_PDF_MODEL;
 }
 
 function normalizeExtratoResponse(parsed: Record<string, unknown>): ExtratoExtraction {
@@ -279,6 +374,7 @@ async function callOpenRouterJson(
 
   const fetchFn = options?.fetch ?? fetch;
   const sleepFn = options?.sleep ?? defaultSleep;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   const headers = {
     Authorization: `Bearer ${apiKey}`,
@@ -289,7 +385,7 @@ async function callOpenRouterJson(
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await fetchFn(OPENROUTER_URL, {
           method: "POST",
@@ -299,7 +395,10 @@ async function callOpenRouterJson(
         });
 
         if (!response.ok) {
-          throw new Error(`OpenRouter HTTP ${response.status}`);
+          const errBody = await response.text();
+          throw new Error(
+            `OpenRouter HTTP ${response.status}: ${errBody.slice(0, 500)}`,
+          );
         }
 
         const body = await response.json();
@@ -338,9 +437,38 @@ export async function extractTransactionsFromPdfText(
   options?: ExtractStructuredOptions,
 ): Promise<ExtratoExtraction> {
   const model = resolveExtratoModel(options);
-  const payload = buildExtratoTextPayload(statementText, model);
+  const normalized = trimExtratoText(statementText);
+  const cached = await readExtratoTextCache(normalized, model);
+  if (cached) {
+    return normalizeExtratoResponse(cached);
+  }
+
+  const payload = buildExtratoTextPayload(normalized, model);
   const parsed = await callOpenRouterJson(payload, options);
-  return normalizeExtratoResponse(parsed);
+  const extraction = normalizeExtratoResponse(parsed);
+  await writeExtratoTextCache(normalized, model, extraction);
+  return extraction;
+}
+
+async function extractTransactionsFromSinglePdfBuffer(
+  buffer: Buffer,
+  options: ExtractStructuredOptions | undefined,
+  model: string,
+  filename: string,
+): Promise<ExtratoExtraction> {
+  const cached = await readExtratoPdfCache(buffer, model);
+  if (cached) {
+    return normalizeExtratoResponse(cached);
+  }
+
+  const payload = buildExtratoFilePayload(buffer, filename, model);
+  const parsed = await callOpenRouterJson(payload, {
+    ...options,
+    timeoutMs: options?.timeoutMs ?? resolvePdfTimeoutMs(),
+  });
+  const extraction = normalizeExtratoResponse(parsed);
+  await writeExtratoPdfCache(buffer, model, extraction);
+  return extraction;
 }
 
 export async function extractTransactionsFromPdfFile(
@@ -348,8 +476,41 @@ export async function extractTransactionsFromPdfFile(
   options?: ExtractStructuredOptions,
 ): Promise<ExtratoExtraction> {
   const model = resolveExtratoModel(options);
-  const filename = options?.filename ?? "document.pdf";
-  const payload = buildExtratoFilePayload(buffer, filename, model);
-  const parsed = await callOpenRouterJson(payload, options);
-  return normalizeExtratoResponse(parsed);
+  const fullCached = await readExtratoPdfCache(buffer, model);
+  if (fullCached) {
+    return normalizeExtratoResponse(fullCached);
+  }
+
+  const baseName = options?.filename ?? "document.pdf";
+  const pageCount = await getPdfPageCount(buffer);
+  const useBatches = shouldBatchPdfVision(buffer, pageCount, model);
+
+  if (!useBatches) {
+    return extractTransactionsFromSinglePdfBuffer(buffer, options, model, baseName);
+  }
+
+  const batches = await splitPdfIntoBatches(buffer);
+  const merged: Array<Record<string, unknown>> = [];
+
+  for (let index = 0; index < batches.length; index += 1) {
+    const batchBuffer = batches[index]!;
+    const batchName =
+      batches.length === 1
+        ? baseName
+        : `${baseName.replace(/\.pdf$/i, "")}_p${index + 1}.pdf`;
+
+    const part = await extractTransactionsFromSinglePdfBuffer(
+      batchBuffer,
+      options,
+      model,
+      batchName,
+    );
+    merged.push(...part.transacoes);
+  }
+
+  const extraction: ExtratoExtraction = {
+    transacoes: dedupeExtratoTransactions(merged),
+  };
+  await writeExtratoPdfCache(buffer, model, extraction);
+  return extraction;
 }

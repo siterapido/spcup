@@ -15,6 +15,7 @@ export type SubmitStepId =
   | "session"
   | "upload"
   | "ingest"
+  | "consolidacao"
   | "kanban";
 
 export type SubmitStepStatus = "pending" | "active" | "done" | "error";
@@ -40,6 +41,7 @@ const STEPS_IDLE: SubmitStep[] = [
   { id: "session", label: "Criar sessão", status: "pending" },
   { id: "upload", label: "Enviar arquivos", status: "pending" },
   { id: "ingest", label: "Processar movimentações", status: "pending" },
+  { id: "consolidacao", label: "Consolidar extratos", status: "pending" },
   { id: "kanban", label: "Abrir kanban", status: "pending" },
 ];
 
@@ -49,12 +51,25 @@ export type PrestacaoSubmitInput = {
   municipalId?: string;
   exercicio: string;
   files: File[];
+  consolidarExtratos?: boolean;
 };
 
 export type PrestacaoSubmitResult = {
   sessaoId: string;
   warningMessage: string | null;
+  redirectPath: string;
 };
+
+export function countPdfFiles(files: File[]): number {
+  return files.filter((f) => f.name.toLowerCase().endsWith(".pdf")).length;
+}
+
+export function shouldRedirectToConsolidacao(
+  consolidarExtratos: boolean,
+  pdfCount: number,
+): boolean {
+  return Boolean(consolidarExtratos) && pdfCount >= 2;
+}
 
 export function shouldBlockRedirect(
   status: number,
@@ -179,6 +194,7 @@ export function usePrestacaoSubmit() {
               diretorioMunicipalId:
                 input.tipo === "MUNICIPAL" ? input.municipalId : undefined,
               exercicio: Number.parseInt(input.exercicio, 10),
+              consolidarExtratos: input.consolidarExtratos ?? false,
             }),
           });
         } catch {
@@ -327,17 +343,48 @@ export function usePrestacaoSubmit() {
             throw new Error(msg);
           }
 
-          currentSteps = setStepStatus(
-            setStepStatus(currentSteps, "ingest", "done"),
-            "kanban",
-            "active",
+          const goConsolidacao = shouldRedirectToConsolidacao(
+            input.consolidarExtratos ?? false,
+            countPdfFiles(input.files),
           );
+
+          currentSteps = setStepStatus(currentSteps, "ingest", "done");
+          if (goConsolidacao) {
+            currentSteps = setStepStatus(currentSteps, "consolidacao", "active");
+            setSteps(currentSteps);
+            setPhase("processing");
+            setStatusLabel("Consolidando extratos…");
+            setProgress(94);
+
+            await fetch(`/api/prestacao/sessoes/${sessaoId}/consolidacao/run`, {
+              method: "POST",
+            });
+
+            currentSteps = setStepStatus(currentSteps, "consolidacao", "done");
+          }
+          currentSteps = setStepStatus(currentSteps, "kanban", "active");
           setSteps(currentSteps);
-          setProgress(92);
+          setProgress(96);
           warningMessage = buildUploadWarning(upJson);
           if (displayErrors.length > 0) {
             setFileErrors(displayErrors);
           }
+
+          const redirectPath = goConsolidacao
+            ? `/prestacao/${sessaoId}/consolidacao`
+            : `/prestacao/${sessaoId}/kanban`;
+
+          setPhase("redirecting");
+          setStatusLabel(
+            goConsolidacao ? "Abrindo consolidação…" : "Abrindo kanban…",
+          );
+          setProgress(98);
+          currentSteps = setStepStatus(currentSteps, "kanban", "done");
+          setSteps(currentSteps);
+          setProgress(100);
+          setPhase("done");
+
+          return { sessaoId, warningMessage, redirectPath };
         } else {
           currentSteps = setStepStatus(
             setStepStatus(currentSteps, "upload", "done"),
@@ -358,7 +405,11 @@ export function usePrestacaoSubmit() {
         setProgress(100);
         setPhase("done");
 
-        return { sessaoId, warningMessage };
+        return {
+          sessaoId,
+          warningMessage,
+          redirectPath: `/prestacao/${sessaoId}/kanban`,
+        };
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Erro de rede.";
         setPhase((p) => (p === "error" ? p : "error"));

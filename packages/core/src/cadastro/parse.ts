@@ -58,6 +58,66 @@ function matchHeaderToField(header: unknown): CadastroField | null {
   return HEADER_ALIASES[key] ?? null;
 }
 
+const SYNTHETIC_CADASTRO_HEADERS = ["nome", "documento", "tipo"] as const;
+
+function cellLooksLikeDocument(value: unknown): boolean {
+  const text = String(value ?? "").trim();
+  if (!text) {
+    return false;
+  }
+  const digits = text.replace(/\D/g, "");
+  if (digits.length === 11) {
+    try {
+      normalizeCpf(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  if (digits.length === 14) {
+    try {
+      normalizeCnpj(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/** True when row 1 looks like a person row (CPF/CNPJ present), not column titles. */
+export function isHeaderlessCadastroRow(cells: unknown[]): boolean {
+  const values = cells
+    .map((cell) => (cell == null ? "" : String(cell).trim()))
+    .filter((cell) => cell.length > 0);
+  if (values.length < 2) {
+    return false;
+  }
+  const auto = suggestCadastroColumnMap(values);
+  if (auto.documento != null || auto.nome != null) {
+    return false;
+  }
+  return values.some((value) => cellLooksLikeDocument(value));
+}
+
+function positionalColumnIndex(
+  columnCount: number,
+): Record<CadastroField, number | undefined> {
+  return {
+    nome: 0,
+    documento: 1,
+    tipo: columnCount >= 3 ? 2 : undefined,
+  };
+}
+
+function syntheticHeaders(columnCount: number): string[] {
+  const base = [...SYNTHETIC_CADASTRO_HEADERS];
+  while (base.length < columnCount) {
+    base.push(`coluna_${base.length + 1}`);
+  }
+  return base.slice(0, columnCount);
+}
+
 export function suggestCadastroColumnMap(
   headers: string[],
 ): Partial<CadastroColumnMap> {
@@ -196,12 +256,13 @@ function parseRowsFromSheet(
   headers: string[],
   rows: unknown[][],
   columnIndex: Record<CadastroField, number | undefined>,
+  firstDataLine = 2,
 ): ParseCadastroResult {
   const ok: CadastroRow[] = [];
   const erros: ParseCadastroResult["erros"] = [];
 
   for (let rowOffset = 0; rowOffset < rows.length; rowOffset += 1) {
-    const linha = rowOffset + 2;
+    const linha = rowOffset + firstDataLine;
     const cells = rows[rowOffset] ?? [];
     const record: Record<string, unknown> = {};
     for (const field of ["tipo", "documento", "nome"] as const) {
@@ -234,24 +295,33 @@ async function parseWorkbookRows(
   columnMap?: CadastroColumnMap,
 ): Promise<ParseCadastroResult> {
   const headerRow = sheet.getRow(1);
-  const headerValues = headerRow.values as unknown[];
-  const headers = rowCells(headerValues).map((value) =>
-    value == null ? "" : String(value).trim(),
-  );
-  while (headers.length > 0 && headers[headers.length - 1] === "") {
-    headers.pop();
+  const firstRowCells = rowCells(headerRow.values as unknown[]);
+  while (firstRowCells.length > 0 && String(firstRowCells.at(-1) ?? "").trim() === "") {
+    firstRowCells.pop();
   }
 
-  const columnIndex = buildColumnIndex(headers, columnMap);
+  const headerless = isHeaderlessCadastroRow(firstRowCells);
+  const headers = headerless
+    ? syntheticHeaders(firstRowCells.length)
+    : firstRowCells.map((value) => (value == null ? "" : String(value).trim()));
+
+  const columnIndex = headerless
+    ? positionalColumnIndex(firstRowCells.length)
+    : buildColumnIndex(headers, columnMap);
+
   const rows: unknown[][] = [];
   sheet.eachRow((row, rowNumber) => {
+    if (headerless) {
+      rows.push(rowCells(row.values as unknown[]));
+      return;
+    }
     if (rowNumber === 1) {
       return;
     }
     rows.push(rowCells(row.values as unknown[]));
   });
 
-  return parseRowsFromSheet(headers, rows, columnIndex);
+  return parseRowsFromSheet(headers, rows, columnIndex, headerless ? 1 : 2);
 }
 
 function detectCsvDelimiter(headerLine: string): string {
@@ -313,21 +383,54 @@ export async function extractSpreadsheetHeaders(
   filename: string,
 ): Promise<SpreadsheetHeadersResult> {
   const suffix = filename.toLowerCase();
-  let headers: string[];
 
   if (suffix.endsWith(".csv")) {
-    headers = extractHeadersFromCsv(buffer);
-  } else if (suffix.endsWith(".xlsx") || suffix.endsWith(".xls")) {
-    headers = await extractHeadersFromXlsx(buffer);
-  } else {
-    throw new Error(`Formato não suportado: ${filename}`);
+    const headers = extractHeadersFromCsv(buffer);
+    const filtered = headers.filter((header) => header.length > 0);
+    return {
+      headers: filtered,
+      suggestedMap: suggestCadastroColumnMap(filtered),
+    };
   }
 
-  const filtered = headers.filter((header) => header.length > 0);
-  return {
-    headers: filtered,
-    suggestedMap: suggestCadastroColumnMap(filtered),
-  };
+  if (suffix.endsWith(".xlsx") || suffix.endsWith(".xls")) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(
+      buffer as unknown as Parameters<ExcelJS.Workbook["xlsx"]["load"]>[0],
+    );
+    const sheet = workbook.worksheets[0];
+    if (sheet == null) {
+      return { headers: [], suggestedMap: {} };
+    }
+
+    const firstRow = rowCells(sheet.getRow(1).values as unknown[]);
+    while (firstRow.length > 0 && String(firstRow.at(-1) ?? "").trim() === "") {
+      firstRow.pop();
+    }
+
+    if (isHeaderlessCadastroRow(firstRow)) {
+      const synthetic = syntheticHeaders(firstRow.length);
+      return {
+        headers: synthetic,
+        suggestedMap: {
+          nome: "nome",
+          documento: "documento",
+          tipo: synthetic.length >= 3 ? "tipo" : undefined,
+        },
+        headerless: true,
+      };
+    }
+
+    const headers = firstRow
+      .map((value) => (value == null ? "" : String(value).trim()))
+      .filter((header) => header.length > 0);
+    return {
+      headers,
+      suggestedMap: suggestCadastroColumnMap(headers),
+    };
+  }
+
+  throw new Error(`Formato não suportado: ${filename}`);
 }
 
 export async function parseCadastroSpreadsheet(

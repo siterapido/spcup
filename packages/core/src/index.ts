@@ -75,6 +75,20 @@ export {
   type PrestadorResolvido,
 } from "./prestacao/sessao";
 export {
+  approveConsolidacaoEvento,
+  rejectConsolidacaoEvento,
+} from "./consolidacao/approve";
+export { buildConsolidacaoCandidates } from "./consolidacao/candidates";
+export {
+  consolidateSession,
+  type ConsolidateSessionResult,
+} from "./consolidacao/run";
+export {
+  listConsolidacaoForSessao,
+  countPendingConsolidacao,
+  type ConsolidacaoListItem,
+} from "./consolidacao/queries";
+export {
   getKanbanPayload,
   listRecentSessoes,
   type KanbanCard,

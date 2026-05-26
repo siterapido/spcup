@@ -15,6 +15,7 @@ const createSchema = z.object({
   tipoPrestador: z.enum(["ESTADUAL", "MUNICIPAL"]),
   diretorioMunicipalId: z.string().uuid().optional(),
   exercicio: z.number().int(),
+  consolidarExtratos: z.boolean().optional(),
 });
 
 export async function GET(request: Request) {
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
       tipoPrestador: body.tipoPrestador,
       diretorioMunicipalId: body.diretorioMunicipalId,
       exercicio: body.exercicio,
+      consolidarExtratos: body.consolidarExtratos,
     });
     const full = await getSessao(db, sessao.id);
     const prestador = full ? prestadorFromSessao(full) : null;

@@ -14,6 +14,11 @@ const baseMov = {
   confiancaGlobal: 1,
   bloqueioExport: false,
   arquivoIngestaoId: null,
+  cnpjPrestador: CNPJ_PRESTADOR,
+  tipoPrestador: "ESTADUAL",
+  diretorioMunicipalId: null,
+  sessaoPrestacaoId: null,
+  movimentacaoCanonicaId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

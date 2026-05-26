@@ -2,8 +2,10 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   date,
+  foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   real,
@@ -23,6 +25,18 @@ export const SESSAO_STATUS = {
   ABERTA: "ABERTA",
   EM_PROCESSAMENTO: "EM_PROCESSAMENTO",
   ENCERRADA: "ENCERRADA",
+} as const;
+
+export const CONSOLIDACAO_EVENTO_STATUS = {
+  PENDENTE: "PENDENTE",
+  APROVADO: "APROVADO",
+  REJEITADO: "REJEITADO",
+} as const;
+
+export const CONSOLIDACAO_LINHA_PAPEL = {
+  PIX: "PIX",
+  COMPLETO: "COMPLETO",
+  OUTRO: "OUTRO",
 } as const;
 
 export const diretorioEstadual = pgTable("diretorio_estadual", {
@@ -58,6 +72,7 @@ export const sessaoPrestacao = pgTable("sessao_prestacao", {
   diretorioMunicipalId: uuid("diretorio_municipal_id").references(() => diretorioMunicipal.id),
   exercicio: integer("exercicio").notNull(),
   status: varchar("status", { length: 20 }).notNull().default(SESSAO_STATUS.ABERTA),
+  consolidarExtratos: boolean("consolidar_extratos").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -165,6 +180,7 @@ export const movimentacao = pgTable(
     confiancaGlobal: real("confianca_global").notNull().default(0),
     bloqueioExport: boolean("bloqueio_export").notNull().default(false),
     hashMovimento: varchar("hash_movimento", { length: 64 }).notNull(),
+    movimentacaoCanonicaId: uuid("movimentacao_canonica_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -177,8 +193,64 @@ export const movimentacao = pgTable(
     index("ix_movimentacao_exercicio").on(table.exercicio),
     index("ix_movimentacao_uf").on(table.uf),
     index("ix_movimentacao_sessao").on(table.sessaoPrestacaoId),
+    index("ix_movimentacao_canonica").on(table.movimentacaoCanonicaId),
+    foreignKey({
+      columns: [table.movimentacaoCanonicaId],
+      foreignColumns: [table.id],
+    }).onDelete("set null"),
   ],
 );
+
+export const consolidacaoEvento = pgTable(
+  "consolidacao_evento",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessaoPrestacaoId: uuid("sessao_prestacao_id")
+      .notNull()
+      .references(() => sessaoPrestacao.id),
+    status: varchar("status", { length: 20 })
+      .notNull()
+      .default(CONSOLIDACAO_EVENTO_STATUS.PENDENTE),
+    dataMovimento: date("data_movimento").notNull(),
+    valor: numeric("valor", { precision: 15, scale: 2 }).notNull(),
+    direcao: varchar("direcao", { length: 10 }).notNull(),
+    confianca: real("confianca").notNull(),
+    pessoaFisicaId: uuid("pessoa_fisica_id").references(() => pessoaFisica.id),
+    pessoaJuridicaId: uuid("pessoa_juridica_id").references(() => pessoaJuridica.id),
+    movimentacaoCanonicaId: uuid("movimentacao_canonica_id").references(() => movimentacao.id),
+    justificativa: text("justificativa"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("ix_consolidacao_evento_sessao_status").on(
+      table.sessaoPrestacaoId,
+      table.status,
+    ),
+  ],
+);
+
+export const consolidacaoLinha = pgTable("consolidacao_linha", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventoId: uuid("evento_id")
+    .notNull()
+    .references(() => consolidacaoEvento.id, { onDelete: "cascade" }),
+  movimentacaoId: uuid("movimentacao_id")
+    .notNull()
+    .references(() => movimentacao.id),
+  arquivoIngestaoId: uuid("arquivo_ingestao_id").references(() => arquivoIngestao.id),
+  papel: varchar("papel", { length: 20 }).notNull(),
+});
+
+export const consolidacaoHipotese = pgTable("consolidacao_hipotese", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventoId: uuid("evento_id")
+    .notNull()
+    .references(() => consolidacaoEvento.id, { onDelete: "cascade" }),
+  tipo: varchar("tipo", { length: 40 }).notNull(),
+  confianca: real("confianca").notNull(),
+  payload: jsonb("payload").notNull(),
+});
 
 export const doacaoFinanceiraLink = pgTable("doacao_financeira_link", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -263,6 +335,7 @@ export const sessaoPrestacaoRelations = relations(sessaoPrestacao, ({ one, many 
   }),
   arquivosIngestao: many(arquivoIngestao),
   movimentacoes: many(movimentacao),
+  consolidacaoEventos: many(consolidacaoEvento),
 }));
 
 export const contaBancariaRelations = relations(contaBancaria, ({ one, many }) => ({
@@ -338,6 +411,58 @@ export const movimentacaoRelations = relations(movimentacao, ({ one, many }) => 
     fields: [movimentacao.id],
     references: [doacaoFinanceiraLink.movimentacaoOrigemId],
   }),
+  movimentacaoCanonica: one(movimentacao, {
+    fields: [movimentacao.movimentacaoCanonicaId],
+    references: [movimentacao.id],
+    relationName: "movimentacaoMerge",
+  }),
+  duplicatasAbsorvidas: many(movimentacao, {
+    relationName: "movimentacaoMerge",
+  }),
+  consolidacaoLinhas: many(consolidacaoLinha),
+}));
+
+export const consolidacaoEventoRelations = relations(consolidacaoEvento, ({ one, many }) => ({
+  sessaoPrestacao: one(sessaoPrestacao, {
+    fields: [consolidacaoEvento.sessaoPrestacaoId],
+    references: [sessaoPrestacao.id],
+  }),
+  pessoaFisica: one(pessoaFisica, {
+    fields: [consolidacaoEvento.pessoaFisicaId],
+    references: [pessoaFisica.id],
+  }),
+  pessoaJuridica: one(pessoaJuridica, {
+    fields: [consolidacaoEvento.pessoaJuridicaId],
+    references: [pessoaJuridica.id],
+  }),
+  movimentacaoCanonica: one(movimentacao, {
+    fields: [consolidacaoEvento.movimentacaoCanonicaId],
+    references: [movimentacao.id],
+  }),
+  linhas: many(consolidacaoLinha),
+  hipoteses: many(consolidacaoHipotese),
+}));
+
+export const consolidacaoLinhaRelations = relations(consolidacaoLinha, ({ one }) => ({
+  evento: one(consolidacaoEvento, {
+    fields: [consolidacaoLinha.eventoId],
+    references: [consolidacaoEvento.id],
+  }),
+  movimentacao: one(movimentacao, {
+    fields: [consolidacaoLinha.movimentacaoId],
+    references: [movimentacao.id],
+  }),
+  arquivoIngestao: one(arquivoIngestao, {
+    fields: [consolidacaoLinha.arquivoIngestaoId],
+    references: [arquivoIngestao.id],
+  }),
+}));
+
+export const consolidacaoHipoteseRelations = relations(consolidacaoHipotese, ({ one }) => ({
+  evento: one(consolidacaoEvento, {
+    fields: [consolidacaoHipotese.eventoId],
+    references: [consolidacaoEvento.id],
+  }),
 }));
 
 export const doacaoFinanceiraLinkRelations = relations(doacaoFinanceiraLink, ({ one }) => ({
@@ -379,6 +504,12 @@ export type ArquivoIngestao = typeof arquivoIngestao.$inferSelect;
 export type NewArquivoIngestao = typeof arquivoIngestao.$inferInsert;
 export type Movimentacao = typeof movimentacao.$inferSelect;
 export type NewMovimentacao = typeof movimentacao.$inferInsert;
+export type ConsolidacaoEvento = typeof consolidacaoEvento.$inferSelect;
+export type NewConsolidacaoEvento = typeof consolidacaoEvento.$inferInsert;
+export type ConsolidacaoLinha = typeof consolidacaoLinha.$inferSelect;
+export type NewConsolidacaoLinha = typeof consolidacaoLinha.$inferInsert;
+export type ConsolidacaoHipotese = typeof consolidacaoHipotese.$inferSelect;
+export type NewConsolidacaoHipotese = typeof consolidacaoHipotese.$inferInsert;
 export type DoacaoFinanceiraLink = typeof doacaoFinanceiraLink.$inferSelect;
 export type NewDoacaoFinanceiraLink = typeof doacaoFinanceiraLink.$inferInsert;
 export type MatchEvidencia = typeof matchEvidencia.$inferSelect;

@@ -11,7 +11,7 @@ describe("classifyIngestError", () => {
 
   it("maps page limit", () => {
     const r = classifyIngestError(
-      new Error("Extrato com mais de 3 páginas; divida o arquivo"),
+      new Error("Extrato com mais de 12 páginas; divida o arquivo."),
     );
     expect(r.codigo).toBe("PDF_MUITAS_PAGINAS");
   });

@@ -36,4 +36,6 @@ export interface CadastroColumnMap {
 export interface SpreadsheetHeadersResult {
   headers: string[];
   suggestedMap: Partial<CadastroColumnMap>;
+  /** First row is data (e.g. nome | CPF | tipo), not column titles. */
+  headerless?: boolean;
 }
