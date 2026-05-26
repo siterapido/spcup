@@ -10,11 +10,13 @@ import type { SchemaName } from "@spc-up/spca";
 
 import { buildAplicacaoXml } from "./aplicacao";
 import { buildDoacaoXml } from "./doacao";
-import { canExport } from "./guard";
+import { buildExcelMirrorBuffer } from "./excel-mirror";
+import { canExport, canExportByPrestador } from "./guard";
+import { generatePendenciasCsvByPrestador } from "../report/pendencias";
 import { buildOrigemXml } from "./origem";
 import { requireValidXsd, validateSpcaExports, XsdValidationError } from "./validation";
 
-export { canExport } from "./guard";
+export { canExport, canExportByPrestador } from "./guard";
 export { XsdValidationError };
 
 export class ExportBlockedError extends Error {
@@ -36,36 +38,25 @@ const SCHEMA_BY_STEM: Record<string, SchemaName> = {
   doacao: "doacao",
 };
 
-/** Build XML exports and copy them to outDir. Raises if export is blocked. */
-export async function exportBundle(
+/** Build XML exports for a prestador. Raises if export is blocked. */
+export async function exportBundleByPrestador(
   db: Db,
+  cnpjPrestador: string,
   uf: string,
   exercicio: number,
   outDir: string,
 ): Promise<string[]> {
   const ufUpper = uf.toUpperCase();
-  if (!(await canExport(db, ufUpper, exercicio))) {
+  if (!(await canExportByPrestador(db, cnpjPrestador, exercicio))) {
     throw new ExportBlockedError(
-      `Export blocked for ${ufUpper}/${exercicio}: resolve pendencias before exporting`,
+      `Export blocked for ${cnpjPrestador}/${exercicio}: resolve pendencias before exporting`,
     );
   }
 
-  const rows = await db
-    .select()
-    .from(diretorioEstadual)
-    .where(eq(diretorioEstadual.uf, ufUpper))
-    .limit(1);
-
-  const diretorio = rows[0];
-  if (diretorio == null) {
-    throw new Error(`Diretorio estadual not found for UF=${uf}`);
-  }
-
-  const cnpj = diretorio.cnpjPrestador;
   const built = await Promise.all([
-    buildOrigemXml(db, ufUpper, exercicio, cnpj),
-    buildAplicacaoXml(db, ufUpper, exercicio, cnpj),
-    buildDoacaoXml(db, ufUpper, exercicio, cnpj),
+    buildOrigemXml(db, ufUpper, exercicio, cnpjPrestador),
+    buildAplicacaoXml(db, ufUpper, exercicio, cnpjPrestador),
+    buildDoacaoXml(db, ufUpper, exercicio, cnpjPrestador),
   ]);
 
   await mkdir(outDir, { recursive: true });
@@ -93,27 +84,84 @@ export async function exportBundle(
   return copied;
 }
 
-/** Build validated SPCA XML bundle as a ZIP (web download). */
-export async function exportSpcaZip(
+/** Legacy estadual export bundle. */
+export async function exportBundle(
   db: Db,
+  uf: string,
+  exercicio: number,
+  outDir: string,
+): Promise<string[]> {
+  const ufUpper = uf.toUpperCase();
+  const rows = await db
+    .select()
+    .from(diretorioEstadual)
+    .where(eq(diretorioEstadual.uf, ufUpper))
+    .limit(1);
+  const diretorio = rows[0];
+  if (diretorio == null) {
+    throw new Error(`Diretorio estadual not found for UF=${uf}`);
+  }
+  return exportBundleByPrestador(db, diretorio.cnpjPrestador, ufUpper, exercicio, outDir);
+}
+
+/** Full export ZIP: XML + pendencias + Excel espelho. */
+export async function exportPrestacaoZip(
+  db: Db,
+  cnpjPrestador: string,
   uf: string,
   exercicio: number,
 ): Promise<ExportZipResult> {
   const ufUpper = uf.toUpperCase();
   const tmpBase = await mkdtemp(join(tmpdir(), "spc-export-"));
-  const copied = await exportBundle(db, ufUpper, exercicio, tmpBase);
+  const copied = await exportBundleByPrestador(
+    db,
+    cnpjPrestador,
+    ufUpper,
+    exercicio,
+    tmpBase,
+  );
 
-  const xmlFiles = copied.filter((p) => p.endsWith(".xml"));
-  const buffer = await zipFiles(xmlFiles);
+  const pendenciasPath = join(tmpBase, "pendencias.csv");
+  await generatePendenciasCsvByPrestador(db, cnpjPrestador, exercicio, pendenciasPath);
+  copied.push(pendenciasPath);
+
+  const espelhoBuffer = await buildExcelMirrorBuffer(db, cnpjPrestador, exercicio);
+  const espelhoPath = join(tmpBase, "espelho.xlsx");
+  await writeFile(espelhoPath, espelhoBuffer);
+  copied.push(espelhoPath);
+
+  const filesToZip = copied.filter(
+    (p) => p.endsWith(".xml") || p.endsWith(".csv") || p.endsWith(".xlsx"),
+  );
+  const buffer = await zipFiles(filesToZip);
   const validacao = JSON.parse(
     await readFile(join(tmpBase, "validacao.json"), "utf-8"),
   ) as Record<string, string[]>;
 
   return {
     buffer,
-    filename: `spca_${ufUpper}_${exercicio}.zip`,
+    filename: `spca_${cnpjPrestador}_${exercicio}.zip`,
     validacao,
   };
+}
+
+/** Build validated SPCA XML bundle as a ZIP (web download, estadual UF). */
+export async function exportSpcaZip(
+  db: Db,
+  uf: string,
+  exercicio: number,
+): Promise<ExportZipResult> {
+  const ufUpper = uf.toUpperCase();
+  const rows = await db
+    .select()
+    .from(diretorioEstadual)
+    .where(eq(diretorioEstadual.uf, ufUpper))
+    .limit(1);
+  const diretorio = rows[0];
+  if (diretorio == null) {
+    throw new Error(`Diretorio estadual not found for UF=${uf}`);
+  }
+  return exportPrestacaoZip(db, diretorio.cnpjPrestador, ufUpper, exercicio);
 }
 
 async function zipFiles(paths: string[]): Promise<Buffer> {

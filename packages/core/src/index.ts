@@ -10,7 +10,9 @@ export {
   evaluateMovimentacao,
 } from "./confidence";
 export { confirmMovimentacoes, type ConfirmResult } from "./confirm";
-export { canExport } from "./export/guard";
+export { canExport, canExportByPrestador } from "./export/guard";
+export { buildExcelMirrorBuffer } from "./export/excel-mirror";
+export { exportPrestacaoZip, exportBundleByPrestador } from "./export/run";
 export {
   buildAplicacaoXml,
   buildAplicacaoXmlBuffer,
@@ -49,6 +51,28 @@ export {
   xmlToBuffer,
 } from "./export/common";
 export { extractStructuredFromPdf, type ExtractStructuredOptions } from "./ai/openrouter";
+export {
+  createSessao,
+  getSessao,
+  prestadorFromSessao,
+  resolveCnpjPrestador,
+  type CreateSessaoInput,
+  type PrestadorResolvido,
+} from "./prestacao/sessao";
+export {
+  getKanbanPayload,
+  listRecentSessoes,
+  type KanbanCard,
+  type KanbanPayload,
+} from "./prestacao/kanban";
+export { updateMovimentacaoStatus } from "./prestacao/status";
+export {
+  importDiretoriosMunicipais,
+  listDiretoriosMunicipais,
+  upsertDiretorioMunicipal,
+  type DiretorioMunicipalInput,
+  type ImportMunicipalRow,
+} from "./prestacao/municipal";
 export { parseExcel } from "./ingest/excel";
 export { ingestPdf, rowFromExtraction } from "./ingest/pdf";
 export { computeHashMovimento, parseOfx, persistTransactions } from "./ingest/ofx";
@@ -69,7 +93,9 @@ export {
   ARQUIVO_INGESTAO_STATUS,
   MOVIMENTACAO_DIRECAO,
   MOVIMENTACAO_STATUS,
+  TIPO_PRESTADOR,
   type IngestRow,
+  type PrestadorContext,
   type MovimentacaoDirecao,
   type ParsedTransactionRow,
 } from "./ingest/types";
@@ -78,7 +104,20 @@ export {
   extractDocumentCandidates,
   type ApplyDeterministicMatchOptions,
 } from "./match/rules";
-export { generatePendenciasCsv, CSV_COLUMNS } from "./report/pendencias";
+export {
+  evaluateMovimentacaoWithAi,
+  type AiMatchResult,
+  type EvaluateAiMatchInput,
+} from "./match/ai";
+export {
+  applyAiMatchToMovimentacao,
+  type ApplyAiMatchOptions,
+} from "./match/apply-ai";
+export {
+  generatePendenciasCsv,
+  generatePendenciasCsvByPrestador,
+  CSV_COLUMNS,
+} from "./report/pendencias";
 export { normalizeCnpj, normalizeCpf, normalizeName } from "./normalize";
 export {
   CADASTRO_TIPO,

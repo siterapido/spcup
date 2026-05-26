@@ -8,12 +8,14 @@ import { and, eq, notInArray, or } from "drizzle-orm";
 
 import {
   arquivoIngestao,
+  diretorioEstadual,
   movimentacao,
   movimentacaoSpca,
   type Db,
 } from "@spc-up/db";
 
 import { REQUIRED_SPCA_FIELDS } from "../confidence";
+import { scopePrestadorExercicio } from "../export/scope";
 
 const EXPORTABLE_STATUSES = ["CONFIRMADO", "EXPORTADO"] as const;
 
@@ -74,15 +76,13 @@ function escapeCsv(value: string): string {
   return value;
 }
 
-/** Write pendencias CSV and return the number of rows written. */
-export async function generatePendenciasCsv(
+/** Write pendencias CSV for a prestador scope. */
+export async function generatePendenciasCsvByPrestador(
   db: Db,
-  uf: string,
+  cnpjPrestador: string,
   exercicio: number,
   outputPath: string,
 ): Promise<number> {
-  const ufUpper = uf.toUpperCase();
-
   const rows = await db
     .select({
       dataMovimento: movimentacao.dataMovimento,
@@ -99,8 +99,7 @@ export async function generatePendenciasCsv(
     .leftJoin(arquivoIngestao, eq(arquivoIngestao.id, movimentacao.arquivoIngestaoId))
     .where(
       and(
-        eq(movimentacao.uf, ufUpper),
-        eq(movimentacao.exercicio, exercicio),
+        scopePrestadorExercicio(cnpjPrestador, exercicio),
         or(
           notInArray(movimentacao.status, [...EXPORTABLE_STATUSES]),
           eq(movimentacao.bloqueioExport, true),
@@ -142,4 +141,23 @@ export async function generatePendenciasCsv(
   });
 
   return rows.length;
+}
+
+/** Legacy: pendencias for estadual prestador of UF. */
+export async function generatePendenciasCsv(
+  db: Db,
+  uf: string,
+  exercicio: number,
+  outputPath: string,
+): Promise<number> {
+  const rows = await db
+    .select({ cnpj: diretorioEstadual.cnpjPrestador })
+    .from(diretorioEstadual)
+    .where(eq(diretorioEstadual.uf, uf.toUpperCase()))
+    .limit(1);
+  const cnpj = rows[0]?.cnpj;
+  if (!cnpj) {
+    throw new Error(`Diretório estadual não cadastrado para UF=${uf}`);
+  }
+  return generatePendenciasCsvByPrestador(db, cnpj, exercicio, outputPath);
 }

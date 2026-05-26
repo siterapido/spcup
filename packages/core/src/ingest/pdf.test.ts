@@ -13,14 +13,19 @@ vi.mock("./ofx", () => ({
   parseOfx: vi.fn(),
 }));
 
-vi.mock("../match/rules", () => ({
-  applyDeterministicMatch: vi.fn(),
+vi.mock("../match/apply-ai", () => ({
+  applyAiMatchToMovimentacao: vi.fn(),
 }));
 
 import { extractStructuredFromPdf } from "../ai/openrouter";
-import { applyDeterministicMatch } from "../match/rules";
+import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { persistTransactions } from "./ofx";
-import { MOVIMENTACAO_STATUS } from "./types";
+import { MOVIMENTACAO_STATUS, TIPO_PRESTADOR } from "./types";
+
+const PRESTADOR_SP = {
+  cnpjPrestador: "14679407000100",
+  tipoPrestador: TIPO_PRESTADOR.ESTADUAL,
+};
 import { ingestPdf, rowFromExtraction } from "./pdf";
 
 const SAMPLE_EXTRACTION = {
@@ -77,9 +82,16 @@ describe("ingestPdf", () => {
 
     vi.mocked(extractStructuredFromPdf).mockResolvedValue(SAMPLE_EXTRACTION);
     vi.mocked(persistTransactions).mockResolvedValue([draftMov] as never);
-    vi.mocked(applyDeterministicMatch).mockResolvedValue(matchedMov as never);
+    vi.mocked(applyAiMatchToMovimentacao).mockResolvedValue(matchedMov as never);
 
-    const movimentacoes = await ingestPdf({} as never, "SP", 2025, "arquivo-1", pdfPath);
+    const movimentacoes = await ingestPdf(
+      {} as never,
+      "SP",
+      2025,
+      "arquivo-1",
+      pdfPath,
+      PRESTADOR_SP,
+    );
 
     expect(movimentacoes).toHaveLength(1);
     expect(movimentacoes[0]).toMatchObject({
@@ -103,7 +115,8 @@ describe("ingestPdf", () => {
           direcao: "ENTRADA",
         }),
       ]),
+      PRESTADOR_SP,
     );
-    expect(applyDeterministicMatch).toHaveBeenCalledWith(expect.anything(), "mov-1");
+    expect(applyAiMatchToMovimentacao).toHaveBeenCalledWith(expect.anything(), "mov-1");
   });
 });

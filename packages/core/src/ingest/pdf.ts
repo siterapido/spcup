@@ -1,12 +1,13 @@
 import type { Db, Movimentacao } from "@spc-up/db";
 
 import { extractStructuredFromPdf } from "../ai/openrouter";
-import { applyDeterministicMatch } from "../match/rules";
+import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { persistTransactions } from "./ofx";
 import {
   MOVIMENTACAO_DIRECAO,
   type MovimentacaoDirecao,
   type ParsedTransactionRow,
+  type PrestadorContext,
 } from "./types";
 
 function parseExtractionDate(value: string): Date {
@@ -52,14 +53,22 @@ export async function ingestPdf(
   exercicio: number,
   arquivoId: string,
   pathOrBuffer: string | Buffer,
+  prestador: PrestadorContext,
 ): Promise<Movimentacao[]> {
   const extracted = await extractStructuredFromPdf(pathOrBuffer);
   const row = rowFromExtraction(extracted);
-  const created = await persistTransactions(db, uf, exercicio, arquivoId, [row]);
+  const created = await persistTransactions(
+    db,
+    uf,
+    exercicio,
+    arquivoId,
+    [row],
+    prestador,
+  );
 
   const matched: Movimentacao[] = [];
   for (const movimentacao of created) {
-    matched.push(await applyDeterministicMatch(db, movimentacao.id));
+    matched.push(await applyAiMatchToMovimentacao(db, movimentacao.id));
   }
   return matched;
 }

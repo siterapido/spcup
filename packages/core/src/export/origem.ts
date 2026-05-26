@@ -17,6 +17,7 @@ import {
   writeXml,
   xmlToBuffer,
 } from "./common";
+import { scopePrestadorExercicio } from "./scope";
 
 const ESPECIE_TAG: Record<string, string> = {
   PIX: "transferenciaEletronicaPIX",
@@ -52,13 +53,12 @@ export type MovimentacaoOrigem = Movimentacao & {
 
 async function fetchMovimentacoes(
   db: Db,
-  uf: string,
+  cnpjPrestador: string,
   exercicio: number,
 ): Promise<MovimentacaoOrigem[]> {
   const rows = await db.query.movimentacao.findMany({
     where: and(
-      eq(movimentacao.uf, uf.toUpperCase()),
-      eq(movimentacao.exercicio, exercicio),
+      scopePrestadorExercicio(cnpjPrestador, exercicio),
       eq(movimentacao.direcao, "ENTRADA"),
       eq(movimentacao.status, "CONFIRMADO"),
     ),
@@ -194,7 +194,7 @@ export async function buildOrigemXml(
   exercicio: number,
   cnpj: string,
 ): Promise<string> {
-  const movimentacoes = await fetchMovimentacoes(db, uf, exercicio);
+  const movimentacoes = await fetchMovimentacoes(db, cnpj, exercicio);
   const doc = buildOrigemDocument(movimentacoes, cnpj, exercicio);
   return writeXml(doc, exportPath(uf.toUpperCase(), exercicio, cnpj, "origem"));
 }
@@ -205,6 +205,6 @@ export async function buildOrigemXmlBuffer(
   exercicio: number,
   cnpj: string,
 ): Promise<Buffer> {
-  const movimentacoes = await fetchMovimentacoes(db, uf, exercicio);
+  const movimentacoes = await fetchMovimentacoes(db, cnpj, exercicio);
   return xmlToBuffer(buildOrigemDocument(movimentacoes, cnpj, exercicio));
 }

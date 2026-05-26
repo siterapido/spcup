@@ -14,12 +14,50 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+export const TIPO_PRESTADOR = {
+  ESTADUAL: "ESTADUAL",
+  MUNICIPAL: "MUNICIPAL",
+} as const;
+
+export const SESSAO_STATUS = {
+  ABERTA: "ABERTA",
+  EM_PROCESSAMENTO: "EM_PROCESSAMENTO",
+  ENCERRADA: "ENCERRADA",
+} as const;
+
 export const diretorioEstadual = pgTable("diretorio_estadual", {
   id: uuid("id").primaryKey().defaultRandom(),
   uf: varchar("uf", { length: 2 }).notNull().unique(),
   cnpjPrestador: varchar("cnpj_prestador", { length: 14 }).notNull(),
   nome: varchar("nome", { length: 255 }).notNull(),
   ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const diretorioMunicipal = pgTable(
+  "diretorio_municipal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    uf: varchar("uf", { length: 2 }).notNull(),
+    codigoIbge: varchar("codigo_ibge", { length: 7 }),
+    nomeMunicipio: varchar("nome_municipio", { length: 255 }).notNull(),
+    cnpjPrestador: varchar("cnpj_prestador", { length: 14 }).notNull().unique(),
+    ativo: boolean("ativo").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("ix_diretorio_municipal_uf_ativo").on(table.uf, table.ativo)],
+);
+
+export const sessaoPrestacao = pgTable("sessao_prestacao", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  uf: varchar("uf", { length: 2 }).notNull(),
+  tipoPrestador: varchar("tipo_prestador", { length: 10 }).notNull(),
+  diretorioEstadualId: uuid("diretorio_estadual_id").references(() => diretorioEstadual.id),
+  diretorioMunicipalId: uuid("diretorio_municipal_id").references(() => diretorioMunicipal.id),
+  exercicio: integer("exercicio").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default(SESSAO_STATUS.ABERTA),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -92,6 +130,7 @@ export const arquivoIngestao = pgTable("arquivo_ingestao", {
   diretorioEstadualId: uuid("diretorio_estadual_id")
     .notNull()
     .references(() => diretorioEstadual.id),
+  sessaoPrestacaoId: uuid("sessao_prestacao_id").references(() => sessaoPrestacao.id),
   uf: varchar("uf", { length: 2 }).notNull(),
   exercicio: integer("exercicio").notNull(),
   nomeArquivo: varchar("nome_arquivo", { length: 512 }).notNull(),
@@ -118,6 +157,10 @@ export const movimentacao = pgTable(
     pessoaFisicaId: uuid("pessoa_fisica_id").references(() => pessoaFisica.id),
     pessoaJuridicaId: uuid("pessoa_juridica_id").references(() => pessoaJuridica.id),
     arquivoIngestaoId: uuid("arquivo_ingestao_id").references(() => arquivoIngestao.id),
+    sessaoPrestacaoId: uuid("sessao_prestacao_id").references(() => sessaoPrestacao.id),
+    cnpjPrestador: varchar("cnpj_prestador", { length: 14 }).notNull(),
+    tipoPrestador: varchar("tipo_prestador", { length: 10 }).notNull(),
+    diretorioMunicipalId: uuid("diretorio_municipal_id").references(() => diretorioMunicipal.id),
     status: varchar("status", { length: 20 }).notNull().default("RASCUNHO"),
     confiancaGlobal: real("confianca_global").notNull().default(0),
     bloqueioExport: boolean("bloqueio_export").notNull().default(false),
@@ -126,13 +169,14 @@ export const movimentacao = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("uq_mov_uf_exercicio_hash").on(
-      table.uf,
+    uniqueIndex("uq_mov_prestador_exercicio_hash").on(
+      table.cnpjPrestador,
       table.exercicio,
       table.hashMovimento,
     ),
     index("ix_movimentacao_exercicio").on(table.exercicio),
     index("ix_movimentacao_uf").on(table.uf),
+    index("ix_movimentacao_sessao").on(table.sessaoPrestacaoId),
   ],
 );
 
@@ -200,6 +244,25 @@ export const usuario = pgTable(
 export const diretorioEstadualRelations = relations(diretorioEstadual, ({ many }) => ({
   contasBancarias: many(contaBancaria),
   arquivosIngestao: many(arquivoIngestao),
+  sessoesPrestacao: many(sessaoPrestacao),
+}));
+
+export const diretorioMunicipalRelations = relations(diretorioMunicipal, ({ many }) => ({
+  sessoesPrestacao: many(sessaoPrestacao),
+  movimentacoes: many(movimentacao),
+}));
+
+export const sessaoPrestacaoRelations = relations(sessaoPrestacao, ({ one, many }) => ({
+  diretorioEstadual: one(diretorioEstadual, {
+    fields: [sessaoPrestacao.diretorioEstadualId],
+    references: [diretorioEstadual.id],
+  }),
+  diretorioMunicipal: one(diretorioMunicipal, {
+    fields: [sessaoPrestacao.diretorioMunicipalId],
+    references: [diretorioMunicipal.id],
+  }),
+  arquivosIngestao: many(arquivoIngestao),
+  movimentacoes: many(movimentacao),
 }));
 
 export const contaBancariaRelations = relations(contaBancaria, ({ one, many }) => ({
@@ -234,6 +297,10 @@ export const arquivoIngestaoRelations = relations(arquivoIngestao, ({ one, many 
     fields: [arquivoIngestao.diretorioEstadualId],
     references: [diretorioEstadual.id],
   }),
+  sessaoPrestacao: one(sessaoPrestacao, {
+    fields: [arquivoIngestao.sessaoPrestacaoId],
+    references: [sessaoPrestacao.id],
+  }),
   movimentacoes: many(movimentacao),
 }));
 
@@ -253,6 +320,14 @@ export const movimentacaoRelations = relations(movimentacao, ({ one, many }) => 
   arquivoIngestao: one(arquivoIngestao, {
     fields: [movimentacao.arquivoIngestaoId],
     references: [arquivoIngestao.id],
+  }),
+  sessaoPrestacao: one(sessaoPrestacao, {
+    fields: [movimentacao.sessaoPrestacaoId],
+    references: [sessaoPrestacao.id],
+  }),
+  diretorioMunicipal: one(diretorioMunicipal, {
+    fields: [movimentacao.diretorioMunicipalId],
+    references: [diretorioMunicipal.id],
   }),
   spca: one(movimentacaoSpca, {
     fields: [movimentacao.id],
@@ -288,6 +363,10 @@ export const movimentacaoSpcaRelations = relations(movimentacaoSpca, ({ one }) =
 
 export type DiretorioEstadual = typeof diretorioEstadual.$inferSelect;
 export type NewDiretorioEstadual = typeof diretorioEstadual.$inferInsert;
+export type DiretorioMunicipal = typeof diretorioMunicipal.$inferSelect;
+export type NewDiretorioMunicipal = typeof diretorioMunicipal.$inferInsert;
+export type SessaoPrestacao = typeof sessaoPrestacao.$inferSelect;
+export type NewSessaoPrestacao = typeof sessaoPrestacao.$inferInsert;
 export type PessoaFisica = typeof pessoaFisica.$inferSelect;
 export type NewPessoaFisica = typeof pessoaFisica.$inferInsert;
 export type PessoaJuridica = typeof pessoaJuridica.$inferSelect;

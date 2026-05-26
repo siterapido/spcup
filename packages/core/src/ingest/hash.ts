@@ -13,12 +13,12 @@ export async function fileHash(path: string): Promise<string> {
 }
 
 export function computeHashMovimento(
-  uf: string,
+  cnpjPrestador: string,
   exercicio: number,
   row: ParsedTransactionRow,
 ): string {
   const payload = [
-    uf,
+    cnpjPrestador,
     String(exercicio),
     row.dataMovimento.toISOString().slice(0, 10),
     row.valor,

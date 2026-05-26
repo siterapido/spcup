@@ -4,7 +4,13 @@ import type { Db, Movimentacao } from "@spc-up/db";
 import { movimentacao } from "@spc-up/db";
 
 import { computeHashMovimento } from "./hash";
-import { MOVIMENTACAO_DIRECAO, MOVIMENTACAO_STATUS, type ParsedTransactionRow } from "./types";
+import {
+  MOVIMENTACAO_DIRECAO,
+  MOVIMENTACAO_STATUS,
+  TIPO_PRESTADOR,
+  type ParsedTransactionRow,
+  type PrestadorContext,
+} from "./types";
 
 export { computeHashMovimento } from "./hash";
 
@@ -84,6 +90,7 @@ export async function persistTransactions(
   exercicio: number,
   arquivoId: string,
   rows: ParsedTransactionRow[],
+  prestador: PrestadorContext,
 ): Promise<Movimentacao[]> {
   const created: Movimentacao[] = [];
   const ufUpper = uf.toUpperCase();
@@ -100,8 +107,12 @@ export async function persistTransactions(
         direcao: row.direcao,
         nrExtratoBancario: row.nrExtratoBancario,
         arquivoIngestaoId: arquivoId,
+        sessaoPrestacaoId: prestador.sessaoPrestacaoId,
+        cnpjPrestador: prestador.cnpjPrestador,
+        tipoPrestador: prestador.tipoPrestador,
+        diretorioMunicipalId: prestador.diretorioMunicipalId,
         status: MOVIMENTACAO_STATUS.RASCUNHO,
-        hashMovimento: computeHashMovimento(ufUpper, exercicio, row),
+        hashMovimento: computeHashMovimento(prestador.cnpjPrestador, exercicio, row),
       })
       .returning();
 

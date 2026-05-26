@@ -41,10 +41,9 @@ export type MovimentacaoDoacao = Movimentacao & {
 
 async function fetchMovimentacoes(
   db: Db,
-  uf: string,
+  cnpjPrestador: string,
   exercicio: number,
 ): Promise<MovimentacaoDoacao[]> {
-  const ufUpper = uf.toUpperCase();
   const links = await db.query.doacaoFinanceiraLink.findMany({
     where: eq(doacaoFinanceiraLink.sincronizado, true),
     with: {
@@ -59,7 +58,7 @@ async function fetchMovimentacoes(
     .filter(
       (mov) =>
         mov != null &&
-        mov.uf === ufUpper &&
+        mov.cnpjPrestador === cnpjPrestador &&
         mov.exercicio === exercicio &&
         mov.direcao === "ENTRADA" &&
         mov.status === "CONFIRMADO" &&
@@ -192,7 +191,7 @@ export async function buildDoacaoXml(
   exercicio: number,
   cnpj: string,
 ): Promise<string> {
-  const movimentacoes = await fetchMovimentacoes(db, uf, exercicio);
+  const movimentacoes = await fetchMovimentacoes(db, cnpj, exercicio);
   const doc = buildDoacaoDocument(movimentacoes, cnpj, uf, exercicio);
   return writeXml(doc, exportPath(uf.toUpperCase(), exercicio, cnpj, "doacao"));
 }
@@ -203,6 +202,6 @@ export async function buildDoacaoXmlBuffer(
   exercicio: number,
   cnpj: string,
 ): Promise<Buffer> {
-  const movimentacoes = await fetchMovimentacoes(db, uf, exercicio);
+  const movimentacoes = await fetchMovimentacoes(db, cnpj, exercicio);
   return xmlToBuffer(buildDoacaoDocument(movimentacoes, cnpj, uf, exercicio));
 }

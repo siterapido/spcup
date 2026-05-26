@@ -1,3 +1,17 @@
+export const TIPO_PRESTADOR = {
+  ESTADUAL: "ESTADUAL",
+  MUNICIPAL: "MUNICIPAL",
+} as const;
+
+export type TipoPrestador = (typeof TIPO_PRESTADOR)[keyof typeof TIPO_PRESTADOR];
+
+export interface PrestadorContext {
+  cnpjPrestador: string;
+  tipoPrestador: TipoPrestador;
+  sessaoPrestacaoId?: string;
+  diretorioMunicipalId?: string;
+}
+
 export const MOVIMENTACAO_DIRECAO = {
   ENTRADA: "ENTRADA",
   SAIDA: "SAIDA",
@@ -8,6 +22,7 @@ export const MOVIMENTACAO_STATUS = {
   PENDENTE_REVISAO: "PENDENTE_REVISAO",
   CONFIRMADO: "CONFIRMADO",
   EXPORTADO: "EXPORTADO",
+  REJEITADO: "REJEITADO",
 } as const;
 
 export const ARQUIVO_INGESTAO_STATUS = {

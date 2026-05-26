@@ -11,6 +11,7 @@ import {
   writeXml,
   xmlToBuffer,
 } from "./common";
+import { scopePrestadorExercicio } from "./scope";
 
 const DOCUMENTO_TAG: Record<string, string> = {
   BOLETO: "boleto",
@@ -33,13 +34,12 @@ export type MovimentacaoAplicacao = Movimentacao & {
 
 async function fetchMovimentacoes(
   db: Db,
-  uf: string,
+  cnpjPrestador: string,
   exercicio: number,
 ): Promise<MovimentacaoAplicacao[]> {
   const rows = await db.query.movimentacao.findMany({
     where: and(
-      eq(movimentacao.uf, uf.toUpperCase()),
-      eq(movimentacao.exercicio, exercicio),
+      scopePrestadorExercicio(cnpjPrestador, exercicio),
       eq(movimentacao.direcao, "SAIDA"),
       eq(movimentacao.status, "CONFIRMADO"),
     ),
@@ -156,7 +156,7 @@ export async function buildAplicacaoXml(
   exercicio: number,
   cnpj: string,
 ): Promise<string> {
-  const movimentacoes = await fetchMovimentacoes(db, uf, exercicio);
+  const movimentacoes = await fetchMovimentacoes(db, cnpj, exercicio);
   const doc = buildAplicacaoDocument(movimentacoes, cnpj, exercicio);
   return writeXml(doc, exportPath(uf.toUpperCase(), exercicio, cnpj, "aplicacao"));
 }
@@ -167,6 +167,6 @@ export async function buildAplicacaoXmlBuffer(
   exercicio: number,
   cnpj: string,
 ): Promise<Buffer> {
-  const movimentacoes = await fetchMovimentacoes(db, uf, exercicio);
+  const movimentacoes = await fetchMovimentacoes(db, cnpj, exercicio);
   return xmlToBuffer(buildAplicacaoDocument(movimentacoes, cnpj, exercicio));
 }

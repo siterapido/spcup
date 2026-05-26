@@ -10,12 +10,17 @@ import {
 import { eq } from "drizzle-orm";
 
 import { storageRoot as resolveStorageRoot } from "../export/common";
-import { applyDeterministicMatch } from "../match/rules";
+import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { parseExcel } from "./excel";
 import { fileHashBuffer } from "./hash";
 import { ingestPdf } from "./pdf";
 import { parseOfx, persistTransactions } from "./ofx";
-import { ARQUIVO_INGESTAO_STATUS, type IngestRow } from "./types";
+import {
+  ARQUIVO_INGESTAO_STATUS,
+  TIPO_PRESTADOR,
+  type IngestRow,
+  type PrestadorContext,
+} from "./types";
 
 export const INGEST_EXTENSIONS = new Set([".ofx", ".xlsx", ".xls", ".pdf"]);
 
@@ -93,6 +98,8 @@ export interface IngestFileParams {
   source: string;
   storageRoot?: string;
   confiancaLimiteAlta?: number;
+  prestador?: PrestadorContext;
+  sessaoPrestacaoId?: string;
 }
 
 function defaultStorageRoot(): string {
@@ -110,10 +117,13 @@ export async function ingestFile(
   const buffer = await readFile(source);
   const stored = await storeUpload(source, uf, params.exercicio, storageRoot);
 
+  const prestador = await resolvePrestadorForIngest(db, uf, params);
+
   const [arquivo] = await db
     .insert(arquivoIngestao)
     .values({
       diretorioEstadualId: params.diretorioId,
+      sessaoPrestacaoId: prestador.sessaoPrestacaoId,
       uf,
       exercicio: params.exercicio,
       nomeArquivo: path.basename(source),
@@ -132,7 +142,14 @@ export async function ingestFile(
     let createdCount: number;
 
     if (suffix === ".pdf") {
-      const matched = await ingestPdf(db, uf, params.exercicio, arquivo.id, buffer);
+      const matched = await ingestPdf(
+        db,
+        uf,
+        params.exercicio,
+        arquivo.id,
+        buffer,
+        prestador,
+      );
       createdCount = matched.length;
     } else {
       const rows = await parseIngestFile(source);
@@ -142,12 +159,11 @@ export async function ingestFile(
         params.exercicio,
         arquivo.id,
         rows,
+        prestador,
       );
 
       for (const mov of created) {
-        await applyDeterministicMatch(db, mov.id, {
-          confiancaLimiteAlta: params.confiancaLimiteAlta,
-        });
+        await applyAiMatchToMovimentacao(db, mov.id);
       }
       createdCount = created.length;
     }
@@ -178,6 +194,30 @@ export interface IngestBufferParams {
   buffer: Buffer;
   caminhoStorage: string;
   confiancaLimiteAlta?: number;
+  prestador?: PrestadorContext;
+  sessaoPrestacaoId?: string;
+}
+
+async function resolvePrestadorForIngest(
+  db: Db,
+  uf: string,
+  params: { prestador?: PrestadorContext; sessaoPrestacaoId?: string },
+): Promise<PrestadorContext> {
+  if (params.prestador) {
+    return {
+      ...params.prestador,
+      sessaoPrestacaoId: params.prestador.sessaoPrestacaoId ?? params.sessaoPrestacaoId,
+    };
+  }
+  const diretorio = await getDiretorio(db, uf);
+  if (!diretorio) {
+    throw new Error(`Diretório estadual não cadastrado para UF=${uf}`);
+  }
+  return {
+    cnpjPrestador: diretorio.cnpjPrestador,
+    tipoPrestador: TIPO_PRESTADOR.ESTADUAL,
+    sessaoPrestacaoId: params.sessaoPrestacaoId,
+  };
 }
 
 async function parseIngestBuffer(
@@ -207,10 +247,13 @@ export async function ingestFileBuffer(
     );
   }
 
+  const prestador = await resolvePrestadorForIngest(db, uf, params);
+
   const [arquivo] = await db
     .insert(arquivoIngestao)
     .values({
       diretorioEstadualId: params.diretorioId,
+      sessaoPrestacaoId: prestador.sessaoPrestacaoId,
       uf,
       exercicio: params.exercicio,
       nomeArquivo: params.filename,
@@ -234,6 +277,7 @@ export async function ingestFileBuffer(
         params.exercicio,
         arquivo.id,
         params.buffer,
+        prestador,
       );
       matchedIds = matched.map((m) => m.id);
     } else {
@@ -244,12 +288,11 @@ export async function ingestFileBuffer(
         params.exercicio,
         arquivo.id,
         rows,
+        prestador,
       );
 
       for (const mov of created) {
-        await applyDeterministicMatch(db, mov.id, {
-          confiancaLimiteAlta: params.confiancaLimiteAlta,
-        });
+        await applyAiMatchToMovimentacao(db, mov.id);
       }
       matchedIds = created.map((m) => m.id);
     }

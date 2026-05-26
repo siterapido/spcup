@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 import { computeHashMovimento, parseOfx, persistTransactions } from "./ofx";
-import { MOVIMENTACAO_STATUS } from "./types";
+import { MOVIMENTACAO_STATUS, TIPO_PRESTADOR } from "./types";
+
+const PRESTADOR_SP = {
+  cnpjPrestador: "14679407000100",
+  tipoPrestador: TIPO_PRESTADOR.ESTADUAL,
+};
 
 const fixtureDir = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = path.join(fixtureDir, "../../fixtures/sample.ofx");
@@ -33,9 +38,9 @@ describe("computeHashMovimento", () => {
   it("produces stable sha256 hex digest", async () => {
     const rows = await parseOfx(FIXTURE_PATH);
     const row = rows[0]!;
-    const digest = computeHashMovimento("SP", 2025, row);
+    const digest = computeHashMovimento(PRESTADOR_SP.cnpjPrestador, 2025, row);
     expect(digest).toHaveLength(64);
-    expect(digest).toBe(computeHashMovimento("SP", 2025, row));
+    expect(digest).toBe(computeHashMovimento(PRESTADOR_SP.cnpjPrestador, 2025, row));
   });
 });
 
@@ -49,7 +54,7 @@ describe("persistTransactions", () => {
           id: "mov-1",
           status: MOVIMENTACAO_STATUS.RASCUNHO,
           arquivoIngestaoId: "arquivo-1",
-          hashMovimento: computeHashMovimento("SP", 2025, rows[0]!),
+          hashMovimento: computeHashMovimento(PRESTADOR_SP.cnpjPrestador, 2025, rows[0]!),
         },
       ])
       .mockResolvedValueOnce([
@@ -57,7 +62,7 @@ describe("persistTransactions", () => {
           id: "mov-2",
           status: MOVIMENTACAO_STATUS.RASCUNHO,
           arquivoIngestaoId: "arquivo-1",
-          hashMovimento: computeHashMovimento("SP", 2025, rows[1]!),
+          hashMovimento: computeHashMovimento(PRESTADOR_SP.cnpjPrestador, 2025, rows[1]!),
         },
       ]);
 
@@ -65,7 +70,14 @@ describe("persistTransactions", () => {
     const insert = vi.fn().mockReturnValue({ values });
     const db = { insert } as never;
 
-    const created = await persistTransactions(db, "SP", 2025, "arquivo-1", rows);
+    const created = await persistTransactions(
+      db,
+      "SP",
+      2025,
+      "arquivo-1",
+      rows,
+      PRESTADOR_SP,
+    );
 
     expect(created).toHaveLength(2);
     for (const mov of created) {
