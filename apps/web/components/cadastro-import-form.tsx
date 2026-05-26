@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Table, Td, Th } from "@/components/ui/table";
 
 type ColumnMap = {
   documento: string;
@@ -12,19 +13,29 @@ type ColumnMap = {
 
 const EMPTY_MAP: ColumnMap = { documento: "", nome: "", tipo: "" };
 
+interface ImportResult {
+  inseridos: number;
+  atualizados: number;
+  ignorados: number;
+  conflitos: number;
+  erros: Array<{ linha: number; motivo: string }>;
+}
+
 export function CadastroImportForm() {
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [columnMap, setColumnMap] = useState<ColumnMap>(EMPTY_MAP);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
 
   async function loadPreview(selected: File) {
     setPreviewLoading(true);
     setPreviewError(null);
-    setResult(null);
+    setImportResult(null);
+    setErrorMessage(null);
     setHeaders([]);
     setColumnMap(EMPTY_MAP);
 
@@ -63,16 +74,19 @@ export function CadastroImportForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) {
-      setResult("Selecione um arquivo.");
+      setErrorMessage("Selecione um arquivo.");
+      setImportResult(null);
       return;
     }
     if (!columnMap.documento || !columnMap.nome) {
-      setResult("Mapeie as colunas documento e nome.");
+      setErrorMessage("Mapeie as colunas documento e nome.");
+      setImportResult(null);
       return;
     }
 
     setLoading(true);
-    setResult(null);
+    setImportResult(null);
+    setErrorMessage(null);
     try {
       const form = new FormData();
       form.set("file", file);
@@ -87,14 +101,18 @@ export function CadastroImportForm() {
       const res = await fetch("/api/pessoas/import", { method: "POST", body: form });
       const json = await res.json();
       if (!res.ok) {
-        setResult(json.error ?? "Falha na importação");
+        setErrorMessage(json.error ?? "Falha na importação");
         return;
       }
-      setResult(
-        `Inseridos: ${json.inseridos}, atualizados: ${json.atualizados}, ignorados: ${json.ignorados}, conflitos: ${json.conflitos}, erros: ${json.erros?.length ?? 0}`,
-      );
+      setImportResult({
+        inseridos: json.inseridos ?? 0,
+        atualizados: json.atualizados ?? 0,
+        ignorados: json.ignorados ?? 0,
+        conflitos: json.conflitos ?? 0,
+        erros: json.erros ?? [],
+      });
     } catch {
-      setResult("Erro de rede.");
+      setErrorMessage("Erro de rede.");
     } finally {
       setLoading(false);
     }
@@ -173,7 +191,34 @@ export function CadastroImportForm() {
       <Button type="submit" disabled={loading || previewLoading || headers.length === 0}>
         {loading ? "Importando…" : "Importar"}
       </Button>
-      {result ? <p className="text-sm text-up-black">{result}</p> : null}
+      {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
+      {importResult ? (
+        <div className="space-y-3">
+          <p className="text-sm text-up-black">
+            Inseridos: {importResult.inseridos}, atualizados: {importResult.atualizados},
+            ignorados: {importResult.ignorados}, conflitos: {importResult.conflitos}, erros:{" "}
+            {importResult.erros.length}
+          </p>
+          {importResult.erros.length > 0 ? (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Linha</Th>
+                  <Th>Motivo</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {importResult.erros.map((erro) => (
+                  <tr key={`${erro.linha}-${erro.motivo}`}>
+                    <Td>{erro.linha}</Td>
+                    <Td>{erro.motivo}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : null}
+        </div>
+      ) : null}
     </form>
   );
 }

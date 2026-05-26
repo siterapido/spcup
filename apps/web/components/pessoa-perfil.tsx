@@ -16,6 +16,7 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
     nome: string;
     documento_mascarado: string;
     tipo: string;
+    titulo_eleitor?: string | null;
   } | null>(null);
   const [resumo, setResumo] = useState<{
     total: number;
@@ -78,6 +79,9 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
         <Badge tone="neutral">{perfil.tipo}</Badge>
         <h2 className="mt-2 text-xl font-semibold">{perfil.nome}</h2>
         <p className="text-sm text-muted">{perfil.documento_mascarado}</p>
+        {tipo === "pf" && perfil.titulo_eleitor ? (
+          <p className="text-sm text-muted">Título de eleitor: {perfil.titulo_eleitor}</p>
+        ) : null}
         {resumo ? (
           <p className="mt-2 text-sm">
             {resumo.total} movimentação(ões) ·{" "}
