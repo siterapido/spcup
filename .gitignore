@@ -15,3 +15,7 @@ data/
 .ruff_cache/
 *.zip
 .DS_Store
+
+# TSE SPCA import guides (PDFs too large for repo; XSD copies in spc_up/spca/schemas/)
+Guia importação SPCA/*.pdf
+Guia importação SPCA/
