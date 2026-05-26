@@ -102,13 +102,6 @@ export {
   type DiretorioMunicipalInput,
   type ImportMunicipalRow,
 } from "./prestacao/municipal";
-export {
-  assignPessoaToMovimentacao,
-  getMovimentacaoDetalhe,
-  reprocessarIaMovimentacao,
-  type AssignPessoaInput,
-  type MovimentacaoDetalhe,
-} from "./prestacao/movimentacao-review";
 export { parseExcel } from "./ingest/excel";
 export {
   ingestPdf,

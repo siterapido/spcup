@@ -24,5 +24,13 @@ export async function POST(request: Request) {
   const result = await confirmMovimentacoes(db, body.ids);
   const erros = result.notFound.map((id) => `Não encontrada: ${id}`);
 
-  return NextResponse.json({ confirmadas: result.confirmed, erros });
+  const errosBlocked = result.blocked.map(
+    (id) => `Bloqueada para exportação: ${id}`,
+  );
+
+  return NextResponse.json({
+    confirmadas: result.confirmed,
+    blocked: result.blocked,
+    erros: [...erros, ...errosBlocked],
+  });
 }

@@ -10,6 +10,7 @@ export interface ConfirmResult {
   confirmed: number;
   total: number;
   notFound: string[];
+  blocked: string[];
 }
 
 /** Set status CONFIRMADO after re-evaluating confidence. */
@@ -28,6 +29,7 @@ export async function confirmMovimentacoes(
 
   const byId = new Map(rows.map((row) => [row.id, row]));
   const notFound: string[] = [];
+  const blocked: string[] = [];
   let confirmed = 0;
 
   for (const id of ids) {
@@ -55,6 +57,11 @@ export async function confirmMovimentacoes(
 
     evaluateMovimentacao(like);
 
+    if (like.bloqueio_export) {
+      blocked.push(id);
+      continue;
+    }
+
     await db
       .update(movimentacao)
       .set({
@@ -68,5 +75,5 @@ export async function confirmMovimentacoes(
     confirmed += 1;
   }
 
-  return { confirmed, total: ids.length, notFound };
+  return { confirmed, total: ids.length, notFound, blocked };
 }
