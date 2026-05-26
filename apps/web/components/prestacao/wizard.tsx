@@ -3,10 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { AttachmentDropzone } from "@/components/prestacao/attachment-dropzone";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-
 const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
@@ -22,7 +21,7 @@ export function PrestacaoWizard() {
   const [municipalId, setMunicipalId] = useState("");
   const [municipais, setMunicipais] = useState<Municipal[]>([]);
   const [exercicio, setExercicio] = useState("2025");
-  const [files, setFiles] = useState<FileList | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [estadualPlaceholder, setEstadualPlaceholder] = useState(false);
@@ -76,7 +75,7 @@ export function PrestacaoWizard() {
         return;
       }
 
-      if (files && files.length > 0) {
+      if (files.length > 0) {
         const data = new FormData();
         for (const file of files) {
           data.append("files", file);
@@ -287,16 +286,7 @@ export function PrestacaoWizard() {
 
       {step === 5 && (
         <div className="mt-4 space-y-3">
-          <label className="block text-sm font-medium">
-            Anexos (PDF, Excel, OFX)
-            <Input
-              type="file"
-              multiple
-              accept=".pdf,.xlsx,.xls,.ofx"
-              className="mt-1"
-              onChange={(e) => setFiles(e.target.files)}
-            />
-          </label>
+          <AttachmentDropzone files={files} onChange={setFiles} />
           {message && <p className="text-sm text-red-700">{message}</p>}
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => setStep(4)}>
