@@ -9,6 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from spc_up.models.base import Base
 
@@ -23,10 +24,17 @@ def _compile_array_sqlite(type_, compiler, **kw):
     return "TEXT"
 
 
+from spc_up.models import entities as _entities  # noqa: E402,F401 — register ORM tables
+
+
 @pytest.fixture
 def session() -> Session:
     """In-memory SQLite session for DB tests when Postgres is unavailable."""
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     db = sessionmaker(bind=engine, autoflush=False, autocommit=False)()
     try:

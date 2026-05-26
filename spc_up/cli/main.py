@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import shutil
 import uuid
 from pathlib import Path
@@ -10,25 +9,15 @@ from typing import Annotated
 
 import typer
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from spc_up.config import settings
 from spc_up.db import session_scope
-from spc_up.models.entities import (
-    ArquivoIngestao,
-    ArquivoIngestaoStatus,
-    DiretorioEstadual,
-    Movimentacao,
-    MovimentacaoStatus,
-)
+from spc_up.models.entities import DiretorioEstadual, Movimentacao, MovimentacaoStatus
 from spc_up.services.export.aplicacao import build_aplicacao_xml
 from spc_up.services.export.doacao import build_doacao_xml
 from spc_up.services.export.guard import can_export
 from spc_up.services.export.origem import build_origem_xml
-from spc_up.services.ingest.excel import parse_excel
-from spc_up.services.ingest.ofx import parse_ofx, persist_transactions
+from spc_up.services.ingest.pipeline import INGEST_EXTENSIONS, get_diretorio, ingest_file
 from spc_up.services.confidence import evaluate_movimentacao
-from spc_up.services.match.rules import apply_deterministic_match
 from spc_up.services.report.pendencias import generate_pendencias_csv
 from spc_up.spca.validate import SchemaName, validate_xml
 
@@ -38,7 +27,6 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-_INGEST_EXTENSIONS = {".ofx", ".xlsx", ".xls"}
 
 def _parse_uuid_list(ids: str) -> list[uuid.UUID]:
     parsed: list[uuid.UUID] = []
@@ -52,14 +40,6 @@ def _parse_uuid_list(ids: str) -> list[uuid.UUID]:
     return parsed
 
 
-def _file_hash(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(65536), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _collect_ingest_paths(path: Path) -> list[Path]:
     if path.is_file():
         return [path]
@@ -69,66 +49,13 @@ def _collect_ingest_paths(path: Path) -> list[Path]:
     files = sorted(
         p
         for p in path.iterdir()
-        if p.is_file() and p.suffix.lower() in _INGEST_EXTENSIONS
+        if p.is_file() and p.suffix.lower() in INGEST_EXTENSIONS
     )
     if not files:
         raise typer.BadParameter(
-            f"Nenhum arquivo OFX/Excel em {path} (extensões: {', '.join(sorted(_INGEST_EXTENSIONS))})."
+            f"Nenhum arquivo OFX/Excel em {path} (extensões: {', '.join(sorted(INGEST_EXTENSIONS))})."
         )
     return files
-
-
-def _parse_ingest_file(path: Path) -> list[dict]:
-    suffix = path.suffix.lower()
-    if suffix == ".ofx":
-        return parse_ofx(path)
-    if suffix in {".xlsx", ".xls"}:
-        return parse_excel(path)
-    raise typer.BadParameter(f"Formato não suportado: {path.suffix}")
-
-
-def _store_upload(path: Path, uf: str, exercicio: int) -> Path:
-    dest_dir = Path(settings.storage_root) / uf.upper() / str(exercicio)
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / path.name
-    shutil.copy2(path, dest)
-    return dest
-
-
-def _ingest_file(
-    session: Session,
-    *,
-    diretorio: DiretorioEstadual,
-    uf: str,
-    exercicio: int,
-    source: Path,
-) -> int:
-    stored = _store_upload(source, uf, exercicio)
-    arquivo = ArquivoIngestao(
-        diretorio_estadual_id=diretorio.id,
-        uf=uf.upper(),
-        exercicio=exercicio,
-        nome_arquivo=source.name,
-        hash_arquivo=_file_hash(source),
-        caminho_storage=str(stored),
-        status=ArquivoIngestaoStatus.PROCESSANDO.value,
-    )
-    session.add(arquivo)
-    session.flush()
-
-    try:
-        rows = _parse_ingest_file(source)
-        created = persist_transactions(session, uf.upper(), exercicio, arquivo.id, rows)
-        for movimentacao in created:
-            apply_deterministic_match(session, movimentacao.id)
-        arquivo.status = ArquivoIngestaoStatus.CONCLUIDO.value
-        session.commit()
-        return len(created)
-    except Exception as exc:
-        arquivo.status = ArquivoIngestaoStatus.ERRO.value
-        arquivo.erro_mensagem = str(exc)
-        session.commit()
-        raise
 
 
 @app.command()
@@ -143,20 +70,21 @@ def ingest(
 
     total = 0
     with session_scope() as session:
-        diretorio = session.scalar(select(DiretorioEstadual).where(DiretorioEstadual.uf == uf))
+        diretorio = get_diretorio(session, uf)
         if diretorio is None:
             typer.echo(f"Diretório estadual não cadastrado para UF={uf}.", err=True)
             raise typer.Exit(code=1)
 
         for source in sources:
             try:
-                count = _ingest_file(
+                created = ingest_file(
                     session,
                     diretorio=diretorio,
                     uf=uf,
                     exercicio=exercicio,
                     source=source,
                 )
+                count = len(created)
                 total += count
                 typer.echo(f"{source.name}: {count} movimentação(ões)")
             except Exception as exc:
