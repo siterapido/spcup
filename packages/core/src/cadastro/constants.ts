@@ -13,9 +13,17 @@ const TIPO_ALIASES: Record<string, CadastroTipo> = {
   PESSOA_JURIDICA: "PJ",
 };
 
+function normalizeTipoKey(raw: string): string {
+  return raw
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, "_");
+}
+
 export function parseCadastroTipo(raw: string): CadastroTipo | null {
-  const key = raw.trim().toUpperCase().replace(/\s+/g, "_");
-  return TIPO_ALIASES[key] ?? null;
+  return TIPO_ALIASES[normalizeTipoKey(raw)] ?? null;
 }
 
 export function isStubNome(tipo: CadastroTipo, nome: string): boolean {

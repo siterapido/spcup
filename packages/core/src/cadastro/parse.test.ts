@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import ExcelJS from "exceljs";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { parseCadastroTipo } from "./constants";
 import {
   extractSpreadsheetHeaders,
   parseCadastroSpreadsheet,
@@ -29,6 +30,13 @@ beforeAll(async () => {
   aliasSheet.addRow(["12345678909", "Maria Souza"]);
   aliasSheet.addRow(["11222333000181", "Empresa Alias LTDA"]);
   await aliasWorkbook.xlsx.writeFile(ALIAS_FIXTURE_PATH);
+});
+
+describe("parseCadastroTipo", () => {
+  it("accepts Portuguese labels with accents", () => {
+    expect(parseCadastroTipo("Pessoa Física")).toBe("PF");
+    expect(parseCadastroTipo("Pessoa Jurídica")).toBe("PJ");
+  });
 });
 
 describe("parseCadastroSpreadsheet", () => {
