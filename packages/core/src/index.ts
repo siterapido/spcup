@@ -155,6 +155,13 @@ export {
   generatePendenciasCsvByPrestador,
   CSV_COLUMNS,
 } from "./report/pendencias";
+export {
+  getSystemStats,
+  type ConfiancaFaixas,
+  type SystemStats,
+  type SystemStatsGlobal,
+  type SystemStatsScope,
+} from "./report/system-stats";
 export { normalizeCnpj, normalizeCpf, normalizeName } from "./normalize";
 export {
   CADASTRO_TIPO,
