@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-05-25-nextjs-vercel-neon-migration-design.md`
 
-**Python reference (port source):** `spc_up/**`, `tests/**`, `migrations/versions/001_initial.py`
+**Python reference (archived):** `legacy/python/spc_up/**`, `legacy/python/tests/**`, `legacy/python/migrations/versions/001_initial.py`
 
 ---
 
@@ -31,7 +31,7 @@
 | `.github/workflows/ci.yml` | pnpm test (replace Python CI) |
 | `vercel.json` | root directory `apps/web`, region `gru1` |
 
-**Legacy (remove after Task 30):** `spc_up/`, `pyproject.toml`, `alembic.ini`, `migrations/`, `tests/test_*.py`
+**Legacy (archived — Task 27):** `legacy/python/` (`spc_up/`, `pyproject.toml`, `alembic.ini`, `migrations/`, `tests/`)
 
 ---
 
@@ -651,8 +651,9 @@ jobs:
 - [ ] Tag: `git tag pre-nextjs-cutover`
 - [ ] Migrate prod DB + storage (Tasks 22–23).
 - [ ] Point DNS / Vercel production.
-- [ ] Move `spc_up/` → `legacy/python/` OR delete with tag reference.
-- [ ] Update README quick start for `pnpm` + Vercel.
+- [x] Move `spc_up/` → `legacy/python/` (see `legacy/python/README.md`).
+- [x] Update README quick start for `pnpm` + Vercel.
+- [x] Remove `pytest-legacy` CI job; add `pnpm build` after tests.
 - [ ] Commit: `chore: complete Next.js migration cutover`
 
 ---

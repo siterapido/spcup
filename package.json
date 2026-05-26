@@ -1,0 +1,28 @@
+{
+  "name": "spc-up",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test --filter=!web",
+    "lint": "turbo lint",
+    "db:generate": "pnpm --filter @spc-up/db generate",
+    "db:migrate": "pnpm --filter @spc-up/db migrate",
+    "seed:admin": "pnpm exec tsx scripts/seed-admin.ts",
+    "seed:diretorios": "pnpm exec tsx scripts/seed-diretorios.ts",
+    "spc-up": "pnpm --filter @spc-up/cli exec node dist/main.js",
+    "migrate-storage": "pnpm exec tsx scripts/migrate-storage.ts",
+    "verify-counts": "pnpm exec tsx scripts/verify-counts.ts"
+  },
+  "devDependencies": {
+    "@spc-up/db": "workspace:*",
+    "@vercel/blob": "^0.27.0",
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.39.0",
+    "tsx": "^4.19.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

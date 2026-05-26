@@ -16,6 +16,12 @@ data/
 *.zip
 .DS_Store
 
-# TSE SPCA import guides (PDFs too large for repo; XSD copies in spc_up/spca/schemas/)
+# TSE SPCA import guides (PDFs too large for repo; XSD copies in packages/spca/schemas/)
 Guia importação SPCA/*.pdf
 Guia importação SPCA/
+
+# Node / Turborepo
+node_modules/
+.next/
+dist/
+.turbo/

@@ -1,0 +1,25 @@
+{
+  "name": "@spc-up/core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@spc-up/db": "workspace:*",
+    "@spc-up/spca": "workspace:*",
+    "archiver": "^7.0.1",
+    "drizzle-orm": "^0.39.0",
+    "exceljs": "^4.4.0",
+    "xmlbuilder2": "^3.1.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  }
+}

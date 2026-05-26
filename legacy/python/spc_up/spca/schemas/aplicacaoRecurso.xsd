@@ -1,0 +1,1116 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<xs:schema elementFormDefault="qualified" targetNamespace="http://www.tse.jus.br/2012/XMLSchema/aplicacaoRecurso.xsd"
+	version="0.1" xmlns="http://www.tse.jus.br/2012/XMLSchema/aplicacaoRecurso.xsd"
+	xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:element name="importacaoAplicacaoRecurso" type="TpLayoutAplicacaoRecurso"/>
+	<xs:complexType name="TpLayoutAplicacaoRecurso">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="CABECALHO" type="TpCabecalhoAplicacaoRecurso"/>
+			<xs:element maxOccurs="1" minOccurs="1" name="CORPO" type="TpCorpoAplicacaoRecurso"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpCabecalhoAplicacaoRecurso">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="nrCnpjPrestador"	type="TpNumCnpj"/>
+			<xs:element maxOccurs="1" minOccurs="1" name="anoExercicio" type="AnoEleicao" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpCorpoAplicacaoRecurso">
+		<xs:sequence>
+			<xs:element maxOccurs="unbounded" minOccurs="1" name="gasto" type="TpGasto"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpGasto">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="pessoa" type="TpPessoa"/>
+			<xs:element maxOccurs="1" minOccurs="1" name="dadosDocumento" type="TpDadosDocumento"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="classificacaoGasto" type="TpClassificacaoGasto"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpPessoa">
+		<xs:choice>
+			<xs:element maxOccurs="1" minOccurs="0" name="pessoaFisica" type="TpPessoaFisica"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="pessoaJuridica" type="TpPessoaJuridica"/>
+		</xs:choice>
+	</xs:complexType>
+	<xs:complexType name="TpPessoaFisica">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="nrCpf" type="TpNumCpf"/>
+			<xs:element maxOccurs="1" minOccurs="1" name="nmPessoa" type="TpNmPessoa"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpPessoaJuridica">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="0" name="nrCnpj" type="TpNumCnpj"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="nmPessoa" type="TpNmPessoa"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpDadosDocumento">
+		<xs:choice>
+			<xs:element maxOccurs="1" minOccurs="0" name="boleto" type="TpDocumentoBoleto"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="contrato" type="TpDocumentoContrato"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="fiscal" type="TpDocumentoFiscal"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="fatura" type="TpDocumentoFatura"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="recibo" type="TpDocumentoRecibo"/>
+			<xs:element maxOccurs="1" minOccurs="0" name="outro" type="TpDocumentoOutro"/>
+		</xs:choice>
+	</xs:complexType>
+	<xs:complexType name="TpDocumentoBoleto">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="1" name="nrDocumento" type="TpNrDocumento"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="dataEmissaoContratacao"
+				type="xs:date"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="vrTotalDocumento"
+				type="TpMoeda"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpDocumentoContrato">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="1" name="nrDocumento" type="TpNrDocumento"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="dataEmissaoContratacao"
+				type="xs:date"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="vrTotalDocumento"
+				type="TpMoeda"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpDocumentoFiscal">
+		<xs:sequence>
+			<xs:element minOccurs="1" maxOccurs="1" name="nrDocumento" type="TpNrDocumento"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="dataEmissaoContratacao" type="xs:date"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="vrTotalDocumento"	type="TpMoeda"/>
+			<xs:element minOccurs="0" maxOccurs="1" name="nrAIDF" type="TpNrAIDF"/>
+			<xs:element minOccurs="0" maxOccurs="1" name="ano" type="TpAno"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpDocumentoFatura">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="1" name="nrDocumento" type="TpNrDocumento"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="dataEmissaoContratacao" type="xs:date"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="vrTotalDocumento"	type="TpMoeda"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpDocumentoRecibo">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="1" name="nrDocumento" type="TpNrDocumento"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="dataEmissaoContratacao" type="xs:date"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="vrTotalDocumento" type="TpMoeda"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpDocumentoOutro">
+		<xs:sequence>
+			<xs:element minOccurs="1" maxOccurs="1" name="descricao" type="TpNrDocumento"/>
+			<xs:element minOccurs="0" maxOccurs="1" name="nrDocumento" type="TpNrDocumento"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="dataEmissaoContratacao" type="xs:date"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="vrTotalDocumento" type="TpMoeda"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TpClassificacaoGasto">
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="unbounded" name="gastoContaContabil" type="TpGastoContaContabil"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	
+	
+	
+	
+	<xs:complexType name="TpGastoContaContabil">
+		<xs:sequence>
+			<xs:element minOccurs="1" maxOccurs="1" name="cdDescricaoGasto"	type="TpCdGastoContaContabil"/>
+			<xs:element minOccurs="1" maxOccurs="1" name="vrGasto" type="TpMoeda"/>
+            <xs:choice>
+				<xs:element name="situacao1" type="Situacao1Type" minOccurs="0" maxOccurs="1"/>
+            	<xs:element name="situacao2" type="Situacao2Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao3" type="Situacao3Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao4" type="Situacao4Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao5" type="Situacao5Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao6" type="Situacao6Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao7" type="Situacao7Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao8" type="Situacao8Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao9" type="Situacao9Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao10" type="Situacao10Type" minOccurs="0" maxOccurs="unbounded"/>
+            	<xs:element name="situacao11" type="Situacao11Type" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Situacao1Type">
+        <xs:sequence>
+            <xs:element name="descricaoResumida" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="Situacao2Type">
+        <xs:sequence>
+            <xs:element name="descricaoResumida" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+            <xs:element name="quantidade" minOccurs="1" maxOccurs="1">
+			    <xs:simpleType>
+			        <xs:restriction base="xs:integer">
+			            <xs:minExclusive value="0"/>
+			        </xs:restriction>
+			    </xs:simpleType>
+			</xs:element>
+            <xs:element name="custoItem" minOccurs="1" maxOccurs="1">
+                <xs:simpleType>
+                    <xs:restriction base="xs:decimal">
+                        <xs:totalDigits value="10"/>
+                        <xs:fractionDigits value="2"/>
+                        <xs:minExclusive value="0"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao3Type">
+        <xs:sequence>
+        
+			<xs:element name="nomeBeneficiario" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        
+        	<xs:element name="cargoVinculoPartido" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="finalidadeMotivo" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/> <!-- Limite de 200 caracteres -->
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			
+			<xs:element name="empresa" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/>
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			
+			<xs:element name="numeroBilheteLocalizador" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="trecho" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="dataDaViagem" minOccurs="1" maxOccurs="1" type="xs:date"/>
+			<xs:element name="valor" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:decimal">
+            			<xs:totalDigits value="10"/>  <!-- Número total de dígitos permitidos -->
+            			<xs:fractionDigits value="2"/> <!-- Exatamente duas casas decimais -->
+            			<xs:minExclusive value="0"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="Situacao4Type">
+        <xs:sequence>
+        
+			<xs:element name="nomeBeneficiario" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/>
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/> 
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        
+        	<xs:element name="cargoVinculoPartido" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="finalidadeMotivo" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/> <!-- Limite de 200 caracteres -->
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element minOccurs="1" maxOccurs="1" name="notaFiscalHospedagem" type="xs:integer"/>
+			<xs:element name="dataInicio" minOccurs="1" maxOccurs="1" type="xs:date"/>
+			<xs:element name="dataFim" minOccurs="1" maxOccurs="1" type="xs:date"/>
+			
+			<xs:element name="valor" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:decimal">
+            			<xs:totalDigits value="10"/>  <!-- Número total de dígitos permitidos -->
+            			<xs:fractionDigits value="2"/> <!-- Exatamente duas casas decimais -->
+        				<xs:minExclusive value="0"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="empresa" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/>
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element maxOccurs="1" minOccurs="0" name="cnpjHotel"	type="TpNumCnpj"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao5Type">
+        <xs:sequence>
+        
+        	<xs:element name="descricaoResumida" minOccurs="1" maxOccurs="1"><xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        	<xs:element name="situacao5Sub" type="Situacao5SubType" minOccurs="1" maxOccurs="unbounded"/>
+        
+		</xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao5SubType">
+        <xs:sequence>
+                
+			<xs:element name="nomeBeneficiario" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        
+        	<xs:element name="cargoVinculoPartido" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="numeroPlacaVeiculo" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="10"/> <!-- Limite de 10 caracteres, por exemplo -->
+            			<xs:minLength value="7"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao6Type">
+        <xs:sequence>
+        
+        	<xs:element name="descricaoResumida" minOccurs="1" maxOccurs="1">
+        		<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        	<xs:element name="situacao6Sub" type="Situacao6SubType" minOccurs="1" maxOccurs="unbounded"/>
+        
+		</xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao6SubType">
+        <xs:sequence>
+                
+			<xs:element name="nomeBeneficiario" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        
+        	<xs:element name="cargoVinculoPartido" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="finalidadeMotivo" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/> <!-- Limite de 200 caracteres -->
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    
+    
+    <xs:complexType name="Situacao7Type">
+        <xs:sequence>
+        
+        	<xs:element name="numeroReciboDoacao" minOccurs="0" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="20"/> <!-- Limite de 20 caracteres, por exemplo -->
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="cargoEleitoral" type="CargoEleitoralType" minOccurs="1" maxOccurs="1"/>
+			
+			<xs:element name="esfera" type="EsferaType" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="uf" type="UfType" minOccurs="1" maxOccurs="1"/>
+			
+			<xs:element name="municipioZona" minOccurs="0" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+           	 			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			
+			
+        	<xs:element name="situacao7Sub" type="Situacao7SubType" minOccurs="1" maxOccurs="unbounded"/>
+        
+			</xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao7SubType">
+        <xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="nrCpf" type="TpNumCpf"/>
+			<xs:element maxOccurs="1" minOccurs="1" name="nmPessoa" type="TpNmPessoa"/>
+			<xs:element name="numeroReciboDoacaoOrdinaria" minOccurs="0" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="20"/> <!-- Limite de 20 caracteres, por exemplo -->
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    
+    
+    <xs:complexType name="Situacao8Type">
+        <xs:sequence>
+        
+        	<xs:element name="numeroReciboDoacao" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="20"/> <!-- Limite de 20 caracteres, por exemplo -->
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			
+			<xs:element name="dataAssinaturaTermoAssuncao" minOccurs="1" maxOccurs="1" type="xs:date"/>
+			<xs:element name="esfera" type="EsferaType" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="uf" type="UfType" minOccurs="1" maxOccurs="1"/>
+			
+			<xs:element name="municipioZona" minOccurs="0" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+           	 			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+
+			<xs:element name="sgPartido" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+           	 			<xs:maxLength value="12"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			
+		</xs:sequence>
+    </xs:complexType>
+   	<xs:complexType name="Situacao9Type">
+        <xs:sequence>
+        	<xs:element maxOccurs="1" minOccurs="1" name="cnpjCandidatoPartido"	type="TpNumCnpj"/>
+		</xs:sequence>
+    </xs:complexType>
+    
+     <xs:complexType name="Situacao10Type">
+        <xs:sequence>
+        
+        	<xs:element name="descricaoResumida" minOccurs="1" maxOccurs="1">
+        	    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+    		</xs:element>
+        	<xs:element name="situacao10Sub" type="Situacao10SubType" minOccurs="1" maxOccurs="unbounded"/>
+        
+		</xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao10SubType">
+        <xs:sequence>
+                
+            <xs:element maxOccurs="1" minOccurs="1" name="nrCpf" type="TpNumCpf"/>
+			<xs:element name="nomeFuncionario" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        
+        	<xs:element name="funcaoFuncionario" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Situacao11Type">
+        <xs:sequence>
+			<xs:element name="empresa" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/>
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			
+			<xs:element name="trecho" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="dataDaViagem" minOccurs="1" maxOccurs="1" type="xs:date"/>
+			<xs:element name="valor" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:decimal">
+            			<xs:totalDigits value="10"/>  <!-- Número total de dígitos permitidos -->
+            			<xs:fractionDigits value="2"/> <!-- Exatamente duas casas decimais -->
+            			<xs:minExclusive value="0"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			
+			<xs:element name="situacao11Sub" type="Situacao11SubType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="Situacao11SubType">
+        <xs:sequence>
+        	<xs:element name="nomeBeneficiario" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="100"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        
+        	<xs:element name="cargoVinculoPartido" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="50"/> 
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+			<xs:element name="finalidadeMotivo" minOccurs="1" maxOccurs="1">
+    			<xs:simpleType>
+        			<xs:restriction base="xs:string">
+            			<xs:maxLength value="200"/> <!-- Limite de 200 caracteres -->
+            			<xs:minLength value="1"/>
+            			<xs:pattern value=".*\S.*"/>
+        			</xs:restriction>
+    			</xs:simpleType>
+			</xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    
+    
+    <xs:simpleType name="EsferaType">
+    	<xs:restriction base="xs:integer">
+        	<xs:enumeration value="0">
+            	<xs:annotation>
+                	<xs:documentation>Nacional</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="1">
+            	<xs:annotation>
+                	<xs:documentation>Distrital</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="2">
+            	<xs:annotation>
+                	<xs:documentation>Estadual</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="3">
+            	<xs:annotation>
+                	<xs:documentation>Zonal</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="4">
+            	<xs:annotation>
+                	<xs:documentation>Municipal</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+    	</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="UfType">
+    	<xs:restriction base="xs:string">
+        	<xs:maxLength value="2"/> <!-- Limite de 2 caracteres para as UFs -->
+        	<xs:enumeration value="BR"/> <!-- Nacional -->
+        	<xs:enumeration value="AC"/> <!-- Acre -->
+        	<xs:enumeration value="AL"/> <!-- Alagoas -->
+        	<xs:enumeration value="AP"/> <!-- Amapá -->
+        	<xs:enumeration value="AM"/> <!-- Amazonas -->
+        	<xs:enumeration value="BA"/> <!-- Bahia -->
+        	<xs:enumeration value="CE"/> <!-- Ceará -->
+        	<xs:enumeration value="DF"/> <!-- Distrito Federal -->
+        	<xs:enumeration value="ES"/> <!-- Espírito Santo -->
+        	<xs:enumeration value="GO"/> <!-- Goiás -->
+        	<xs:enumeration value="MA"/> <!-- Maranhão -->
+        	<xs:enumeration value="MT"/> <!-- Mato Grosso -->
+        	<xs:enumeration value="MS"/> <!-- Mato Grosso do Sul -->
+        	<xs:enumeration value="MG"/> <!-- Minas Gerais -->
+        	<xs:enumeration value="PA"/> <!-- Pará -->
+        	<xs:enumeration value="PB"/> <!-- Paraíba -->
+        	<xs:enumeration value="PR"/> <!-- Paraná -->
+        	<xs:enumeration value="PE"/> <!-- Pernambuco -->
+        	<xs:enumeration value="PI"/> <!-- Piauí -->
+        	<xs:enumeration value="RJ"/> <!-- Rio de Janeiro -->
+        	<xs:enumeration value="RN"/> <!-- Rio Grande do Norte -->
+        	<xs:enumeration value="RS"/> <!-- Rio Grande do Sul -->
+        	<xs:enumeration value="RO"/> <!-- Rondônia -->
+        	<xs:enumeration value="RR"/> <!-- Roraima -->
+        	<xs:enumeration value="SC"/> <!-- Santa Catarina -->
+        	<xs:enumeration value="SP"/> <!-- São Paulo -->
+        	<xs:enumeration value="SE"/> <!-- Sergipe -->
+        	<xs:enumeration value="TO"/> <!-- Tocantins -->
+    	</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="CargoEleitoralType">
+    	<xs:restriction base="xs:integer">
+        	<xs:enumeration value="1">
+            	<xs:annotation>
+                	<xs:documentation>1º Suplente Senador</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="2">
+            	<xs:annotation>
+                	<xs:documentation>2º Suplente Senador</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="3">
+            	<xs:annotation>
+                	<xs:documentation>Deputado Distrital</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="4">
+            	<xs:annotation>
+                	<xs:documentation>Deputado Estadual</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="5">
+            	<xs:annotation>
+                	<xs:documentation>Deputado Federal</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="6">
+            	<xs:annotation>
+                	<xs:documentation>Governador</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="7">
+            	<xs:annotation>
+                	<xs:documentation>Prefeito</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="8">
+            	<xs:annotation>
+                	<xs:documentation>Presidente</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="9">
+            	<xs:annotation>
+                	<xs:documentation>Senador</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="10">
+            	<xs:annotation>
+                	<xs:documentation>Vereador</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="11">
+            	<xs:annotation>
+                	<xs:documentation>Vice-Governador</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="12">
+            	<xs:annotation>
+                	<xs:documentation>Vice-Prefeito</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+        	<xs:enumeration value="13">
+            	<xs:annotation>
+                	<xs:documentation>Vice-Presidente</xs:documentation>
+            	</xs:annotation>
+        	</xs:enumeration>
+    	</xs:restriction>
+	</xs:simpleType>
+    
+	<xs:simpleType name="TpNumCpf">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="11"/>
+			<xs:pattern value="[0-9]{11}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpNumCnpj">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="14"/>
+			<xs:pattern value="[0-9]{14}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpNmPessoa">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="150"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpDescricao">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="150"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpNumTitulo">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="12"/>
+			<xs:pattern value="[0-9]{12}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpNrDocumento">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0"/>
+			<xs:maxLength value="20"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpMoeda">
+		<xs:restriction base="xs:decimal">
+			<xs:totalDigits value="19"/>
+			<xs:fractionDigits value="2"/>
+			<xs:minExclusive value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpNrAIDF">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="12"/>
+			<xs:minExclusive value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpAno">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="4"/>
+			<xs:minExclusive value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="TpCdGastoContaContabil">
+		<xs:restriction base="xs:integer">
+			<xs:enumeration value="2"><xs:annotation><xs:documentation>ADIANTAMENTOS DIVERSOS - ADIANTAMENTOS A FORNECEDORES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="3"><xs:annotation><xs:documentation>ADIANTAMENTOS DIVERSOS - OUTROS ADIANTAMENTOS DIVERSOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="4"><xs:annotation><xs:documentation>ÁGUA E ESGOTO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="5"><xs:annotation><xs:documentation>ÁGUA E ESGOTO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="6"><xs:annotation><xs:documentation>ÁGUA E ESGOTO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="7"><xs:annotation><xs:documentation>ALISTAMENTO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="8"><xs:annotation><xs:documentation>ALISTAMENTO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="9"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - LOCAÇÃO DE BENS IMÓVEIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="10"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - LOCAÇÃO DE BENS IMÓVEIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="11"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - LOCAÇÃO DE BENS IMÓVEIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="12"><xs:annotation><xs:documentation>DESPESAS COM LOCAÇÃO DE BENS MÓVEIS (EXCETO VEÍCULOS) ? ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="13"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - LOCAÇÃO DE BENS MÓVEIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="14"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - LOCAÇÃO DE BENS MÓVEIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="15"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - TAXAS DE CONDOMÍNIOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="16"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - TAXAS DE CONDOMÍNIOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="17"><xs:annotation><xs:documentation>ALUGUÉIS E CONDOMÍNIOS - TAXAS DE CONDOMÍNIOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="18"><xs:annotation><xs:documentation>ASSINATURAS E AQUISIÇÕES DE PERIÓDICOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="19"><xs:annotation><xs:documentation>ASSINATURAS E AQUISIÇÕES DE PERIÓDICOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="20"><xs:annotation><xs:documentation>ASSINATURAS E AQUISIÇÕES DE PERIÓDICOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="21"><xs:annotation><xs:documentation>ASSUNÇÃO DE DÍVIDAS DE CAMPANHA - DÍVIDAS DE CANDIDATOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="22"><xs:annotation><xs:documentation>ASSUNÇÃO DE DÍVIDAS DE CAMPANHA - DÍVIDAS DE COMITÊS FINANCEIROS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="23"><xs:annotation><xs:documentation>ASSUNÇÃO DE DÍVIDAS DE CAMPANHA - DÍVIDAS DE DIRETÓRIOS PARTIDÁRIOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="24"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS IMÓVEIS - EDIFICAÇÕES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="25"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS IMÓVEIS - INSTALAÇÕES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="26"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS IMÓVEIS - OUTROS BENS IMÓVEIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="27"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS IMÓVEIS - TERRENOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="28"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS INCORPÓREOS - DIREITO DE USO</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="29"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS INCORPÓREOS - MARCAS E PATENTES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="30"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS INCORPÓREOS - OUTROS BENS INCORPÓREOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="31"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - ARRENDAMENTO MERCANTIL - EQUIPAMENTOS AUDIOVISUAIS - AM</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="32"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - ARRENDAMENTO MERCANTIL - EQUIPAMENTOS DE INFORMÁTICA - AM</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="33"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - ARRENDAMENTO MERCANTIL - EQUIPAMENTOS DE SONORIZAÇÃO - AM</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="34"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - ARRENDAMENTO MERCANTIL - MÓVEIS E UTENSÍLIOS - AM</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="35"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - ARRENDAMENTO MERCANTIL - OUTRAS MÁQUINAS E EQUIPAMENTOS - AM</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="36"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - ARRENDAMENTO MERCANTIL - VEÍCULOS - AM</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="37"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - EQUIPAMENTOS AUDIOVISUAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="38"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - EQUIPAMENTOS DE INFORMÁTICA</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="39"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - EQUIPAMENTOS DE SONORIZAÇÃO</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="40"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - MÓVEIS E UTENSÍLIOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="41"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - OUTRAS MÁQUINAS E EQUIPAMENTOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="42"><xs:annotation><xs:documentation>ATIVO PERMANENTE - BENS MÓVEIS - VEÍCULOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="43"><xs:annotation><xs:documentation>ATIVO PERMANENTE - INVESTIMENTOS DIVERSOS - INVESTIMENTOS DIVERSOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="44"><xs:annotation><xs:documentation>ATIVO PERMANENTE - SISTEMAS APLICATIVOS - ARRENDAMENTO MERCANTIL - SISTEMAS DE INFORMÁTICA - AM</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="45"><xs:annotation><xs:documentation>ATIVO PERMANENTE - SISTEMAS APLICATIVOS - SISTEMAS DE INFORMÁTICA</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="46"><xs:annotation><xs:documentation>COMÍCIOS E MILITÂNCIA DE RUA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="47"><xs:annotation><xs:documentation>CONGRESSOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="48"><xs:annotation><xs:documentation>CONGRESSOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="49"><xs:annotation><xs:documentation>CONVENÇÕES - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="50"><xs:annotation><xs:documentation>CONVENÇÕES ELEITORAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="51"><xs:annotation><xs:documentation>CONVENÇÕES PARTIDÁRIAS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="52"><xs:annotation><xs:documentation>CÓPIAS, ENCADERNAÇÕES E SERVIÇOS SIMILARES - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="53"><xs:annotation><xs:documentation>CÓPIAS, ENCADERNAÇÕES E SERVIÇOS SIMILARES - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="54"><xs:annotation><xs:documentation>CÓPIAS, ENCADERNAÇÕES E SERVIÇOS SIMILARES - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="55"><xs:annotation><xs:documentation>DEPÓSITOS RESTITUÍVEIS E VALORES VINCULADOS - DEPÓSITOS EXTRAJUDICIAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="56"><xs:annotation><xs:documentation>DEPÓSITOS RESTITUÍVEIS E VALORES VINCULADOS - DEPÓSITOS JUDICIAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="57"><xs:annotation><xs:documentation>DESPESAS FINANCEIRAS - ATUALIZAÇÃO MONETÁRIA DE EMPRÉSTIMOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="58"><xs:annotation><xs:documentation>DESPESAS FINANCEIRAS - COMISSÕES E TARIFAS BANCÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="59"><xs:annotation><xs:documentation>DESPESAS FINANCEIRAS - OUTRAS DESPESAS FINANCEIRAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="60"><xs:annotation><xs:documentation>DESPESAS JUDICIAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="61"><xs:annotation><xs:documentation>DESPESAS JUDICIAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="62"><xs:annotation><xs:documentation>DESPESAS JUDICIAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="63"><xs:annotation><xs:documentation>ENERGIA ELÉTRICA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="64"><xs:annotation><xs:documentation>ENERGIA ELÉTRICA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="65"><xs:annotation><xs:documentation>ENERGIA ELÉTRICA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="66"><xs:annotation><xs:documentation>EVENTOS PROMOCIONAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="67"><xs:annotation><xs:documentation>EVENTOS PROMOCIONAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="68"><xs:annotation><xs:documentation>EVENTOS PROMOCIONAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="69"><xs:annotation><xs:documentation>FUNDAÇÃO DE PESQUISA OU DE DOUTRINAÇÃO E EDUCAÇÃO POLÍTICA - FUNDAÇÃO PARTIDÁRIA</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="70"><xs:annotation><xs:documentation>INSTALAÇÃO DE COMITÊS FINANCEIROS E DE CAMPANHA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="71"><xs:annotation><xs:documentation>LANCHES E REFEIÇÕES - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="72"><xs:annotation><xs:documentation>LANCHES E REFEIÇÕES - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="73"><xs:annotation><xs:documentation>LANCHES E REFEIÇÕES - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="74"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - CESSÃO MAO-DE-OBRA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="75"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - CESSÃO MAO-DE-OBRA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="76"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - CESSÃO MAO-DE-OBRA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="77"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="78"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="79"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="80"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="81"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="82"><xs:annotation><xs:documentation>MANUTENÇÃO, CONSERVAÇÃO E REPAROS DE BENS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="83"><xs:annotation><xs:documentation>MATERIAIS PARA COMERCIALIZAÇÃO / DISTRIBUIÇÃO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="84"><xs:annotation><xs:documentation>MATERIAIS PARA COMERCIALIZAÇÃO / DISTRIBUIÇÃO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="85"><xs:annotation><xs:documentation>MATERIAIS PARA COMERCIALIZAÇÃO / DISTRIBUIÇÃO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="86"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE COPA E COZINHA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="87"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE COPA E COZINHA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="88"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE COPA E COZINHA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="89"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE EXPEDIENTE - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="90"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE EXPEDIENTE - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="91"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE EXPEDIENTE - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="92"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE INFORMÁTICA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="93"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE INFORMÁTICA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="94"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE INFORMÁTICA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="95"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE LIMPEZA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="96"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE LIMPEZA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="97"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS DE LIMPEZA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="98"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS IMPRESSOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="99"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS IMPRESSOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="100"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - MATERIAIS IMPRESSOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="101"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - OUTROS MATERIAIS DE CONSUMO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="102"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - OUTROS MATERIAIS DE CONSUMO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="103"><xs:annotation><xs:documentation>MATERIAL DE CONSUMO - OUTROS MATERIAIS DE CONSUMO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="104"><xs:annotation><xs:documentation>OBRIGAÇÕES DIVERSAS - EMPRÉSTIMOS BANCÁRIOS A PAGAR</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="105"><xs:annotation><xs:documentation>OBRIGAÇÕES DIVERSAS - FINANCIAMENTOS A PAGAR</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="106"><xs:annotation><xs:documentation>OBRIGAÇÕES DIVERSAS - OUTRAS OBRIGAÇÕES A PAGAR</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="107"><xs:annotation><xs:documentation>OUTRAS DESPESAS COM PROPAGANDA DOUTRINÁRIA E POLÍTICA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="108"><xs:annotation><xs:documentation>OUTRAS DESPESAS COM PROPAGANDA DOUTRINÁRIA E POLÍTICA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="109"><xs:annotation><xs:documentation>OUTRAS DESPESAS COM PROPAGANDA DOUTRINÁRIA E POLÍTICA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="110"><xs:annotation><xs:documentation>OUTRAS DESPESAS DE CAMPANHA ELEITORAL - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="111"><xs:annotation><xs:documentation>OUTRAS DESPESAS GERAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="112"><xs:annotation><xs:documentation>OUTRAS DESPESAS GERAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="113"><xs:annotation><xs:documentation>OUTRAS DESPESAS GERAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="114"><xs:annotation><xs:documentation>OUTRAS DESPESAS PARA PARTICIPAÇÃO DA MULHER NA POLÍTICA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="115"><xs:annotation><xs:documentation>OUTROS DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="116"><xs:annotation><xs:documentation>OUTROS MATERIAIS PARA COMERCIALIZAÇÃO / DISTRIBUIÇÃO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="117"><xs:annotation><xs:documentation>OUTROS MATERIAIS PARA COMERCIALIZAÇÃO / DISTRIBUIÇÃO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="118"><xs:annotation><xs:documentation>OUTROS MATERIAIS PARA COMERCIALIZAÇÃO / DISTRIBUIÇÃO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="119"><xs:annotation><xs:documentation>OUTROS MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="120"><xs:annotation><xs:documentation>OUTROS ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="121"><xs:annotation><xs:documentation>PERDAS COM ATIVOS - PERDA NA ALIENAÇÃO DE BENS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="122"><xs:annotation><xs:documentation>PERDAS COM ATIVOS - SINISTROS, ROUBOS E OUTRAS PERDAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="123"><xs:annotation><xs:documentation>PESQUISAS E TESTES DE OPINIÃO PÚBLICA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="124"><xs:annotation><xs:documentation>PESQUISAS E TESTES DE OPINIÃO PÚBLICA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="125"><xs:annotation><xs:documentation>PESQUISAS E TESTES DE OPINIÃO PÚBLICA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="126"><xs:annotation><xs:documentation>PESSOAL - 13º SALÁRIO  - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="127"><xs:annotation><xs:documentation>PESSOAL - 13º SALÁRIO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="128"><xs:annotation><xs:documentation>PESSOAL - 13º SALÁRIO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="129"><xs:annotation><xs:documentation>PESSOAL - ADIANTAMENTOS A EMPREGADOS - Adiantamentos de 13º salário</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="130"><xs:annotation><xs:documentation>PESSOAL - ADIANTAMENTOS A EMPREGADOS - Adiantamentos de férias</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="131"><xs:annotation><xs:documentation>PESSOAL - ADIANTAMENTOS A EMPREGADOS - Adiantamentos de salários</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="132"><xs:annotation><xs:documentation>PESSOAL - ADIANTAMENTOS A EMPREGADOS - Outros adiantamentos a empregados</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="133"><xs:annotation><xs:documentation>PESSOAL - ALIMENTAÇÃO DO TRABALHADOR - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="134"><xs:annotation><xs:documentation>PESSOAL - ALIMENTAÇÃO DO TRABALHADOR - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="135"><xs:annotation><xs:documentation>PESSOAL - ALIMENTAÇÃO DO TRABALHADOR - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="136"><xs:annotation><xs:documentation>PESSOAL - ASSISTÊNCIA MÉDICA E SOCIAL - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="137"><xs:annotation><xs:documentation>PESSOAL - ASSISTÊNCIA MÉDICA E SOCIAL - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="138"><xs:annotation><xs:documentation>PESSOAL - ASSISTÊNCIA MÉDICA E SOCIAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="139"><xs:annotation><xs:documentation>PESSOAL - AUXÍLIO-TRANSPORTE - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="140"><xs:annotation><xs:documentation>PESSOAL - AUXÍLIO-TRANSPORTE - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="141"><xs:annotation><xs:documentation>PESSOAL - AUXÍLIO-TRANSPORTE - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="142"><xs:annotation><xs:documentation>PESSOAL - CONTRIBUIÇÃO SINDICAL - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="143"><xs:annotation><xs:documentation>PESSOAL - CONTRIBUIÇÃO SINDICAL - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="144"><xs:annotation><xs:documentation>PESSOAL - CONTRIBUIÇÃO SINDICAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="145"><xs:annotation><xs:documentation>PESSOAL - ESTAGIÁRIOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="146"><xs:annotation><xs:documentation>PESSOAL - ESTAGIÁRIOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="147"><xs:annotation><xs:documentation>PESSOAL - ESTAGIÁRIOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="148"><xs:annotation><xs:documentation>PESSOAL - FÉRIAS  - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="149"><xs:annotation><xs:documentation>PESSOAL - FÉRIAS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="150"><xs:annotation><xs:documentation>PESSOAL - FÉRIAS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="151"><xs:annotation><xs:documentation>PESSOAL - FGTS  - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="152"><xs:annotation><xs:documentation>PESSOAL - FGTS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="153"><xs:annotation><xs:documentation>PESSOAL - FGTS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="154"><xs:annotation><xs:documentation>PESSOAL - IRRF - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="155"><xs:annotation><xs:documentation>PESSOAL - IRRF - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="156"><xs:annotation><xs:documentation>PESSOAL - IRRF - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="157"><xs:annotation><xs:documentation>PESSOAL - OUTRAS DESPESAS COM PESSOAL - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="158"><xs:annotation><xs:documentation>PESSOAL - OUTRAS DESPESAS COM PESSOAL - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="159"><xs:annotation><xs:documentation>PESSOAL - OUTRAS DESPESAS COM PESSOAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="160"><xs:annotation><xs:documentation>PESSOAL - PIS SOBRE FOLHA DE PAGAMENTO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="161"><xs:annotation><xs:documentation>PESSOAL - PIS SOBRE FOLHA DE PAGAMENTO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="162"><xs:annotation><xs:documentation>PESSOAL - PIS SOBRE FOLHA DE PAGAMENTO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="163"><xs:annotation><xs:documentation>PESSOAL - PREVIDÊNCIA SOCIAL  - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="164"><xs:annotation><xs:documentation>PESSOAL - PREVIDÊNCIA SOCIAL - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="165"><xs:annotation><xs:documentation>PESSOAL - PREVIDÊNCIA SOCIAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="166"><xs:annotation><xs:documentation>PESSOAL - RESCISÃO DE CONTRATO DE TRABALHO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="167"><xs:annotation><xs:documentation>PESSOAL - RESCISÃO DE CONTRATO DE TRABALHO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="168"><xs:annotation><xs:documentation>PESSOAL - RESCISÃO DE CONTRATO DE TRABALHO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="169"><xs:annotation><xs:documentation>PESSOAL - SALÁRIOS E ORDENADOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="170"><xs:annotation><xs:documentation>PESSOAL - SALÁRIOS E ORDENADOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="171"><xs:annotation><xs:documentation>PESSOAL - SALÁRIOS E ORDENADOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="172"><xs:annotation><xs:documentation>PESSOAL - SEGURO DE VIDA DE EMPREGADOS  - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="173"><xs:annotation><xs:documentation>PESSOAL - SEGURO DE VIDA DE EMPREGADOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="174"><xs:annotation><xs:documentation>PESSOAL - SEGURO DE VIDA DE EMPREGADOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="175"><xs:annotation><xs:documentation>PRODUÇÃO DE AUDIOVISUAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="176"><xs:annotation><xs:documentation>PRODUÇÃO DE AUDIOVISUAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="177"><xs:annotation><xs:documentation>PRODUÇÃO DE AUDIOVISUAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="178"><xs:annotation><xs:documentation>PROPAGANDA E PUBLICIDADE - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="179"><xs:annotation><xs:documentation>PROPAGANDA E PUBLICIDADE - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="180"><xs:annotation><xs:documentation>PROPAGANDA E PUBLICIDADE - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="181"><xs:annotation><xs:documentation>PUBLICAÇÕES - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="182"><xs:annotation><xs:documentation>PUBLICAÇÕES - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="183"><xs:annotation><xs:documentation>PUBLICAÇÕES - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="184"><xs:annotation><xs:documentation>RÁDIO E TELEVISÃO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="185"><xs:annotation><xs:documentation>RÁDIO E TELEVISÃO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="186"><xs:annotation><xs:documentation>RÁDIO E TELEVISÃO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="187"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - CESSÃO MAO-DE-OBRA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="188"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - CESSÃO MAO-DE-OBRA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="189"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - CESSÃO MAO-DE-OBRA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="190"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="191"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="192"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="193"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="194"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="195"><xs:annotation><xs:documentation>SEGURANÇA E VIGILÂNCIA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="196"><xs:annotation><xs:documentation>SEGUROS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="197"><xs:annotation><xs:documentation>SEGUROS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="198"><xs:annotation><xs:documentation>SEGUROS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="199"><xs:annotation><xs:documentation>SEMINÁRIOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="200"><xs:annotation><xs:documentation>SEMINÁRIOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="201"><xs:annotation><xs:documentation>SERVIÇOS CARTORÁRIOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="202"><xs:annotation><xs:documentation>SERVIÇOS CARTORÁRIOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="203"><xs:annotation><xs:documentation>SERVIÇOS CARTORÁRIOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="204"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - CESSÃO MAO-DE-OBRA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="205"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - CESSÃO MAO-DE-OBRA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="206"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - CESSÃO MAO-DE-OBRA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="207"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="208"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="209"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="210"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - ENCARGOS SOCIAIS SOBRE CESSÃO MAO-DE-OBRA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="211"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="212"><xs:annotation><xs:documentation>SERVIÇOS DE LIMPEZA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="213"><xs:annotation><xs:documentation>SERVIÇOS POSTAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="214"><xs:annotation><xs:documentation>SERVIÇOS POSTAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="215"><xs:annotation><xs:documentation>SERVIÇOS POSTAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="216"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - ENCARGOS SOCIAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="217"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - ENCARGOS SOCIAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="218"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - ENCARGOS SOCIAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="219"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - OUTROS SERVIÇOS TÉCNICOS E PROFISSIONAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="220"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - OUTROS SERVIÇOS TÉCNICOS E PROFISSIONAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="221"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - OUTROS SERVIÇOS TÉCNICOS E PROFISSIONAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="222"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS CONTÁBEIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="223"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS CONTÁBEIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="224"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS CONTÁBEIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="225"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS DE CONSULTORIA JURÍDICA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="226"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS DE CONSULTORIA JURÍDICA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="227"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS DE CONSULTORIA JURÍDICA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="228"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS DE INFORMÁTICA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="229"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS DE INFORMÁTICA - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="230"><xs:annotation><xs:documentation>SERVIÇOS TÉCNICO-PROFISSIONAIS - SERVIÇOS DE INFORMÁTICA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="231"><xs:annotation><xs:documentation>TELECOMUNICAÇÕES E INTERNET - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="232"><xs:annotation><xs:documentation>TELECOMUNICAÇÕES E INTERNET - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="233"><xs:annotation><xs:documentation>TELECOMUNICAÇÕES E INTERNET - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="234"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - ASSUNÇÃO DE OBRIGAÇÕES - RECURSOS ESTIMÁVEIS EM DINHEIRO CANDIDATO</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="236"><xs:annotation><xs:documentation>ASSUNÇÃO DE OBRIGAÇÕES - DESPESAS ORDINÁRIAS REALIZADAS POR DIREÇÃO ESTADUAL</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="237"><xs:annotation><xs:documentation>ASSUNÇÃO DE OBRIGAÇÕES - DESPESAS ORDINÁRIAS REALIZADAS POR DIREÇÃO MUNICIPAL</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="238"><xs:annotation><xs:documentation>ASSUNÇÃO DE OBRIGAÇÕES - DESPESAS ORDINÁRIAS REALIZADAS POR DIREÇÃO NACIONAL</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="249"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - ADIANTAMENTOS DIVERSOS - ADIANTAMENTOS PARA VIAGENS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="250"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - COMBUSTÍVEIS, ÓLEOS E LUBRIFICANTES - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="251"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - COMBUSTÍVEIS, ÓLEOS E LUBRIFICANTES - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="252"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - COMBUSTÍVEIS, ÓLEOS E LUBRIFICANTES - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="253"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - FRETAMENTO DE AERONAVES - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="254"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - FRETAMENTO DE AERONAVES - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="255"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - FRETAMENTO DE AERONAVES - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="256"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - FRETES E CARRETOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="257"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - FRETES E CARRETOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="258"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - FRETES E CARRETOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="259"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - HOSPEDAGENS E ESTADIAS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="260"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - HOSPEDAGENS E ESTADIAS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="261"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - HOSPEDAGENS E ESTADIAS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="262"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - OUTRAS DESPESAS COM TRANSPORTES E VIAGENS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="263"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - OUTRAS DESPESAS COM TRANSPORTES E VIAGENS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="264"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - OUTRAS DESPESAS COM TRANSPORTES E VIAGENS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="265"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - PASSAGENS AÉREAS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="266"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - PASSAGENS AÉREAS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="267"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - PASSAGENS AÉREAS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="268"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - PEDÁGIOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="269"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - PEDÁGIOS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="270"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - PEDÁGIOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="271"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - SERVIÇOS DE TÁXI - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="272"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - SERVIÇOS DE TÁXI - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="273"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - SERVIÇOS DE TÁXI - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="274"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - TRANSPORTE RODOVIÁRIO - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="275"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - TRANSPORTE RODOVIÁRIO - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="276"><xs:annotation><xs:documentation>TRANSPORTES E VIAGENS - TRANSPORTE RODOVIÁRIO - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="277"><xs:annotation><xs:documentation>TRIBUTOS - IPTU - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="278"><xs:annotation><xs:documentation>TRIBUTOS - IPTU - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="279"><xs:annotation><xs:documentation>TRIBUTOS - IPVA - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="280"><xs:annotation><xs:documentation>TRIBUTOS - IPVA - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="281"><xs:annotation><xs:documentation>TRIBUTOS - OUTROS TRIBUTOS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="282"><xs:annotation><xs:documentation>TRIBUTOS - OUTROS TRIBUTOS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="283"><xs:annotation><xs:documentation>TRIBUTOS - TAXAS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="284"><xs:annotation><xs:documentation>TRIBUTOS - TAXAS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="399"><xs:annotation><xs:documentation>DESPESAS COM ALISTAMENTO - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="400"><xs:annotation><xs:documentation>DESPESAS COM CONVENÇÕES PARTIDÁRIAS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="401"><xs:annotation><xs:documentation>DESPESAS COM CRIAÇÃO E INCLUSÃO DE PÁGINAS NA INTERNET OU REDES SOCIAIS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="402"><xs:annotation><xs:documentation>DESPESAS COM EVENTOS DE PROMOÇÃO DE CANDIDATURAS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="403"><xs:annotation><xs:documentation>DESPESAS COM IMPULSIONAMENTO DE CONTEÚDOS DE INTERNET OU REDES SOCIAIS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="404"><xs:annotation><xs:documentation>DESPESAS COM PRODUÇÃO DE JINGLES, VINHETAS E SLOGANS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="405"><xs:annotation><xs:documentation>DESPESAS COM PUBLICIDADE POR ADESIVOS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="406"><xs:annotation><xs:documentation>DESPESAS COM PUBLICIDADE POR CARROS DE SOM - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="407"><xs:annotation><xs:documentation>DESPESAS COM PUBLICIDADE POR MATERIAIS IMPRESSOS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="408"><xs:annotation><xs:documentation>DESPESAS COM REEMBOLSO DE GASTOS REALIZADOS POR ELEITORES - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="409"><xs:annotation><xs:documentation>DESPESAS FINANCEIRAS - JUROS E MULTAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="410"><xs:annotation><xs:documentation>DESPESAS FINANCEIRAS - TAXAS DE ADMINISTRAÇÃO DE CARTÕES DE CRÉDITO OU DÉBITO</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="411"><xs:annotation><xs:documentation>DESPESAS FINANCEIRAS - TAXAS DE ADMINISTRAÇÃO DE FINANCIAMENTO COLETIVO</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="412"><xs:annotation><xs:documentation>DESPESAS GERAIS - MENSALIDADES, ANUIDADES E CONGÊNERES DEVIDOS A ORGANISMOS PARTIDÁRIOS INTERNACIONAIS - DESPESAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="413"><xs:annotation><xs:documentation>DESPESAS GERAIS - MENSALIDADES, ANUIDADES E CONGÊNERES DEVIDOS A ORGANISMOS PARTIDÁRIOS INTERNACIONAIS - MULHERES</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="414"><xs:annotation><xs:documentation>DESPESAS GERAIS - MENSALIDADES, ANUIDADES E CONGÊNERES DEVIDOS A ORGANISMOS PARTIDÁRIOS INTERNACIONAIS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="415"><xs:annotation><xs:documentation>RECOLHIMENTOS AO ERÁRIO - DESPESAS COM MULTAS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="416"><xs:annotation><xs:documentation>RECOLHIMENTOS AO ERÁRIO - RESSARCIMENTO - IRREGULARIDADES NA APLICAÇÃO DE RECURSOS PÚBLICOS (FEFC E FUNDO PARTIDÁRIO)</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="417"><xs:annotation><xs:documentation>RECOLHIMENTOS AO ERÁRIO - RESSARCIMENTO - RECEBIMENTO DE RECURSOS DE FONTES VEDADAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="418"><xs:annotation><xs:documentation>RECOLHIMENTOS AO ERÁRIO - RESSARCIMENTO - RECEBIMENTO DE RECURSOS DE ORIGEM NÃO IDENTIFICADA</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="419"><xs:annotation><xs:documentation>RECOLHIMENTOS AO ERÁRIO - RESSARCIMENTO - SOBRAS DO FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="420"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - RECURSOS ESTIMÁVEIS EM DINHEIRO - PARA DIREÇÃO ESTADUAL</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="421"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - RECURSOS ESTIMÁVEIS EM DINHEIRO - PARA DIREÇÃO MUNICIPAL</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="422"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - RECURSOS ESTIMÁVEIS EM DINHEIRO - PARA DIREÇÃO NACIONAL</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="423"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - RECURSOS ESTIMÁVEIS EM DINHEIRO PARA CANDIDATOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="424"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - RECURSOS ESTIMÁVEIS EM DINHEIRO PARA CANDIDATAS (MULHERES)</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="432"><xs:annotation><xs:documentation>BENFEITORIAS EM IMÓVEIS LOCADOS OU CEDIDOS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="433"><xs:annotation><xs:documentation>DESPESAS COM CRIAÇÃO E INCLUSÃO DE PÁGINAS INSTITUCIONAIS NA INTERNET OU REDES SOCIAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="434"><xs:annotation><xs:documentation>DESPESAS COM IMPULSIONAMENTO INSTITUCIONAL DE CONTEÚDOS DE INTERNET OU REDES SOCIAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="435"><xs:annotation><xs:documentation>RECEITAS DEVOLVIDAS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="436"><xs:annotation><xs:documentation>RECEITAS DEVOLVIDAS - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="437"><xs:annotation><xs:documentation>DESPESAS COM GERADORES DE ENERGIA - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="438"><xs:annotation><xs:documentation>DESPESAS COM LOCAÇÃO DE VEÍCULOS - ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="445"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - RECURSOS ESTIMÁVEIS PARA CANDIDATOS NEGROS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="446"><xs:annotation><xs:documentation>TRANSFERÊNCIAS EFETUADAS - RECURSOS ESTIMÁVEIS PARA CANDIDATAS NEGRAS (PARTICIPAÇÃO POLÍTICA DE MULHERES)</xs:documentation></xs:annotation></xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="AnoEleicao">
+		<xs:restriction base="xs:integer">
+			<xs:pattern value="19|20[0-9]{2}"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

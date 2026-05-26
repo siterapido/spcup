@@ -1,3 +1,5 @@
+# Optional: local Postgres 16 for migration/dev only (Neon is production).
+# Not required for `pnpm dev` / Vercel. See legacy/python/README.md for archived Python stack.
 services:
   db:
     image: postgres:16

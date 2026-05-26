@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<xs:schema elementFormDefault="qualified"
+    	   targetNamespace="http://www.tse.jus.br/2012/XMLSchema/doacaoFinanceiraPartidoCandidato.xsd"
+    	   version="0.1"
+    	   xmlns="http://www.tse.jus.br/2012/XMLSchema/doacaoFinanceiraPartidoCandidato.xsd" 
+    	   xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+	<xs:element name="spcaImportacaoArquivo" type="TpLayoutDoacaoFinanceiraPartidoCandidato" />
+	
+	<xs:complexType name="TpLayoutDoacaoFinanceiraPartidoCandidato">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="CABECALHO" type="TpCabecalhoSPCADoacao" />
+			<xs:element minOccurs="1" name="CORPO" type="TpCorpoSPCADoacao" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpCabecalhoSPCADoacao">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="nrCnpjPrestador" type="NumCnpj" />
+			<xs:element maxOccurs="1" minOccurs="1" name="anoExercicio" type="AnoEleicao" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpCorpoSPCADoacao">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="doacoes" type="doacoes" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="doacoes">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="totalDoacao" type="NumQtd" />
+			<xs:element maxOccurs="unbounded" minOccurs="1"	name="doacao" type="tpDoacao" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="tpDoacao">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="1" name="beneficiario" type="tpDadoBeneficiario" />
+			<xs:element maxOccurs="1" minOccurs="1" name="dtDoacao" type="xs:date" />
+			
+			<xs:element maxOccurs="1" minOccurs="1" name="fonteRecurso" type="TpFonteRecurso" />		
+			
+			<xs:element maxOccurs="unbounded" minOccurs="1"	name="classificacoesDoacao" type="TpClassificacoesDoacoes" />
+			
+			<xs:element maxOccurs="1" minOccurs="1" name="formaDoacao" type="TpEspecieRecurso" />
+			
+			<xs:element maxOccurs="1" minOccurs="0" name="operacaoFinanceira" type="TpOperacaoFinanceira" />
+			
+			<xs:element maxOccurs="1" minOccurs="1"	name="nrExtratoBancario" type="TpNrExtratoBancario" />
+			<xs:element maxOccurs="1" minOccurs="1" name="contaBancariaOrigem" type="informacoesBancariasOrigem" />
+			<xs:element maxOccurs="1" minOccurs="1"	name="nrDocumento" type="TpNrDocumento" />
+			<xs:element maxOccurs="1" minOccurs="0" name="nrLancamento" type="TpNrLancamento" />
+			
+			<xs:element maxOccurs="1" minOccurs="0" name="nrReciboDoacao" type="TpNrReciboDoacao" />
+			
+			<xs:element maxOccurs="1" minOccurs="0" name="doadoresOriginarios" type="doadoresOriginarios" />
+				
+			<xs:element minOccurs="1" name="contaBancariaDestino" type="tpInformacoesBancariasDestino" />	
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="TpClassificacoesDoacoes">
+		<xs:sequence>
+			<xs:element maxOccurs="1" minOccurs="0" name="classificacaoDoacao" type="TpClassificacaoDoacao" />
+			<xs:element maxOccurs="1" minOccurs="0" name="valorDoacao" type="tpMoeda" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="tpDadoBeneficiario">
+		<xs:choice maxOccurs="1" minOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="partido" type="TpPartido" />
+			<xs:element maxOccurs="1" minOccurs="0" name="candidato" type="TpCandidato" />			
+		</xs:choice>
+	</xs:complexType>
+	
+	<xs:complexType name="TpCandidato">
+		<xs:sequence>
+			<!--CA = RECURSOS DE CANDIDATOS-->
+			<xs:element name="tipo" type="TpDoacaoFinanceiraSG" fixed="CA" />
+			<xs:element minOccurs="1" name="nrCnpj" type="NumCnpj" />
+			<xs:element minOccurs="1" name="candidatura" type="TpCandidatura" />
+			<xs:element minOccurs="1" name="nrCandidato" type="NumCandidato" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TpPartido">
+		<xs:sequence>
+			<!--PP = RECURSOS DE PARTIDO POLITICO-->
+			<xs:element minOccurs="1" name="tipo" type="TpDoacaoFinanceiraSG" fixed="PP" />
+			
+			<xs:element minOccurs="1" name="nrCnpj" type="NumCnpj" />
+			<xs:element minOccurs="1" name="esferaPartidaria" type="TpEsferaPartidaria" />
+			<xs:element minOccurs="1" name="eleicao" type="AnoEleicao" />
+			<xs:element minOccurs="1" name="eleicaoSuplementar" type="SimNao" />
+			<xs:element minOccurs="1" name="partido" type="NumPartido" />
+			<xs:element minOccurs="1" name="uf" type="SgUF" />
+			<xs:element minOccurs="0" name="municipio" type="xs:string" />
+			
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:simpleType name="AnoEleicao">
+		<xs:restriction base="xs:integer">
+			<xs:pattern value="19|20[0-9]{2}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="NumQtd">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="9" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+	PP = RECURSOS DE PARTIDO POLITICO
+	CA = RECURSOS DE CANDIDATOS
+	############# -->
+	<xs:simpleType name="TpDoacaoFinanceiraSG">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="2" />
+			<xs:pattern value="PP|CA" />
+		</xs:restriction>
+	</xs:simpleType>
+			
+	<!-- #############	
+	.	PRE -> PRESIDENTE
+	.   VPS -> VICE PRESIDENTE
+	.   GOV -> GOVERNADOR
+	.   VGO -> VICE GOVERNADOR
+	.   SEN -> SENADOR
+	.   1SE -> PRIMEIRO SENADOR
+	.   2SE -> SEGUNDO SENADOR
+	.   PRF -> PREFEITO
+	.   VPF -> VICE PREFEITO
+	.   DEF -> DEPUTADO FEDERAL
+	.   DES -> DEPUTADO ESTADUAL
+	.   DDI -> DEPUTADOR DISTRITAL
+	.   VER -> VEREADOR
+	############# -->
+	<xs:simpleType name="TpCandidatura">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="3" />
+			<xs:pattern value="PRE|VPS|GOV|VGO|SEN|1SE|2SE|PRF|VPF|DEF|DES|DDI|VER" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="NumCnpj">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="14" />
+			<xs:pattern value="[0-9]{14}" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+	.	NACIONAL
+	.	DISTRITAL
+	.	ESTADUAL
+	.	ZONAL
+	.	MUNICIPAL
+	############# -->
+	<xs:simpleType name="TpEsferaPartidaria">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="9" />
+			<xs:pattern value="NACIONAL|DISTRITAL|ESTADUAL|ZONAL|MUNICIPAL" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="NumCandidato">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="5" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="SimNao">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="S|N"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="NumPartido">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="2" />
+			<xs:minInclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="SgUF">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="2" />
+			<xs:pattern value="BR|AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+		FP =  FUNDO PARTIDARIO
+		OR = OUTROS RECURSOS
+		RC = RECURSO DE CAMPANHA
+		FEFC = FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA
+		############# -->
+	<xs:simpleType name="TpFonteRecurso">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="4" />
+			<xs:pattern value="FP|OR|RC|FEFC" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+		CH = DEPOSITO CHEQUE
+		TEL = TRANSFERENCIA ELETRONICA
+		TED = TRANSFERENCIA ELETRONICA
+		TEB = TRANSFERENCIA ELETRONICA
+		PIX = PIX
+		############# -->
+	<xs:simpleType name="TpEspecieRecurso">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="3" />
+			<xs:pattern value="CH|TEL|TED|TEB|PIX" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+		TED = TED/DOC
+		TEL = Transfer?ncia Eletr?nica de Valores
+		EP  = Em Esp?cie
+		PIX = PIX
+		############# -->
+	<xs:simpleType name="TpOperacaoFinanceira">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="3" />
+			<xs:pattern value="EP|TEL|TED|PIX" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="TpNrExtratoBancario">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="50" />		
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="TpNrDocumento">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="20" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="TpNrLancamento">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="20" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="TpNrReciboDoacao">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="20" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:complexType name="informacoesBancariasOrigem">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="bancoOrigem" type="TpBancoOrigem" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="TpBancoOrigem">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="nrBancoDestino" type="TpBanco" />
+			<xs:element minOccurs="1" name="agenciaDestino" type="TpAgencia" />
+			<xs:element minOccurs="0" name="dvAgenciaDestino" type="TpDV" />
+			<xs:element minOccurs="1" name="contaCorrente" type="TpContaCorrente" />
+			<xs:element minOccurs="1" name="dvContaCorrente" type="TpDV" />
+			<xs:element minOccurs="0" maxOccurs="1" name="tpFundoPartidario" type="tipoFundoPartidario" />
+			<xs:element minOccurs="0" maxOccurs="1" name="tpFundoEspecial" type="tipoFundoEspecialFinanciamentoCampanha" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<!-- #############	
+	.	0 - Funda??o
+	.	1 - Mulher
+	.	2 - Ordin?rio
+	############# -->
+	<xs:simpleType name="tipoFundoPartidario">
+		<xs:restriction base="xs:integer">
+			<xs:totalDigits value="1" />
+			<xs:pattern value="0|1|2" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<!-- #############	
+	PARA O EXERC�CIO 2017 A 2023, PODER� SER INFORMADO:
+	.	1 - Campanha
+	.	2 - Mulher
+	PARA O EXERC�CIO 2024 OU POSTERIOR PARA O PARTIDO DE ESFERA NACIONAL, PODER� SER INFORMADO:
+	.	4 - Geral
+	.	5 - Candidaturas Femininas N�o Negras
+	.	6 - Candidaturas Femininas Negras
+	.	7 - Candidaturas Masculinas Negras
+	PARA O EXERC�CIO 2024 OU POSTERIOR PARA O PARTIDO DE ESFERA ESTADUAL, DISTRITAL, MUNICIPAL OU ZONAL (DF) 
+	N�O SER� NECESS�RIO O PREENCHIMENTO DO PAR�MENTRO
+			############# -->
+	<xs:simpleType name="tipoFundoEspecialFinanciamentoCampanha">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="1" />
+			<!-- <xs:totalDigits value="1" /> -->
+			<xs:pattern value="1|2|3|4|5|6|" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="TpBanco">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="5" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpAgencia">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0" />
+			<xs:maxLength value="7" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpDV">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="2" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TpContaCorrente">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="20" />
+			<xs:minLength value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:complexType name="doadoresOriginarios">
+		<xs:sequence>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="dadorOriginario" type="doadorOriginario" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="doadorOriginario">
+		<xs:choice maxOccurs="1" minOccurs="1">
+			<xs:element maxOccurs="1" minOccurs="0" name="pessoaFisica"	type="TpPessoaFisica" />
+<!-- 			<xs:element maxOccurs="1" minOccurs="0"	name="pessoaJuridica" type="TpPessoaJuridica" /> -->
+		</xs:choice>
+	</xs:complexType>
+	
+	<xs:complexType name="TpPessoaFisica">
+		<xs:sequence>
+			<!-- PF = RECURSOS DE PESSOAS FISICAS-->
+			<xs:element minOccurs="1" name="nrCpf" type="tpNumCpf" />
+			<xs:element minOccurs="1" name="nmPessoa" type="TpNmPessoa" />
+			<xs:element minOccurs="0" name="tituloEleitor"	type="tpNumTitulo" />
+			<xs:element minOccurs="0" name="nrReciboDoacao" type="TpNrReciboDoacao"/>
+			<xs:element minOccurs="0" name="vrDoacao" type="tpMoeda"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:simpleType name="tpNumCpf">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="11" />
+			<xs:pattern value="[0-9]{11}" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="TpNmPessoa">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1" />
+			<xs:maxLength value="150" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="tpNumTitulo">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="12" />
+			<xs:pattern value="[0-9]{12}" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="tpMoeda">
+		<xs:restriction base="xs:decimal">
+			<xs:totalDigits value="19" />
+			<xs:fractionDigits value="2" />
+			<xs:minExclusive value="0" />
+		</xs:restriction>
+	</xs:simpleType>
+	
+	
+	
+	<xs:complexType name="tpInformacoesBancariasDestino">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="bancoDestino" type="TpBancoDestino" />
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="TpBancoDestino">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="nrBancoOrigem" type="TpBanco" />
+			<xs:element minOccurs="1" name="agenciaOrigem" type="TpAgencia" />
+			<xs:element minOccurs="0" name="dvAgenciaOrigem" type="TpDV" />
+			<xs:element minOccurs="1" name="contaCorrente" type="TpContaCorrente" />
+			<xs:element minOccurs="1" name="dvContaCorrente" type="TpDV" />
+		</xs:sequence>
+	</xs:complexType>
+
+	
+	<xs:simpleType name="TpClassificacaoDoacao">
+		<xs:restriction base="xs:integer">
+			<xs:enumeration value="375"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - DIREÇÃO ESTADUAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="376"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - DIREÇÃO ESTADUAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="377"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - DIREÇÃO MUNICIPAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="378"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - DIREÇÃO MUNICIPAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="379"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - DIREÇÃO NACIONAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="380"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - DIREÇÃO NACIONAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="381"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - CANDIDATO - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="382"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - CANDIDATO - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="383"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - DIREÇÃO ESTADUAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="384"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - DIREÇÃO ESTADUAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="385"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - DIREÇÃO MUNICIPAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="386"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - DIREÇÃO MUNICIPAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="387"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - DIREÇÃO NACIONAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="388"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - DIREÇÃO NACIONAL - ORDINÁRIAS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="425"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - DIREÇÃO ESTADUAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="426"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - DIREÇÃO MUNICIPAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="427"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - DIREÇÃO NACIONAL - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="428"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - CANDIDATO - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="429"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - CANDIDATAS (MULHERES) - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="430"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO - CANDIDATAS (MULHERES) - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="431"><xs:annotation><xs:documentation>TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - CANDIDATAS (MULHERES) - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="439"><xs:annotation><xs:documentation>TRANSFER�NCIAS FINANCEIRAS EFETUADAS - FUNDO PARTID�RIO - CANDIDATOS NEGROS - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="440"><xs:annotation><xs:documentation>TRANSFER�NCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - CANDIDATOS NEGROS - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="441"><xs:annotation><xs:documentation>TRANSFER�NCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - CANDIDATOS NEGROS - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="442"><xs:annotation><xs:documentation>TRANSFER�NCIAS FINANCEIRAS EFETUADAS - FUNDO PARTID�RIO - CANDIDATAS NEGRAS (PARTICIPA��O POL�TICA DE MULHERES) - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="443"><xs:annotation><xs:documentation>TRANSFER�NCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS - CANDIDATAS NEGRAS (PARTICIPA��O POL�TICA DE MULHERES) - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>
+			<xs:enumeration value="444"><xs:annotation><xs:documentation>TRANSFER�NCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA - CANDIDATAS NEGRAS (PARTICIPA��O POL�TICA DE MULHERES) - DESPESAS COM FINS ELEITORAIS</xs:documentation></xs:annotation></xs:enumeration>							
+		</xs:restriction>
+	</xs:simpleType>
+	
+	
+</xs:schema>

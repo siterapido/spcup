@@ -2,42 +2,37 @@
 
 Consolidação de lançamentos financeiros dos diretórios estaduais da UP e exportação XML para importação no **SPCA** (Origem, Aplicação, Doação financeira).
 
-## Clone e instalação
+## Quick start
 
 ```bash
 git clone https://github.com/unidade-popular/spc-up.git
 cd spc-up
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-cp .env.example .env        # ajuste variáveis conforme necessário
-pytest                      # testes usam SQLite em memória (sem PostgreSQL)
+pnpm install
+cp .env.example .env
+# DATABASE_URL (Neon ou Docker), BLOB_READ_WRITE_TOKEN, AUTH_*, OPENROUTER_API_KEY, ADMIN_*
+pnpm db:migrate
+pnpm seed:diretorios
+pnpm seed:admin
+pnpm test
+pnpm dev
 ```
 
-## Quick start
+Ambiente automatizado (Postgres Docker opcional): `./scripts/run-local.sh`
 
-1. **PostgreSQL**
+Deploy produção: **[docs/deploy-vercel-neon.md](docs/deploy-vercel-neon.md)**
 
-   ```bash
-   docker compose up -d
-   alembic upgrade head
-   python scripts/seed_diretorios.py
-   ```
+## CLI
 
-2. **Ambiente**
+```bash
+pnpm --filter @spc-up/cli build
+pnpm spc-up ingest --uf SP --exercicio 2025 --path ./dados/
+pnpm spc-up pendencias --uf SP --exercicio 2025 --output pendencias.csv
+pnpm spc-up confirm --ids "uuid1,uuid2"
+pnpm spc-up export --uf SP --exercicio 2025 --out ./export/
+pnpm spc-up validate-xsd --file ./export/origem_SP.xml --schema origem
+```
 
-   ```bash
-   cp .env.example .env
-   # OPENROUTER_API_KEY para ingestão de PDF
-   ```
-
-3. **Instalar**
-
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -e ".[dev]"
-   ```
+Ingest CLI: `DATABASE_URL` + `STORAGE_ROOT` (default `./data/uploads`).
 
 ## Fluxo operacional
 
@@ -45,43 +40,30 @@ pytest                      # testes usam SQLite em memória (sem PostgreSQL)
 Estados enviam arquivos → Equipe nacional ingere → Revisa pendências → Confirma → Exporta 3 XMLs → Upload manual no SPCA
 ```
 
-### CLI
-
-```bash
-spc-up ingest --uf SP --exercicio 2025 --path ./dados/
-spc-up pendencias --uf SP --exercicio 2025 --output pendencias.csv
-spc-up confirm --ids "uuid1,uuid2"
-spc-up export --uf SP --exercicio 2025 --out ./export/
-spc-up validate-xsd --file ./export/origem_*.xml --schema origem
-```
-
-### Web (piloto)
-
-```bash
-uvicorn spc_up.api.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-- http://localhost:8000 — dashboard e upload  
-- http://localhost:8000/movimentacoes — revisão e confirmação  
-- GET `/api/export/{uf}/{exercicio}` — ZIP com 3 XMLs (403 se houver pendências)
-
 ## Regras de exportação
 
 - Export **bloqueado** enquanto existir movimentação não confirmada ou `bloqueio_export=true` na UF/exercício.
+- XMLs **inválidos contra XSD** não são publicados (API 422; CLI exit 1).
 - Cada UF usa seu **CNPJ** (`diretorio_estadual.cnpj_prestador`) nos XMLs.
 - **Crédito** → Origem (+ Doação se classificação de doação PF). **Débito** → Aplicação.
 
 ## Documentação
 
-- Design: `docs/superpowers/specs/2026-05-25-spc-up-prestacao-contas-design.md`
-- Plano: `docs/superpowers/plans/2026-05-25-spc-up-prestacao-contas.md`
-- Piloto: `docs/piloto-checklist.md`
-- Guias TSE: `Guia importação SPCA/`
+| Documento | Conteúdo |
+|-----------|----------|
+| [docs/deploy-vercel-neon.md](docs/deploy-vercel-neon.md) | Vercel, Neon, Blob, seeds, `gru1`, `AUTH_URL` |
+| [docs/piloto-checklist.md](docs/piloto-checklist.md) | Piloto 1 semana (TypeScript) |
+| [docs/spca-fontes.md](docs/spca-fontes.md) | Fontes SPCA / XSD |
+| `docs/superpowers/specs/2026-05-25-spc-up-prestacao-contas-design.md` | Regras de negócio |
+| `docs/superpowers/specs/2026-05-25-nextjs-vercel-neon-migration-design.md` | Design migração |
+| `scripts/migrate-db.md` | pg_dump / restore → Neon |
 
 ## Stack
 
-Python 3.12, FastAPI, Typer, SQLAlchemy 2, Alembic, PostgreSQL 16, lxml, OpenRouter (PDF).
+**Produção:** Next.js 15 (App Router), Auth.js v5, Drizzle ORM, Neon Postgres, Vercel Blob, Turborepo, Commander CLI (`apps/cli`), Vitest.
+
+**Legado (cutover):** Python 3.12, FastAPI, Alembic — `LEGACY_PYTHON=1 ./scripts/run-local.sh`
 
 ## SPCA XSD
 
-Schemas em `spc_up/spca/schemas/`: `origemRecurso.xsd`, `aplicacaoRecurso.xsd`, `doacaoFinanceira.xsd`.
+Schemas em `packages/spca/schemas/`: `origemRecurso.xsd`, `aplicacaoRecurso.xsd`, `doacaoFinanceira.xsd`.

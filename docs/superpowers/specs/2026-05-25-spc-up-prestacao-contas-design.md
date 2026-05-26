@@ -2,7 +2,7 @@
 
 **Data:** 2026-05-25  
 **Cliente:** Unidade Popular (UP) — SPC UP  
-**Status:** Aprovado em brainstorming (seções 1–3)
+**Status:** Implementado (piloto Python) — ver plano `docs/superpowers/plans/2026-05-25-spc-up-prestacao-contas.md`
 
 ---
 

@@ -5,8 +5,8 @@
 - [ ] Docker Desktop rodando → `docker compose up -d`
 - [ ] `alembic upgrade head`
 - [ ] `cp .env.example .env` com `OPENROUTER_API_KEY` se usar PDF
-- [ ] CNPJs reais nos diretórios piloto: editar `scripts/seed_diretorios.py` ou banco
-- [ ] XSDs em `spc_up/spca/schemas/` (origem, aplicacao, doacao)
+- [ ] CNPJs reais nos diretórios piloto: editar `scripts/seed-diretorios.ts` ou banco
+- [ ] XSDs em `packages/spca/schemas/` (origem, aplicacao, doacao)
 
 ## UFs piloto (escolher 2–3)
 
@@ -16,12 +16,12 @@
 
 ## Fluxo E2E
 
-1. [ ] `python scripts/seed_diretorios.py`
-2. [ ] `spc-up ingest --uf XX --exercicio 2025 --path ./dados/`
-3. [ ] `uvicorn spc_up.api.main:app --reload` → revisar em `/movimentacoes`
+1. [ ] `pnpm seed:diretorios`
+2. [ ] `pnpm spc-up ingest --uf XX --exercicio 2025 --path ./dados/`
+3. [ ] `pnpm dev` → revisar em `/movimentacoes`
 4. [ ] Confirmar lançamentos com score ≥ 0,85 (ou corrigir manualmente no banco)
-5. [ ] `spc-up pendencias --uf XX --exercicio 2025 --output pendencias.csv` → enviar ao estado
-6. [ ] `spc-up export --uf XX --exercicio 2025 --out ./export/`
+5. [ ] `pnpm spc-up pendencias --uf XX --exercicio 2025 --output pendencias.csv` → enviar ao estado
+6. [ ] `pnpm spc-up export --uf XX --exercicio 2025 --out ./export/`
 7. [ ] Importar os 3 XMLs no SPCA Cadastro (homologação)
 8. [ ] Registrar resultado abaixo
 

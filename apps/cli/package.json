@@ -1,0 +1,25 @@
+{
+  "name": "@spc-up/cli",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "spc-up": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit -p tsconfig.lint.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@spc-up/core": "workspace:*",
+    "@spc-up/db": "workspace:*",
+    "@spc-up/spca": "workspace:*",
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -47,7 +47,7 @@
 **Files:**
 - Create: `pyproject.toml`, `docker-compose.yml`, `.env.example`, `.gitignore`, `spc_up/__init__.py`, `spc_up/config.py`, `README.md`
 
-- [ ] **Step 1: Criar `pyproject.toml`**
+- [x] **Step 1: Criar `pyproject.toml`**
 
 ```toml
 [project]
@@ -78,7 +78,7 @@ spc-up = "spc_up.cli.main:app"
 testpaths = ["tests"]
 ```
 
-- [ ] **Step 2: Criar `docker-compose.yml`**
+- [x] **Step 2: Criar `docker-compose.yml`**
 
 ```yaml
 services:
@@ -96,7 +96,7 @@ volumes:
   pgdata:
 ```
 
-- [ ] **Step 3: Criar `spc_up/config.py`**
+- [x] **Step 3: Criar `spc_up/config.py`**
 
 ```python
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -113,7 +113,7 @@ class Settings(BaseSettings):
 settings = Settings()
 ```
 
-- [ ] **Step 4: Subir Postgres e instalar deps**
+- [x] **Step 4: Subir Postgres e instalar deps**
 
 ```bash
 cd "/Volumes/SSDdoMarcos/Projetos/Prestação de contas"
@@ -125,7 +125,7 @@ pip install pytest
 
 Expected: container `db` healthy.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git init
@@ -140,7 +140,7 @@ git commit -m "chore: bootstrap spc-up project"
 **Files:**
 - Create: `spc_up/models/base.py`, `spc_up/models/entities.py`, `alembic.ini`, `migrations/env.py`, `migrations/versions/001_initial.py`
 
-- [ ] **Step 1: Teste falhando — import models**
+- [x] **Step 1: Teste falhando — import models**
 
 ```python
 # tests/test_models.py
@@ -151,13 +151,13 @@ def test_movimentacao_status_enum():
 
 Run: `pytest tests/test_models.py -v` → FAIL (module missing)
 
-- [ ] **Step 2: Implementar `spc_up/models/entities.py`** (enums + tabelas principais)
+- [x] **Step 2: Implementar `spc_up/models/entities.py`** (enums + tabelas principais)
 
 Incluir: `DiretorioEstadual`, `PessoaFisica`, `PessoaJuridica`, `ContaBancaria`, `ArquivoIngestao`, `Movimentacao`, `MovimentacaoSpca`, `MatchEvidencia`, `DoacaoFinanceiraLink` conforme spec seção 5.
 
 `Movimentacao.hash_movimento` = String(64), unique com `(uf, exercicio, hash_movimento)`.
 
-- [ ] **Step 3: Alembic init + migration 001**
+- [x] **Step 3: Alembic init + migration 001**
 
 ```bash
 alembic init migrations
@@ -165,11 +165,11 @@ alembic revision --autogenerate -m "initial"
 alembic upgrade head
 ```
 
-- [ ] **Step 4: pytest pass**
+- [x] **Step 4: pytest pass**
 
 Run: `pytest tests/test_models.py -v` → PASS
 
-- [ ] **Step 5: Commit** `feat: add database models and initial migration`
+- [x] **Step 5: Commit** `feat: add database models and initial migration`
 
 ---
 
@@ -178,7 +178,7 @@ Run: `pytest tests/test_models.py -v` → PASS
 **Files:**
 - Create: `spc_up/services/normalize.py`, `tests/test_normalize.py`
 
-- [ ] **Step 1: Testes falhando**
+- [x] **Step 1: Testes falhando**
 
 ```python
 import pytest
@@ -194,11 +194,11 @@ def test_normalize_name():
     assert normalize_name("  João   da  Silva ") == "JOAO DA SILVA"
 ```
 
-- [ ] **Step 2: Implementar** com validação dígito verificador CPF; CNPJ alfanumérico TSE `[A-Z0-9]{12}[0-9]{2}`.
+- [x] **Step 2: Implementar** com validação dígito verificador CPF; CNPJ alfanumérico TSE `[A-Z0-9]{12}[0-9]{2}`.
 
-- [ ] **Step 3: pytest pass**
+- [x] **Step 3: pytest pass**
 
-- [ ] **Step 4: Commit** `feat: add cpf cnpj name normalization`
+- [x] **Step 4: Commit** `feat: add cpf cnpj name normalization`
 
 ---
 
@@ -207,7 +207,7 @@ def test_normalize_name():
 **Files:**
 - Create: `spc_up/services/confidence.py`, `tests/test_confidence.py`
 
-- [ ] **Step 1: Teste — cap em conflito**
+- [x] **Step 1: Teste — cap em conflito**
 
 ```python
 from spc_up.services.confidence import compute_confidence, Evidence
@@ -220,11 +220,11 @@ def test_conflict_caps_score():
     assert compute_confidence(ev) == 0.40
 ```
 
-- [ ] **Step 2: Implementar** pesos da spec; retornar `(score, evidencias, bloqueio_export)` se campo obrigatório ausente.
+- [x] **Step 2: Implementar** pesos da spec; retornar `(score, evidencias, bloqueio_export)` se campo obrigatório ausente.
 
-- [ ] **Step 3: pytest pass**
+- [x] **Step 3: pytest pass**
 
-- [ ] **Step 4: Commit** `feat: add confidence scoring service`
+- [x] **Step 4: Commit** `feat: add confidence scoring service`
 
 ---
 
@@ -235,7 +235,7 @@ def test_conflict_caps_score():
 - Copy: `Guia importação SPCA/origemRecurso (1).xsd` → `spc_up/spca/schemas/origemRecurso.xsd`
 - Download TSE ZIPs → `aplicacaoRecurso.xsd`, `doacaoFinanceira.xsd`
 
-- [ ] **Step 1: Teste validação origem mínima**
+- [x] **Step 1: Teste validação origem mínima**
 
 ```python
 from pathlib import Path
@@ -253,11 +253,11 @@ def test_validate_minimal_origem_xml(tmp_path):
     assert errors == []
 ```
 
-- [ ] **Step 2: Implementar `validate.py`** com `lxml.etree.XMLSchema`.
+- [x] **Step 2: Implementar `validate.py`** com `lxml.etree.XMLSchema`.
 
-- [ ] **Step 3: pytest pass** (skip se XSD ausente com pytest.mark.skipif)
+- [x] **Step 3: pytest pass** (skip se XSD ausente com pytest.mark.skipif)
 
-- [ ] **Step 4: Commit** `feat: add spca xsd validator`
+- [x] **Step 4: Commit** `feat: add spca xsd validator`
 
 ---
 
@@ -266,9 +266,9 @@ def test_validate_minimal_origem_xml(tmp_path):
 **Files:**
 - Create: `spc_up/spca/tabelas/classificacao_receita.yaml`, `codigos_gasto.yaml`, `spc_up/spca/load_tables.py`
 
-- [ ] **Step 1: Seed mínimo piloto** (10–15 códigos mais usados pela UP: 314, 333, 334, 336, 341, etc. + gastos 401–410 exemplo)
+- [x] **Step 1: Seed mínimo piloto** (10–15 códigos mais usados pela UP: 314, 333, 334, 336, 341, etc. + gastos 401–410 exemplo)
 
-- [ ] **Step 2: Teste carregamento**
+- [x] **Step 2: Teste carregamento**
 
 ```python
 from spc_up.spca.load_tables import get_classificacao_label
@@ -277,7 +277,7 @@ def test_load_classificacao():
     assert "314" in get_classificacao_label("314") or get_classificacao_label(314)
 ```
 
-- [ ] **Step 3: Commit** `feat: add spca domain tables`
+- [x] **Step 3: Commit** `feat: add spca domain tables`
 
 ---
 
@@ -286,9 +286,9 @@ def test_load_classificacao():
 **Files:**
 - Create: `spc_up/services/ingest/ofx.py`, `tests/fixtures/sample.ofx`, `tests/test_ingest_ofx.py`
 
-- [ ] **Step 1: Fixture OFX** com 1 crédito e 1 débito.
+- [x] **Step 1: Fixture OFX** com 1 crédito e 1 débito.
 
-- [ ] **Step 2: Teste**
+- [x] **Step 2: Teste**
 
 ```python
 def test_parse_ofx_directions():
@@ -298,11 +298,11 @@ def test_parse_ofx_directions():
     assert any(r["direcao"] == "SAIDA" for r in rows)
 ```
 
-- [ ] **Step 3: Implementar** + função `persist_transactions(session, uf, exercicio, arquivo_id, rows)` criando `Movimentacao` RASCUNHO com `hash_movimento`.
+- [x] **Step 3: Implementar** + função `persist_transactions(session, uf, exercicio, arquivo_id, rows)` criando `Movimentacao` RASCUNHO com `hash_movimento`.
 
-- [ ] **Step 4: pytest pass**
+- [x] **Step 4: pytest pass**
 
-- [ ] **Step 5: Commit** `feat: add ofx csv ingestion`
+- [x] **Step 5: Commit** `feat: add ofx csv ingestion`
 
 ---
 
@@ -311,13 +311,13 @@ def test_parse_ofx_directions():
 **Files:**
 - Create: `spc_up/services/ingest/excel.py`, `tests/fixtures/sample.xlsx`, `tests/test_ingest_excel.py`
 
-- [ ] **Step 1: Planilha fixture** colunas: `data`, `valor`, `descricao`, `tipo`(C/D) opcional.
+- [x] **Step 1: Planilha fixture** colunas: `data`, `valor`, `descricao`, `tipo`(C/D) opcional.
 
-- [ ] **Step 2: Teste parse + direção**
+- [x] **Step 2: Teste parse + direção**
 
-- [ ] **Step 3: Implementar** openpyxl; mapeamento configurável por aba (piloto: convenção fixa documentada no README).
+- [x] **Step 3: Implementar** openpyxl; mapeamento configurável por aba (piloto: convenção fixa documentada no README).
 
-- [ ] **Step 4: Commit** `feat: add excel ingestion`
+- [x] **Step 4: Commit** `feat: add excel ingestion`
 
 ---
 
@@ -326,7 +326,7 @@ def test_parse_ofx_directions():
 **Files:**
 - Create: `spc_up/services/match/rules.py`, `tests/test_match_rules.py`
 
-- [ ] **Step 1: Teste CPF no histórico**
+- [x] **Step 1: Teste CPF no histórico**
 
 ```python
 def test_match_cpf_in_description(db_session, sample_movimentacao):
@@ -336,11 +336,11 @@ def test_match_cpf_in_description(db_session, sample_movimentacao):
     assert m.confianca_global >= 0.45
 ```
 
-- [ ] **Step 2: Implementar** extração CPF/CNPJ regex da `descricao_raw`, link `pessoa_*`, criar `MatchEvidencia`, chamar `confidence.compute`.
+- [x] **Step 2: Implementar** extração CPF/CNPJ regex da `descricao_raw`, link `pessoa_*`, criar `MatchEvidencia`, chamar `confidence.compute`.
 
-- [ ] **Step 3: Atualizar status** para `PENDENTE_REVISAO` se score < 0.85.
+- [x] **Step 3: Atualizar status** para `PENDENTE_REVISAO` se score < 0.85.
 
-- [ ] **Step 4: Commit** `feat: add deterministic transaction matching`
+- [x] **Step 4: Commit** `feat: add deterministic transaction matching`
 
 ---
 
@@ -349,13 +349,13 @@ def test_match_cpf_in_description(db_session, sample_movimentacao):
 **Files:**
 - Create: `spc_up/services/export/origem.py`, `spc_up/services/export/common.py`, `tests/test_export_origem.py`
 
-- [ ] **Step 1: Teste gera XML com 1 origem PF PIX**
+- [x] **Step 1: Teste gera XML com 1 origem PF PIX**
 
-- [ ] **Step 2: Builder lxml** namespace `http://www.tse.jus.br/2012/XMLSchema/origemRecurso.xsd`; só movimentações `CONFIRMADO`, `direcao=ENTRADA`.
+- [x] **Step 2: Builder lxml** namespace `http://www.tse.jus.br/2012/XMLSchema/origemRecurso.xsd`; só movimentações `CONFIRMADO`, `direcao=ENTRADA`.
 
-- [ ] **Step 3: Validar XSD no teste**
+- [x] **Step 3: Validar XSD no teste**
 
-- [ ] **Step 4: Commit** `feat: add origem recurso xml export`
+- [x] **Step 4: Commit** `feat: add origem recurso xml export`
 
 ---
 
@@ -364,13 +364,13 @@ def test_match_cpf_in_description(db_session, sample_movimentacao):
 **Files:**
 - Create: `spc_up/services/export/aplicacao.py`, `tests/test_export_aplicacao.py`
 
-- [ ] **Step 1: Teste 1 gasto** pessoa jurídica + `gastoContaContabil` + detalhe situação 1.
+- [x] **Step 1: Teste 1 gasto** pessoa jurídica + `gastoContaContabil` + detalhe situação 1.
 
-- [ ] **Step 2: Implementar** root `importacaoAplicacaoRecurso`; default `detalhe_situacao=1`, `descricaoResumida` da movimentação.
+- [x] **Step 2: Implementar** root `importacaoAplicacaoRecurso`; default `detalhe_situacao=1`, `descricaoResumida` da movimentação.
 
-- [ ] **Step 3: Validar contra `aplicacaoRecurso.xsd`**
+- [x] **Step 3: Validar contra `aplicacaoRecurso.xsd`**
 
-- [ ] **Step 4: Commit** `feat: add aplicacao recurso xml export`
+- [x] **Step 4: Commit** `feat: add aplicacao recurso xml export`
 
 ---
 
@@ -379,13 +379,13 @@ def test_match_cpf_in_description(db_session, sample_movimentacao):
 **Files:**
 - Create: `spc_up/services/export/doacao.py`, `spc_up/services/doacao/link.py`, `tests/test_export_doacao.py`
 
-- [ ] **Step 1: Quando `classificacao_receita` em DOACAO_CODES, criar `DoacaoFinanceiraLink`**
+- [x] **Step 1: Quando `classificacao_receita` em DOACAO_CODES, criar `DoacaoFinanceiraLink`**
 
-- [ ] **Step 2: Export só links `sincronizado=True` e origem confirmada**
+- [x] **Step 2: Export só links `sincronizado=True` e origem confirmada**
 
-- [ ] **Step 3: Teste par origem+doação**
+- [x] **Step 3: Teste par origem+doação**
 
-- [ ] **Step 4: Commit** `feat: add doacao financeira export and linking`
+- [x] **Step 4: Commit** `feat: add doacao financeira export and linking`
 
 ---
 
@@ -394,7 +394,7 @@ def test_match_cpf_in_description(db_session, sample_movimentacao):
 **Files:**
 - Create: `spc_up/services/export/guard.py`, `spc_up/services/report/pendencias.py`, `tests/test_export_guard.py`
 
-- [ ] **Step 1: Teste bloqueio**
+- [x] **Step 1: Teste bloqueio**
 
 ```python
 def test_export_blocked_when_pending(db_session):
@@ -402,11 +402,11 @@ def test_export_blocked_when_pending(db_session):
     assert can_export(db_session, uf="SP", exercicio=2025) is False
 ```
 
-- [ ] **Step 2: `can_export`** verifica spec seção 6.
+- [x] **Step 2: `can_export`** verifica spec seção 6.
 
-- [ ] **Step 3: CSV pendências** colunas da spec 7.3.
+- [x] **Step 3: CSV pendências** colunas da spec 7.3.
 
-- [ ] **Step 4: Commit** `feat: add export guard and pendencias report`
+- [x] **Step 4: Commit** `feat: add export guard and pendencias report`
 
 ---
 
@@ -415,13 +415,13 @@ def test_export_blocked_when_pending(db_session):
 **Files:**
 - Create: `spc_up/services/ai/openrouter.py`, `spc_up/services/ingest/pdf.py`, `tests/test_openrouter_parse.py` (mock httpx)
 
-- [ ] **Step 1: Mock test** retorno JSON `{cpf, nome, valor, data, direcao}`
+- [x] **Step 1: Mock test** retorno JSON `{cpf, nome, valor, data, direcao}`
 
-- [ ] **Step 2: Implementar** prompt estruturado + `response_format` JSON; timeout/retries.
+- [x] **Step 2: Implementar** prompt estruturado + `response_format` JSON; timeout/retries.
 
-- [ ] **Step 3: `ingest/pdf.py`** chama AI, persiste movimentação, reusa match.
+- [x] **Step 3: `ingest/pdf.py`** chama AI, persiste movimentação, reusa match.
 
-- [ ] **Step 4: Commit** `feat: add openrouter pdf extraction`
+- [x] **Step 4: Commit** `feat: add openrouter pdf extraction`
 
 ---
 
@@ -430,16 +430,16 @@ def test_export_blocked_when_pending(db_session):
 **Files:**
 - Create: `spc_up/cli/main.py`
 
-- [ ] **Step 1: Comandos**
+- [x] **Step 1: Comandos**
 
 ```python
 # spc_up/cli/main.py — wire:
 # ingest, pendencias, confirm, export, validate-xsd
 ```
 
-- [ ] **Step 2: Teste smoke** `spc-up --help` e `spc-up validate-xsd` com fixture.
+- [x] **Step 2: Teste smoke** `spc-up --help` e `spc-up validate-xsd` com fixture.
 
-- [ ] **Step 3: Commit** `feat: add typer cli`
+- [x] **Step 3: Commit** `feat: add typer cli`
 
 ---
 
@@ -448,17 +448,17 @@ def test_export_blocked_when_pending(db_session):
 **Files:**
 - Create: `spc_up/api/main.py`, `spc_up/api/deps.py`, `spc_up/api/routes/upload.py`, `movimentacoes.py`, `export.py`, `templates/*.html`
 
-- [ ] **Step 1: POST `/api/upload`** multipart → `arquivo_ingestao` + job ingest
+- [x] **Step 1: POST `/api/upload`** multipart → `arquivo_ingestao` + job ingest
 
-- [ ] **Step 2: GET `/api/movimentacoes`** filtros uf, exercicio, status, min_score
+- [x] **Step 2: GET `/api/movimentacoes`** filtros uf, exercicio, status, min_score
 
-- [ ] **Step 3: POST `/api/movimentacoes/{id}/confirm`**
+- [x] **Step 3: POST `/api/movimentacoes/{id}/confirm`**
 
-- [ ] **Step 4: GET `/api/export/{uf}/{exercicio}`** retorna 403 se `can_export` false; senão zip com 3 XMLs + validacao.json
+- [x] **Step 4: GET `/api/export/{uf}/{exercicio}`** retorna 403 se `can_export` false; senão zip com 3 XMLs + validacao.json
 
-- [ ] **Step 5: UI mínima Jinja** dashboard + tabela pendências (sem impeccable polish no piloto)
+- [x] **Step 5: UI mínima Jinja** dashboard + tabela pendências (sem impeccable polish no piloto)
 
-- [ ] **Step 6: Commit** `feat: add fastapi web for pilot`
+- [x] **Step 6: Commit** `feat: add fastapi web for pilot`
 
 ---
 
@@ -467,11 +467,11 @@ def test_export_blocked_when_pending(db_session):
 **Files:**
 - Create: `scripts/seed_diretorios.py`, update `README.md`
 
-- [ ] **Step 1: Script insere 27 UFs com CNPJ placeholder** (substituir pelos reais antes do piloto)
+- [x] **Step 1: Script insere 27 UFs com CNPJ placeholder** (substituir pelos reais antes do piloto)
 
-- [ ] **Step 2: Documentar** fluxo: ingest → revisar → confirmar → export → upload manual SPCA
+- [x] **Step 2: Documentar** fluxo: ingest → revisar → confirmar → export → upload manual SPCA
 
-- [ ] **Step 3: Commit** `docs: add operations readme and seed script`
+- [x] **Step 3: Commit** `docs: add operations readme and seed script`
 
 ---
 
@@ -480,7 +480,7 @@ def test_export_blocked_when_pending(db_session):
 **Files:**
 - Create: `docs/piloto-checklist.md`
 
-- [ ] **Step 1: Checklist**
+- [x] **Step 1: Checklist**
 
 1. Escolher 2 UFs com CNPJ real cadastrado  
 2. `spc-up ingest` com OFX/Excel reais anonimizados  
@@ -489,7 +489,7 @@ def test_export_blocked_when_pending(db_session):
 5. Importar no SPCA homologação  
 6. Gerar `pendencias.csv` e enviar ao estado  
 
-- [ ] **Step 2: Registrar resultados** no checklist (pass/fail)
+- [x] **Step 2: Registrar resultados** no checklist (pass/fail)
 
 ---
 
