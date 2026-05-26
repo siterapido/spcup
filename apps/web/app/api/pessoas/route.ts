@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     nome?: string;
     uf?: string;
     exercicio?: number;
+    tituloEleitor?: string;
   };
 
   const tipo = parsePessoaTipoParam(body.tipo);
@@ -52,9 +53,9 @@ export async function POST(request: Request) {
   const uf = body.uf?.trim().toUpperCase();
   const exercicio = body.exercicio;
 
-  if (!tipo || !documento || !nome) {
+  if (!tipo || !documento || !nome || !uf || exercicio == null) {
     return NextResponse.json(
-      { error: "Campos obrigatórios: tipo, documento, nome" },
+      { error: "Campos obrigatórios: tipo, documento, nome, uf, exercicio" },
       { status: 400 },
     );
   }
@@ -63,10 +64,17 @@ export async function POST(request: Request) {
   try {
     const result = await upsertPessoa(
       db,
-      { tipo, documento, nome },
       {
-        ...(uf ? { uf } : {}),
-        ...(exercicio != null ? { exercicio } : {}),
+        tipo,
+        documento,
+        nome,
+        ...(tipo === "PF" && body.tituloEleitor != null
+          ? { tituloEleitor: body.tituloEleitor }
+          : {}),
+      },
+      {
+        uf,
+        exercicio,
         origem: "MANUAL",
       },
     );
@@ -82,9 +90,7 @@ export async function POST(request: Request) {
     }
 
     if (result.action === "inserted" || result.action === "updated") {
-      if (uf && exercicio != null) {
-        await rematchPendingMovimentacoes(db, uf, exercicio);
-      }
+      await rematchPendingMovimentacoes(db, uf, exercicio);
     }
 
     return NextResponse.json({

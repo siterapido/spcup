@@ -44,7 +44,7 @@ async function findPessoaJuridica(db: Db, cnpj: string) {
 
 export async function upsertPessoa(
   db: Db,
-  row: Pick<CadastroRow, "tipo" | "documento" | "nome">,
+  row: Pick<CadastroRow, "tipo" | "documento" | "nome"> & { tituloEleitor?: string | null },
   ctx: UpsertPessoaContext,
 ): Promise<UpsertPessoaResult> {
   const uf = ctx.uf?.toUpperCase() ?? SEM_CONTEXTO_UF;
@@ -58,7 +58,11 @@ export async function upsertPessoa(
     if (!existing) {
       const [created] = await db
         .insert(pessoaFisica)
-        .values({ cpf: documento, nome })
+        .values({
+          cpf: documento,
+          nome,
+          tituloEleitor: row.tituloEleitor?.trim() || null,
+        })
         .returning();
       if (!created) {
         throw new Error(`Failed to insert pessoa_fisica ${row.documento}`);
@@ -71,9 +75,16 @@ export async function upsertPessoa(
     }
 
     if (isStubNome("PF", existing.nome)) {
+      const patch: { nome: string; updatedAt: Date; tituloEleitor?: string | null } = {
+        nome,
+        updatedAt: new Date(),
+      };
+      if (row.tituloEleitor !== undefined) {
+        patch.tituloEleitor = row.tituloEleitor?.trim() || null;
+      }
       const [updated] = await db
         .update(pessoaFisica)
-        .set({ nome, updatedAt: new Date() })
+        .set(patch)
         .where(eq(pessoaFisica.id, existing.id))
         .returning();
       if (!updated) {
