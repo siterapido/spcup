@@ -13,8 +13,12 @@ function cacheEnabled(): boolean {
 }
 
 function cacheDir(): string {
-  const root = process.env.STORAGE_ROOT ?? "./data/uploads";
-  return process.env.OPENROUTER_CACHE_DIR ?? path.join(root, ".openrouter-cache");
+  if (process.env.OPENROUTER_CACHE_DIR) {
+    return process.env.OPENROUTER_CACHE_DIR;
+  }
+  const storageRoot = process.env.STORAGE_ROOT;
+  const root = storageRoot && storageRoot.trim() !== "" ? storageRoot : "/tmp";
+  return path.join(root, ".openrouter-cache");
 }
 
 function modelCacheSlug(model: string): string {
@@ -44,9 +48,13 @@ async function writeCacheFile(
   filePath: string,
   extraction: CachedExtratoExtraction,
 ): Promise<void> {
-  const dir = path.dirname(filePath);
-  await mkdir(dir, { recursive: true });
-  await writeFile(filePath, JSON.stringify(extraction), "utf8");
+  try {
+    const dir = path.dirname(filePath);
+    await mkdir(dir, { recursive: true });
+    await writeFile(filePath, JSON.stringify(extraction), "utf8");
+  } catch {
+    // Cache write is best-effort; read-only filesystems (e.g. Vercel) are expected
+  }
 }
 
 /** Disk cache for PDF extrato (key = model + SHA-256 of file bytes). */
