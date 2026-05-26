@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>SPC UP</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 720px; }
+    .ok { color: #0a0; }
+    .blocked { color: #a00; }
+    form { margin: 1.5rem 0; padding: 1rem; border: 1px solid #ccc; }
+    label { display: block; margin: 0.5rem 0; }
+  </style>
+</head>
+<body>
+  <h1>SPC UP — Prestação de Contas</h1>
+  <p>UF: <strong>{{ uf }}</strong> · Exercício: <strong>{{ exercicio }}</strong></p>
+  <p>Exportação SPCA:
+    {% if exportavel %}
+    <span class="ok">liberada</span>
+    {% else %}
+    <span class="blocked">bloqueada (há pendências)</span>
+    {% endif %}
+  </p>
+  <p><a href="/movimentacoes?uf={{ uf }}&exercicio={{ exercicio }}">Ver movimentações</a></p>
+
+  <form action="/api/upload" method="post" enctype="multipart/form-data">
+    <h2>Upload</h2>
+    <label>UF <input name="uf" value="{{ uf }}" required maxlength="2" /></label>
+    <label>Exercício <input name="exercicio" type="number" value="{{ exercicio }}" required /></label>
+    <label>Arquivo (OFX / Excel) <input name="file" type="file" required /></label>
+    <button type="submit">Enviar</button>
+  </form>
+
+  <p>
+    <a href="/api/export/{{ uf }}/{{ exercicio }}">Baixar ZIP (3 XMLs)</a>
+    — só funciona se exportação estiver liberada.
+  </p>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Movimentações — SPC UP</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; }
+    th { background: #f4f4f4; }
+    .low { background: #fff3cd; }
+  </style>
+</head>
+<body>
+  <h1>Movimentações</h1>
+  <p><a href="/?uf={{ uf }}&exercicio={{ exercicio }}">← Dashboard</a></p>
+  <p id="meta"></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Dir.</th>
+        <th>Valor</th>
+        <th>Score</th>
+        <th>Status</th>
+        <th>Descrição</th>
+        <th>Pessoa</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <script>
+    const uf = "{{ uf }}";
+    const exercicio = {{ exercicio }};
+    fetch(`/api/movimentacoes?uf=${uf}&exercicio=${exercicio}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById("meta").textContent =
+          `${data.total} lançamentos · Exportável: ${data.exportavel ? "sim" : "não"}`;
+        const tbody = document.getElementById("rows");
+        data.items.forEach(item => {
+          const tr = document.createElement("tr");
+          if (item.confianca_global < 0.85) tr.className = "low";
+          tr.innerHTML = `
+            <td>${item.data_movimento}</td>
+            <td>${item.direcao}</td>
+            <td>${item.valor}</td>
+            <td>${item.confianca_global.toFixed(2)}</td>
+            <td>${item.status}</td>
+            <td>${item.descricao_raw.slice(0, 60)}</td>
+            <td>${item.pessoa_nome || "—"}</td>
+            <td><button data-id="${item.id}">Confirmar</button></td>`;
+          tbody.appendChild(tr);
+        });
+        tbody.querySelectorAll("button").forEach(btn => {
+          btn.onclick = () => {
+            fetch("/api/movimentacoes/confirm", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: [btn.dataset.id] }),
+            }).then(() => location.reload());
+          };
+        });
+      });
+  </script>
+</body>
+</html>
