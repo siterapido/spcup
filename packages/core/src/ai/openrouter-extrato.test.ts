@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  extractFileOcrTextFromOpenRouterBody,
   extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
   isKimiModel,
+  parseExtratoValor,
   resolveExtratoModel,
   resolvePdfTimeoutMs,
 } from "./openrouter";
@@ -43,6 +45,41 @@ describe("isKimiModel", () => {
   });
 });
 
+describe("parseExtratoValor", () => {
+  it("parses Brazilian decimal strings", () => {
+    expect(parseExtratoValor("10,00")).toBe(10);
+    expect(parseExtratoValor("1.234,56")).toBe(1234.56);
+    expect(parseExtratoValor(100.5)).toBe(100.5);
+  });
+});
+
+describe("extractFileOcrTextFromOpenRouterBody", () => {
+  it("joins text blocks from file annotations", () => {
+    const text = extractFileOcrTextFromOpenRouterBody({
+      choices: [
+        {
+          message: {
+            content: '{"transacoes":[]}',
+            annotations: [
+              {
+                type: "file",
+                file: {
+                  content: [
+                    { type: "text", text: '<file name="p1.pdf">' },
+                    { type: "text", text: "Extrato Pix\nGABRIEL REIS DA SILVA" },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(text).toContain("Extrato Pix");
+    expect(text).not.toContain("<file name=");
+  });
+});
+
 describe("resolvePdfTimeoutMs", () => {
   const prev = process.env.OPENROUTER_PDF_TIMEOUT_MS;
 
@@ -77,10 +114,10 @@ describe("resolveExtratoModel", () => {
     }
   });
 
-  it("does not fall back to OPENROUTER_MODEL (Kimi)", () => {
+  it("does not fall back to OPENROUTER_MODEL", () => {
     delete process.env.OPENROUTER_PDF_MODEL;
     process.env.OPENROUTER_MODEL = "moonshotai/kimi-k2.6";
-    expect(resolveExtratoModel()).toBe("moonshotai/kimi-k2.6");
+    expect(resolveExtratoModel()).toBe("google/gemini-3.5-flash");
   });
 
   it("uses OPENROUTER_PDF_MODEL when set", () => {
@@ -178,6 +215,135 @@ describe("extrato extraction (OpenRouter)", () => {
     expect(parts.some((p) => p.type === "text")).toBe(true);
   });
 
+  it("falls back to text extraction when Kimi returns empty JSON but OCR annotations exist", async () => {
+    process.env.OPENROUTER_CACHE = "0";
+    const ocrBody = {
+      choices: [
+        {
+          message: {
+            content: '{"transacoes":[]}',
+            annotations: [
+              {
+                type: "file",
+                file: {
+                  content: [
+                    {
+                      type: "text",
+                      text: "Extrato Pix\n".repeat(30),
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const textBody = {
+      choices: [{ message: { content: JSON.stringify(SAMPLE_EXTRATO) } }],
+    };
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ocrBody,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => textBody,
+      });
+
+    const buf = Buffer.from("%PDF-1.4 demo");
+    const result = await extractTransactionsFromPdfFile(buf, {
+      fetch: mockFetch,
+      apiKey: "test-key",
+      filename: "extrato.pdf",
+      model: "moonshotai/kimi-k2.6",
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(result.transacoes).toHaveLength(2);
+    const firstBody = JSON.parse(String(mockFetch.mock.calls[0]![1]!.body)) as {
+      plugins?: unknown;
+    };
+    expect(firstBody.plugins).toEqual([
+      { id: "file-parser", pdf: { engine: "mistral-ocr" } },
+    ]);
+  });
+
+  it("Gemini PDF extrato uses json_schema and no plugins", async () => {
+    process.env.OPENROUTER_CACHE = "0";
+    const mockFetch = vi.fn().mockResolvedValue(mockOpenRouterResponse(SAMPLE_EXTRATO));
+    const buf = Buffer.from("%PDF-1.4 demo");
+
+    await extractTransactionsFromPdfFile(buf, {
+      fetch: mockFetch,
+      apiKey: "test-key",
+      filename: "extrato.pdf",
+      model: "google/gemini-3.5-flash",
+    });
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as {
+      response_format: { type: string; json_schema?: { name: string } };
+      plugins?: unknown;
+    };
+    expect(body.response_format.type).toBe("json_schema");
+    expect(body.response_format.json_schema?.name).toBe("extrato_transacoes");
+    expect(body.plugins).toBeUndefined();
+  });
+
+  it("copies long descricao to nome when nome missing", async () => {
+    process.env.OPENROUTER_CACHE = "0";
+    const mockFetch = vi.fn().mockResolvedValue(
+      mockOpenRouterResponse({
+        transacoes: [
+          {
+            data: "2025-01-02",
+            valor: 10,
+            direcao: "ENTRADA",
+            descricao: "GABRIEL REIS DA SILVA",
+          },
+        ],
+      }),
+    );
+
+    const result = await extractTransactionsFromPdfText("extrato", {
+      fetch: mockFetch,
+      apiKey: "test-key",
+      model: "google/gemini-3.5-flash",
+    });
+
+    expect(result.transacoes[0]?.nome).toBe("GABRIEL REIS DA SILVA");
+  });
+
+  it("does not copy short bank codes to nome", async () => {
+    process.env.OPENROUTER_CACHE = "0";
+    const mockFetch = vi.fn().mockResolvedValue(
+      mockOpenRouterResponse({
+        transacoes: [
+          {
+            data: "2025-01-02",
+            valor: 10,
+            direcao: "ENTRADA",
+            descricao: "CRED TEV",
+          },
+        ],
+      }),
+    );
+
+    const result = await extractTransactionsFromPdfText("extrato", {
+      fetch: mockFetch,
+      apiKey: "test-key",
+      model: "google/gemini-3.5-flash",
+    });
+
+    expect(result.transacoes[0]?.nome).toBeUndefined();
+  });
+
   it("uses json_object response_format for Kimi PDF extrato", async () => {
     process.env.OPENROUTER_CACHE = "0";
     const mockFetch = vi.fn().mockResolvedValue(mockOpenRouterResponse(SAMPLE_EXTRATO));
@@ -194,8 +360,12 @@ describe("extrato extraction (OpenRouter)", () => {
     const body = JSON.parse(String(init.body)) as {
       response_format: { type: string };
       messages: Array<{ role: string; content: string }>;
+      plugins?: Array<{ id: string; pdf: { engine: string } }>;
     };
     expect(body.response_format.type).toBe("json_object");
     expect(body.messages[0]?.content).toMatch(/transacoes/i);
+    expect(body.plugins).toEqual([
+      { id: "file-parser", pdf: { engine: "mistral-ocr" } },
+    ]);
   });
 });

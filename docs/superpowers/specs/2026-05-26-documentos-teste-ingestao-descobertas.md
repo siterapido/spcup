@@ -56,7 +56,8 @@ nome              | CPF/CNPJ           | Pessoa Física/Jurídica | Validado
 
 - `pdf-parse`: **0 caracteres** de texto → `hasEnoughText: false`.
 - Caminho: **OpenRouter visão** (`extractTransactionsFromPdfFile`).
-- Teste real (Gemini, cache frio): ~34 transações em ~12 s.
+- Teste real (Gemini 3.5 Flash, cache frio, PDF inteiro): ~34 transações em ~12–25 s.
+- Teste real (Gemini 3.5 Flash, com lote por página — legado): ~34 transações em ~45 s (2 chamadas).
 - Teste real (Kimi, antes do timeout 180s): abort em 60s com PDF inteiro — motivou lotes por página.
 
 **Amostra típica da IA (sem CPF no JSON):**
@@ -203,9 +204,9 @@ Entrada principal: `ingestPdfExtrato` em `packages/core/src/ingest/pdf.ts`.
 
 **Quando lotear (`shouldBatchPdfVision`):**
 
-- `pageCount > 1`, ou
 - `buffer.length >= OPENROUTER_PDF_SPLIT_MIN_BYTES` (default 200_000), ou
-- Modelo Kimi e PDF >= 80 KB
+- Modelo **Kimi** (`kimi_conservative`): `pageCount > 1`, ou PDF >= 80 KB
+- Modelo **Gemini** (`gemini_native`): `pageCount > 1` **não** loteia sozinho se bytes < limiar
 
 **Limites:**
 
@@ -216,10 +217,11 @@ Entrada principal: `ingestPdfExtrato` em `packages/core/src/ingest/pdf.ts`.
 
 ### 5.3 Impacto nos documentos de teste
 
-| PDF | Páginas | Chamadas OpenRouter (default) |
-|-----|---------|-------------------------------|
-| Extrato Jan PIX | 2 | 2 |
-| EXTRATO TOTAL JANEIRO | 3 | 3 |
+| PDF | Páginas | Chamadas OpenRouter (Gemini default) |
+|-----|---------|--------------------------------------|
+| Extrato Jan PIX | 2 | 1 |
+| EXTRATO TOTAL JANEIRO | 3 | 1 |
+| (Kimi override) | 2–3 | 2–3 (1/página) |
 
 Segunda ingestão do mesmo arquivo/modelo: **0 chamadas** (cache).
 
@@ -229,7 +231,7 @@ Segunda ingestão do mesmo arquivo/modelo: **0 chamadas** (cache).
 
 | Medida | Variável / código | Efeito |
 |--------|-------------------|--------|
-| Modelo extrato | `OPENROUTER_PDF_MODEL=moonshotai/kimi-k2.6` | Alinhado ao match; ajustar custo no painel OpenRouter |
+| Modelo extrato | `OPENROUTER_PDF_MODEL=google/gemini-3.5-flash` | PDF nativo; Kimi via override + mistral-ocr |
 | Cache em disco | `OPENROUTER_CACHE=1` | Re-ingestão gratuita (mesmo modelo + mesmo arquivo) |
 | Cache por modelo | `openrouter-cache.ts` | Troca Gemini→Kimi não reusa saída errada |
 | `max_tokens` | default 8192 | Evita completion gigante |
@@ -248,10 +250,10 @@ Segunda ingestão do mesmo arquivo/modelo: **0 chamadas** (cache).
 OPENROUTER_API_KEY=sk-or-v1-...
 
 # Extrato PDF (visão) — não usar OPENROUTER_MODEL aqui
-OPENROUTER_PDF_MODEL=moonshotai/kimi-k2.6
+OPENROUTER_PDF_MODEL=google/gemini-3.5-flash
 
 # Match IA movimentações
-OPENROUTER_MODEL=moonshotai/kimi-k2.6
+OPENROUTER_MODEL=google/gemini-3.5-flash
 
 # Cache (0 = desliga)
 OPENROUTER_CACHE=1
@@ -325,7 +327,7 @@ Suite: `pnpm --filter @spc-up/core test` (82 testes após estas mudanças).
 
 ## 11. Checklist operacional (piloto Bahia)
 
-1. [ ] `OPENROUTER_API_KEY` e `OPENROUTER_PDF_MODEL=moonshotai/kimi-k2.6` no ambiente
+1. [ ] `OPENROUTER_API_KEY` e `OPENROUTER_PDF_MODEL=google/gemini-3.5-flash` no ambiente
 2. [ ] Importar `pessoas bahia (1).xlsx` em **Cadastro** (confirmar aviso “sem cabeçalho”)
 3. [ ] Conferir ~256 pessoas; corrigir 1 linha com erro se necessário
 4. [ ] Criar sessão de prestação BA + exercício (ex.: 2025)

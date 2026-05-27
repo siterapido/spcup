@@ -1,5 +1,7 @@
 import { PDFDocument } from "pdf-lib";
 
+import { resolveModelProfile } from "../ai/model-profile";
+
 /** Max pages allowed per extrato file (batched vision processes each page). */
 export const MAX_EXTRATO_PAGES = Number.parseInt(
   process.env.MAX_EXTRATO_PAGES ?? "12",
@@ -74,13 +76,23 @@ export function shouldBatchPdfVision(
   pageCount: number,
   model: string,
 ): boolean {
-  if (pageCount > 1) {
-    return true;
+  const profile = resolveModelProfile(model);
+
+  if (profile.pdfBatching === "gemini_native") {
+    if (pageCount > 1 && pageCount <= MAX_EXTRATO_PAGES) {
+      return false;
+    }
+    return buffer.length >= resolvePdfSplitMinBytes();
   }
+
   if (buffer.length >= resolvePdfSplitMinBytes()) {
     return true;
   }
-  return /kimi/i.test(model) && buffer.length >= 80_000;
+
+  if (pageCount > 1) {
+    return true;
+  }
+  return buffer.length >= 80_000;
 }
 
 export function dedupeExtratoTransactions(

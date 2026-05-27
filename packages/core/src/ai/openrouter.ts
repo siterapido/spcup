@@ -1,6 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { MIN_TEXT_CHARS } from "../ingest/pdf-text";
 import {
   dedupeExtratoTransactions,
   getPdfPageCount,
@@ -8,11 +9,17 @@ import {
   splitPdfIntoBatches,
 } from "../ingest/pdf-split";
 import {
+  DEFAULT_EXTRATO_MODEL,
+  resolveModelProfile,
+} from "./model-profile";
+import {
   readExtratoPdfCache,
   readExtratoTextCache,
   writeExtratoPdfCache,
   writeExtratoTextCache,
 } from "./openrouter-cache";
+
+export { isKimiModel } from "./model-profile";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -23,7 +30,7 @@ const RETRY_BACKOFF_MS = 1000;
 const DEFAULT_MAX_TOKENS = 8192;
 /** Text-path statements above this are truncated before the API call. */
 export const MAX_EXTRATO_TEXT_CHARS = 24_000;
-const DEFAULT_PDF_MODEL = "moonshotai/kimi-k2.6";
+const DEFAULT_PDF_MODEL = DEFAULT_EXTRATO_MODEL;
 
 const EXTRACTION_SCHEMA = {
   type: "object",
@@ -79,10 +86,6 @@ const EXTRATO_ARRAY_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const EXTRATO_SYSTEM_PROMPT =
-  "Extrato bancário BR. JSON transacoes: data (YYYY-MM-DD), valor, direcao (ENTRADA|SAIDA), descricao. " +
-  "Preencha cpf/cnpj (só dígitos) quando aparecer na linha; senão nome do contraparte. Não invente linhas.";
-
 const KIMI_EXTRATO_SYSTEM_PROMPT =
   "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
   'Responda APENAS JSON: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
@@ -93,6 +96,13 @@ const KIMI_EXTRATO_SYSTEM_PROMPT =
 const KIMI_EXTRATO_USER_PDF =
   "Extraia todas as transações visíveis neste extrato. Retorne somente o JSON.";
 
+const GEMINI_EXTRATO_SYSTEM_PROMPT =
+  "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
+  'Responda APENAS JSON válido no schema: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
+  '"descricao":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
+  "Use ENTRADA para crédito e SAIDA para débito. Preencha nome com o contraparte quando visível; cpf/cnpj só dígitos. " +
+  "Não invente linhas.";
+
 export interface ExtractStructuredOptions {
   fetch?: typeof fetch;
   apiKey?: string;
@@ -102,13 +112,9 @@ export interface ExtractStructuredOptions {
   timeoutMs?: number;
 }
 
-/** Kimi on OpenRouter works better with json_object + schema in prompt (not strict json_schema). */
-export function isKimiModel(model: string): boolean {
-  return /kimi/i.test(model);
-}
-
 function extratoSystemPrompt(model: string): string {
-  return isKimiModel(model) ? KIMI_EXTRATO_SYSTEM_PROMPT : EXTRATO_SYSTEM_PROMPT;
+  const variant = resolveModelProfile(model).extratoPromptVariant;
+  return variant === "kimi" ? KIMI_EXTRATO_SYSTEM_PROMPT : GEMINI_EXTRATO_SYSTEM_PROMPT;
 }
 
 function buildStructuredResponseFormat(
@@ -116,7 +122,7 @@ function buildStructuredResponseFormat(
   name: string,
   schema: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (isKimiModel(model)) {
+  if (resolveModelProfile(model).responseFormat === "json_object") {
     return { type: "json_object" };
   }
   return {
@@ -163,6 +169,18 @@ function resolveMaxTokens(): number {
 
 function withMaxTokens(payload: Record<string, unknown>): Record<string, unknown> {
   return { ...payload, max_tokens: resolveMaxTokens() };
+}
+
+/** Kimi on OpenRouter often misses native PDF; force OCR parsing for file inputs. */
+function withPdfParserPlugins(
+  payload: Record<string, unknown>,
+  model: string,
+): Record<string, unknown> {
+  const plugins = resolveModelProfile(model).pdfPlugins;
+  if (!plugins) {
+    return payload;
+  }
+  return { ...payload, plugins };
 }
 
 function buildPayload(buffer: Buffer, filename: string, model: string): Record<string, unknown> {
@@ -227,33 +245,39 @@ function buildExtratoFilePayload(
   filename: string,
   model: string,
 ): Record<string, unknown> {
-  return withMaxTokens({
-    model,
-    messages: [
-      { role: "system", content: extratoSystemPrompt(model) },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: isKimiModel(model) ? KIMI_EXTRATO_USER_PDF : "Extract all bank transactions from this PDF bank statement.",
-          },
-          {
-            type: "file",
-            file: {
-              filename,
-              file_data: encodePdf(buffer),
-            },
-          },
-        ],
-      },
-    ],
-    response_format: buildStructuredResponseFormat(
+  return withPdfParserPlugins(
+    withMaxTokens({
       model,
-      "extrato_transacoes",
-      EXTRATO_ARRAY_SCHEMA as unknown as Record<string, unknown>,
-    ),
-  });
+      messages: [
+        { role: "system", content: extratoSystemPrompt(model) },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text:
+                resolveModelProfile(model).extratoPromptVariant === "kimi"
+                  ? KIMI_EXTRATO_USER_PDF
+                  : "Extraia todas as transações visíveis neste extrato. Retorne somente o JSON.",
+            },
+            {
+              type: "file",
+              file: {
+                filename,
+                file_data: encodePdf(buffer),
+              },
+            },
+          ],
+        },
+      ],
+      response_format: buildStructuredResponseFormat(
+        model,
+        "extrato_transacoes",
+        EXTRATO_ARRAY_SCHEMA as unknown as Record<string, unknown>,
+      ),
+    }),
+    model,
+  );
 }
 
 function trimExtratoText(statementText: string): string {
@@ -321,6 +345,55 @@ function parseResponseBody(body: unknown): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
+/** OCR text from OpenRouter file-parser annotations (mistral-ocr / cloudflare-ai). */
+export function extractFileOcrTextFromOpenRouterBody(body: unknown): string {
+  if (typeof body !== "object" || body === null) {
+    return "";
+  }
+
+  const choices = (body as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || choices.length === 0) {
+    return "";
+  }
+
+  const message = (choices[0] as { message?: { annotations?: unknown } })?.message;
+  const annotations = message?.annotations;
+  if (!Array.isArray(annotations)) {
+    return "";
+  }
+
+  const parts: string[] = [];
+  for (const ann of annotations) {
+    if (typeof ann !== "object" || ann === null) {
+      continue;
+    }
+    const file = (ann as { type?: string; file?: { content?: unknown } }).file;
+    if ((ann as { type?: string }).type !== "file" || !Array.isArray(file?.content)) {
+      continue;
+    }
+    for (const block of file.content) {
+      if (
+        typeof block === "object" &&
+        block !== null &&
+        (block as { type?: string }).type === "text" &&
+        typeof (block as { text?: string }).text === "string"
+      ) {
+        const text = (block as { text: string }).text.trim();
+        if (text.length > 0 && !text.startsWith("<file name=")) {
+          parts.push(text);
+        }
+      }
+    }
+  }
+
+  return parts.join("\n\n");
+}
+
+interface OpenRouterJsonResult {
+  parsed: Record<string, unknown>;
+  fileOcrText: string;
+}
+
 async function resolvePdfInput(
   pathOrBuffer: string | Buffer,
   filename?: string,
@@ -348,6 +421,63 @@ export function resolveExtratoModel(options?: ExtractStructuredOptions): string 
   return options?.model ?? process.env.OPENROUTER_PDF_MODEL ?? DEFAULT_PDF_MODEL;
 }
 
+export function parseExtratoValor(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return Number.NaN;
+  }
+  const normalized = raw.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+  return Number.parseFloat(normalized);
+}
+
+const SHORT_BANK_CODE = /^[A-Z0-9][A-Z0-9\s.\-/]{2,14}$/;
+
+function inferNomeFromDescricao(descricao: string): string | undefined {
+  const text = descricao.trim();
+  if (text.length < 8) {
+    return undefined;
+  }
+  if (SHORT_BANK_CODE.test(text)) {
+    return undefined;
+  }
+  return text;
+}
+
+function normalizeExtratoItem(item: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...item };
+  const contraparte = String(out.contraparte ?? "").trim();
+  const nome = String(out.nome ?? "").trim();
+  if (!nome && contraparte) {
+    out.nome = contraparte;
+  }
+
+  const nomeStr = String(out.nome ?? "").trim();
+  const descricaoStr = String(out.descricao ?? "").trim();
+  if (!nomeStr && descricaoStr) {
+    const inferred = inferNomeFromDescricao(descricaoStr);
+    if (inferred) {
+      out.nome = inferred;
+    }
+  }
+
+  const docRaw = String(out.cpf_cnpj ?? out.documento ?? "").replace(/\D/g, "");
+  if (!out.cpf && docRaw.length === 11) {
+    out.cpf = docRaw;
+  } else if (!out.cnpj && docRaw.length === 14) {
+    out.cnpj = docRaw;
+  }
+
+  const valor = parseExtratoValor(out.valor);
+  if (Number.isFinite(valor)) {
+    out.valor = valor;
+  }
+
+  return out;
+}
+
 function normalizeExtratoResponse(parsed: Record<string, unknown>): ExtratoExtraction {
   const raw = parsed.transacoes;
   if (!Array.isArray(raw)) {
@@ -357,7 +487,7 @@ function normalizeExtratoResponse(parsed: Record<string, unknown>): ExtratoExtra
   return {
     transacoes: raw.map((item) =>
       typeof item === "object" && item !== null && !Array.isArray(item)
-        ? (item as Record<string, unknown>)
+        ? normalizeExtratoItem(item as Record<string, unknown>)
         : {},
     ),
   };
@@ -366,7 +496,7 @@ function normalizeExtratoResponse(parsed: Record<string, unknown>): ExtratoExtra
 async function callOpenRouterJson(
   payload: Record<string, unknown>,
   options?: ExtractStructuredOptions,
-): Promise<Record<string, unknown>> {
+): Promise<OpenRouterJsonResult> {
   const apiKey = options?.apiKey ?? process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured");
@@ -402,7 +532,10 @@ async function callOpenRouterJson(
         }
 
         const body = await response.json();
-        return parseResponseBody(body);
+        return {
+          parsed: parseResponseBody(body),
+          fileOcrText: extractFileOcrTextFromOpenRouterBody(body),
+        };
       } finally {
         clearTimeout(timeout);
       }
@@ -429,7 +562,8 @@ export async function extractStructuredFromPdf(
   const model = options?.model ?? process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4";
   const { buffer, filename } = await resolvePdfInput(pathOrBuffer, options?.filename);
   const payload = buildPayload(buffer, filename, model);
-  return callOpenRouterJson(payload, options);
+  const { parsed } = await callOpenRouterJson(payload, options);
+  return parsed;
 }
 
 export async function extractTransactionsFromPdfText(
@@ -444,7 +578,7 @@ export async function extractTransactionsFromPdfText(
   }
 
   const payload = buildExtratoTextPayload(normalized, model);
-  const parsed = await callOpenRouterJson(payload, options);
+  const { parsed } = await callOpenRouterJson(payload, options);
   const extraction = normalizeExtratoResponse(parsed);
   await writeExtratoTextCache(normalized, model, extraction);
   return extraction;
@@ -462,11 +596,26 @@ async function extractTransactionsFromSinglePdfBuffer(
   }
 
   const payload = buildExtratoFilePayload(buffer, filename, model);
-  const parsed = await callOpenRouterJson(payload, {
+  const { parsed, fileOcrText } = await callOpenRouterJson(payload, {
     ...options,
     timeoutMs: options?.timeoutMs ?? resolvePdfTimeoutMs(),
   });
-  const extraction = normalizeExtratoResponse(parsed);
+  let extraction = normalizeExtratoResponse(parsed);
+
+  const profile = resolveModelProfile(model);
+  const ocrText = fileOcrText.trim();
+  if (
+    profile.ocrTextFallback &&
+    extraction.transacoes.length === 0 &&
+    ocrText.length >= MIN_TEXT_CHARS
+  ) {
+    extraction = await extractTransactionsFromPdfText(ocrText, {
+      ...options,
+      model,
+      filename,
+    });
+  }
+
   await writeExtratoPdfCache(buffer, model, extraction);
   return extraction;
 }

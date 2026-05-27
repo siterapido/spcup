@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   dedupeExtratoTransactions,
   getPdfPageCount,
+  shouldBatchPdfVision,
   splitPdfIntoBatches,
 } from "./pdf-split";
 
@@ -33,6 +34,32 @@ describe("dedupeExtratoTransactions", () => {
     ];
 
     expect(dedupeExtratoTransactions(items)).toHaveLength(2);
+  });
+});
+
+describe("shouldBatchPdfVision", () => {
+  const smallBuf = Buffer.alloc(50_000);
+  const largeBuf = Buffer.alloc(250_000);
+
+  it("gemini: does not batch 2 pages under byte threshold", () => {
+    expect(shouldBatchPdfVision(smallBuf, 2, "google/gemini-3.5-flash")).toBe(false);
+  });
+
+  it("gemini: does not batch 2 pages even when over byte threshold", () => {
+    expect(shouldBatchPdfVision(largeBuf, 2, "google/gemini-3.5-flash")).toBe(false);
+  });
+
+  it("gemini: batches single page over byte threshold", () => {
+    expect(shouldBatchPdfVision(largeBuf, 1, "google/gemini-3.5-flash")).toBe(true);
+  });
+
+  it("kimi: batches 2 pages even when small", () => {
+    expect(shouldBatchPdfVision(smallBuf, 2, "moonshotai/kimi-k2.6")).toBe(true);
+  });
+
+  it("kimi: batches single page >= 80KB", () => {
+    const buf = Buffer.alloc(90_000);
+    expect(shouldBatchPdfVision(buf, 1, "moonshotai/kimi-k2.6")).toBe(true);
   });
 });
 

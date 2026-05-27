@@ -1,5 +1,7 @@
+import { DEFAULT_MATCH_MODEL } from "../ai/model-profile";
+
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "moonshotai/kimi-k2.6";
+const DEFAULT_MODEL = DEFAULT_MATCH_MODEL;
 
 export const AI_MATCH_SCHEMA = {
   type: "object",
@@ -114,7 +116,7 @@ function parseAiMatchBody(body: unknown): AiMatchResult {
   };
 }
 
-/** Call Kimi via OpenRouter to evaluate whether extracted data matches cadastro. */
+/** Call OpenRouter to evaluate whether extracted data matches cadastro. */
 export async function evaluateMovimentacaoWithAi(
   input: EvaluateAiMatchInput,
   options?: EvaluateAiMatchOptions,
