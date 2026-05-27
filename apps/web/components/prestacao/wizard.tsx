@@ -37,6 +37,7 @@ export function PrestacaoWizard() {
     steps,
     fileErrors,
     errorLogs,
+    ingestProgress,
     isProcessing,
     submit,
     reset,
@@ -332,6 +333,7 @@ export function PrestacaoWizard() {
               statusLabel={statusLabel}
               steps={steps}
               fileNames={files.map((f) => f.name)}
+              ingestProgress={ingestProgress}
               fileErrors={fileErrors}
               errorLogs={errorLogs}
             />

@@ -12,6 +12,7 @@ import {
   type ExtractStructuredOptions,
 } from "../ai/openrouter";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
+import { applyDeterministicMatch } from "../match/rules";
 import { extractDocumentCandidates } from "../match/rules";
 import { normalizeCnpj, normalizeCpf } from "../normalize";
 import { toIngestError } from "./errors";
@@ -269,7 +270,7 @@ export async function ingestPdfExtrato(
 
     const movimentacoes: Movimentacao[] = [];
     for (const movimentacao of created) {
-      movimentacoes.push(await applyAiMatchToMovimentacao(db, movimentacao.id));
+      movimentacoes.push(await applyDeterministicMatch(db, movimentacao.id));
     }
 
     ingestLog("info", { fase: "concluido", arquivoId, filename, duracaoMs: Date.now() - t0 });

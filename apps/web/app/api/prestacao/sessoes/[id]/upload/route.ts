@@ -1,4 +1,5 @@
 import {
+  armazenarPdfIngestBuffer,
   classifyIngestError,
   getSessao,
   ingestFileBuffer,
@@ -6,12 +7,12 @@ import {
   prestadorFromSessao,
 } from "@spc-up/core";
 import { getDb, sessaoPrestacao, SESSAO_STATUS } from "@spc-up/db";
-import { put } from "@vercel/blob";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 
 import { requireSession } from "@/lib/api-auth";
+import { persistUpload } from "@/lib/persist-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -57,9 +58,14 @@ export async function POST(
     .set({ status: SESSAO_STATUS.EM_PROCESSAMENTO })
     .where(eq(sessaoPrestacao.id, sessaoId));
 
+  const modoArmazenar = form.get("modo") === "armazenar";
+
   const results: Array<{
     nome: string;
     movimentacoes_criadas: number;
+    arquivo_id?: string;
+    paginas?: number;
+    modo?: "armazenar";
     linhas_ignoradas_sem_doc?: number;
   }> = [];
   const errors: UploadErro[] = [];
@@ -81,11 +87,7 @@ export async function POST(
 
     let caminhoStorage: string;
     try {
-      const blob = await put(blobPath, buffer, {
-        access: "public",
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      });
-      caminhoStorage = blob.url;
+      caminhoStorage = await persistUpload(blobPath, buffer);
     } catch (error) {
       const detail = classifyIngestError(
         error instanceof Error ? error : new Error("falha no storage"),
@@ -106,7 +108,45 @@ export async function POST(
       continue;
     }
 
+    const prestadorCtx = {
+      cnpjPrestador: prestador.cnpjPrestador,
+      tipoPrestador: prestador.tipoPrestador,
+      sessaoPrestacaoId: sessaoId,
+      diretorioMunicipalId: prestador.diretorioMunicipalId,
+    };
+
     try {
+      if (modoArmazenar && suffix === ".pdf") {
+        const stored = await armazenarPdfIngestBuffer(db, {
+          diretorioId: sessao.diretorioEstadualId,
+          uf: sessao.uf,
+          exercicio: sessao.exercicio,
+          filename: file.name,
+          buffer,
+          caminhoStorage,
+          sessaoPrestacaoId: sessaoId,
+          prestador: prestadorCtx,
+        });
+        results.push({
+          nome: file.name,
+          movimentacoes_criadas: 0,
+          arquivo_id: stored.arquivoId,
+          paginas: stored.pageCount,
+          modo: "armazenar",
+        });
+        continue;
+      }
+
+      if (modoArmazenar && suffix !== ".pdf") {
+        errors.push({
+          nome: file.name,
+          codigo: "INGESTAO_DESCONHECIDA",
+          mensagem: "Modo armazenar aplica-se apenas a PDF.",
+          causaTecnica: `Extensão ${suffix}`,
+        });
+        continue;
+      }
+
       const result = await ingestFileBuffer(db, {
         diretorioId: sessao.diretorioEstadualId,
         uf: sessao.uf,
@@ -115,12 +155,7 @@ export async function POST(
         buffer,
         caminhoStorage,
         sessaoPrestacaoId: sessaoId,
-        prestador: {
-          cnpjPrestador: prestador.cnpjPrestador,
-          tipoPrestador: prestador.tipoPrestador,
-          sessaoPrestacaoId: sessaoId,
-          diretorioMunicipalId: prestador.diretorioMunicipalId,
-        },
+        prestador: prestadorCtx,
       });
       results.push({
         nome: file.name,

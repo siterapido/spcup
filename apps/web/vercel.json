@@ -4,11 +4,9 @@
   "buildCommand": "cd ../.. && pnpm --filter web build",
   "regions": ["gru1"],
   "functions": {
-    "app/api/upload/route.ts": {
-      "maxDuration": 300
-    },
-    "app/api/prestacao/sessoes/[id]/upload/route.ts": {
-      "maxDuration": 300
+    "app/api/**/*.ts": {
+      "maxDuration": 300,
+      "memory": 1024
     }
   }
 }

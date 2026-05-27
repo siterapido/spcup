@@ -3,6 +3,7 @@
 import type {
   ErrorLogEntry,
   FileErrorDisplay,
+  IngestProgressState,
   SubmitStep,
   SubmitStepId,
 } from "@/hooks/use-prestacao-submit";
@@ -71,9 +72,71 @@ export type SubmissionProgressPanelProps = {
   statusLabel: string;
   steps: SubmitStep[];
   fileNames: string[];
+  ingestProgress?: IngestProgressState | null;
   fileErrors?: FileErrorDisplay[];
   errorLogs?: ErrorLogEntry[];
 };
+
+function IngestProgressBlock({ ingest }: { ingest: IngestProgressState }) {
+  const clamped = Math.min(100, Math.max(0, ingest.percent));
+  const recent = ingest.completed.slice(-5);
+
+  return (
+    <div
+      className="mt-3 rounded-md border border-up-black/15 bg-white p-3"
+      aria-labelledby="ingest-progress-title"
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p
+          id="ingest-progress-title"
+          className="text-xs font-medium uppercase tracking-wide text-muted"
+        >
+          Processar movimentações
+        </p>
+        <span className="tabular-nums text-xs font-medium text-up-black">
+          {clamped}%
+        </span>
+      </div>
+      <div
+        role="progressbar"
+        aria-valuenow={clamped}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Progresso da ingestão"
+        className="mb-2 h-1.5 overflow-hidden rounded-full bg-slate-200"
+      >
+        <div
+          className="h-full rounded-full bg-emerald-600 transition-[width] duration-300 ease-out-quart"
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
+      <p className="text-sm font-medium text-up-black" aria-live="polite">
+        {ingest.current}
+      </p>
+      {ingest.movimentacoesTotal > 0 ? (
+        <p className="mt-1 text-xs text-muted">
+          {ingest.movimentacoesTotal} movimentação
+          {ingest.movimentacoesTotal === 1 ? "" : "ões"} até agora
+        </p>
+      ) : null}
+      {recent.length > 0 ? (
+        <ul className="mt-2 space-y-1 border-t border-border-default pt-2">
+          {recent.map((line) => (
+            <li
+              key={line}
+              className="flex items-start gap-1.5 text-xs text-up-black/80"
+            >
+              <span className="mt-0.5 text-emerald-600" aria-hidden>
+                ✓
+              </span>
+              <span className="min-w-0 break-words">{line}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 function FileErrorCard({ item }: { item: FileErrorDisplay }) {
   return (
@@ -131,11 +194,16 @@ export function SubmissionProgressPanel({
   statusLabel,
   steps,
   fileNames,
+  ingestProgress = null,
   fileErrors = [],
   errorLogs = [],
 }: SubmissionProgressPanelProps) {
   const clamped = Math.min(100, Math.max(0, progress));
   const hasErrors = fileErrors.length > 0 || errorLogs.length > 0;
+  const ingestStep = steps.find((s) => s.id === "ingest");
+  const showIngestBlock =
+    ingestProgress != null &&
+    (ingestStep?.status === "active" || ingestStep?.status === "done");
 
   return (
     <div
@@ -216,6 +284,8 @@ export function SubmissionProgressPanel({
           </li>
         ))}
       </ol>
+
+      {showIngestBlock ? <IngestProgressBlock ingest={ingestProgress} /> : null}
 
       {fileNames.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border-default pt-3">

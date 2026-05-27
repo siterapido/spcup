@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   dedupeExtratoTransactions,
+  extractSinglePageBuffer,
   getPdfPageCount,
   shouldBatchPdfVision,
   splitPdfIntoBatches,
@@ -76,5 +77,15 @@ describe("splitPdfIntoBatches", () => {
     expect(batches).toHaveLength(2);
     expect(await getPdfPageCount(batches[0]!)).toBe(1);
     expect(await getPdfPageCount(batches[1]!)).toBe(1);
+  });
+
+  it("extractSinglePageBuffer returns one page by 1-based index", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    doc.addPage();
+    const full = Buffer.from(await doc.save());
+
+    const page2 = await extractSinglePageBuffer(full, 2);
+    expect(await getPdfPageCount(page2)).toBe(1);
   });
 });

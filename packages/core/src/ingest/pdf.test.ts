@@ -27,12 +27,21 @@ vi.mock("../match/apply-ai", () => ({
   applyAiMatchToMovimentacao: vi.fn(),
 }));
 
+vi.mock("../match/rules", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../match/rules")>();
+  return {
+    ...actual,
+    applyDeterministicMatch: vi.fn(),
+  };
+});
+
 import {
   extractStructuredFromPdf,
   extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
 } from "../ai/openrouter";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
+import { applyDeterministicMatch } from "../match/rules";
 import { extractPdfText } from "./pdf-text";
 import { persistTransactions } from "./ofx";
 import { MOVIMENTACAO_STATUS, TIPO_PRESTADOR } from "./types";
@@ -248,7 +257,7 @@ describe("ingestPdfExtrato", () => {
 
     vi.mocked(extractTransactionsFromPdfText).mockResolvedValue(extratoAi);
     vi.mocked(persistTransactions).mockResolvedValue([draftMov] as never);
-    vi.mocked(applyAiMatchToMovimentacao).mockResolvedValue(matchedMov as never);
+    vi.mocked(applyDeterministicMatch).mockResolvedValue(matchedMov as never);
 
     const result = await ingestPdfExtrato(
       {} as never,

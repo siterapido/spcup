@@ -71,6 +71,19 @@ export async function splitPdfIntoBatches(
   return batches;
 }
 
+/** Extract one 1-based page as a single-page PDF buffer. */
+export async function extractSinglePageBuffer(
+  buffer: Buffer,
+  page1Based: number,
+): Promise<Buffer> {
+  const batches = await splitPdfIntoBatches(buffer, 1);
+  const index = page1Based - 1;
+  if (index < 0 || index >= batches.length) {
+    throw new Error(`Página inválida: ${page1Based} (total ${batches.length})`);
+  }
+  return batches[index]!;
+}
+
 export function shouldBatchPdfVision(
   buffer: Buffer,
   pageCount: number,

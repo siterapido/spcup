@@ -146,6 +146,13 @@ export {
   type IngestPdfExtratoResult,
 } from "./ingest/pdf";
 export { extractPdfText, MAX_EXTRATO_PAGES, MIN_TEXT_CHARS } from "./ingest/pdf-text";
+export {
+  armazenarPdfIngestBuffer,
+  processarPaginaPdfExtrato,
+  type ArmazenarPdfResult,
+  type ProcessarPaginaPdfResult,
+} from "./ingest/pdf-pagina";
+export { extractSinglePageBuffer } from "./ingest/pdf-split";
 export { computeHashMovimento, parseOfx, persistTransactions } from "./ingest/ofx";
 export {
   INGEST_EXTENSIONS,

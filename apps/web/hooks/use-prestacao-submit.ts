@@ -46,6 +46,17 @@ export type ErrorLogEntry = {
   detalhe?: string;
 };
 
+/** Progresso detalhado da etapa «Processar movimentações». */
+export type IngestProgressState = {
+  /** 0–100 dentro da etapa de ingestão */
+  percent: number;
+  /** Linha principal do que está acontecendo agora */
+  current: string;
+  /** Etapas já concluídas (mais recentes no final) */
+  completed: string[];
+  movimentacoesTotal: number;
+};
+
 const STEPS_IDLE: SubmitStep[] = [
   { id: "session", label: "Criar sessão", status: "pending" },
   { id: "upload", label: "Enviar arquivos", status: "pending" },
@@ -122,8 +133,53 @@ function uploadFormData(
 type ArquivoUp = {
   nome: string;
   movimentacoes_criadas: number;
+  arquivo_id?: string;
+  paginas?: number;
+  modo?: "armazenar";
   linhas_ignoradas_sem_doc?: number;
 };
+
+type PaginaProcessada = {
+  movimentacoes_criadas: number;
+  linhas_ignoradas_sem_doc?: number;
+  pagina: number;
+  totalPaginas: number;
+  error?: string;
+  codigo?: string;
+  causaTecnica?: string;
+};
+
+export function isPdfFile(file: File): boolean {
+  return file.name.toLowerCase().endsWith(".pdf");
+}
+
+async function processarPaginaExtrato(
+  sessaoId: string,
+  arquivoId: string,
+  pagina: number,
+): Promise<
+  | { ok: true; data: PaginaProcessada }
+  | { ok: false; status: number; body: PaginaProcessada & { error?: string } }
+> {
+  const res = await fetch(
+    `/api/prestacao/sessoes/${sessaoId}/arquivos/${arquivoId}/paginas/${pagina}/processar`,
+    { method: "POST" },
+  );
+  let json: PaginaProcessada & { error?: string; codigo?: string; causaTecnica?: string };
+  try {
+    json = (await res.json()) as typeof json;
+  } catch {
+    return {
+      ok: false,
+      status: res.status,
+      body: { pagina, totalPaginas: pagina, movimentacoes_criadas: 0, error: "Resposta inválida" },
+    };
+  }
+  if (!res.ok) {
+    return { ok: false, status: res.status, body: json };
+  }
+  return { ok: true, data: json };
+}
 
 function truncateBody(body: string, max = 800): string {
   const trimmed = body.trim();
@@ -147,6 +203,27 @@ function toFileErrorDisplay(erro: UploadErroResposta): FileErrorDisplay {
     codigo: erro.codigo,
     mensagem: erro.mensagem,
     causaTecnica: erro.causaTecnica ?? erro.mensagem,
+  };
+}
+
+type UploadResponseBody = {
+  error?: string;
+  erros?: UploadErroResposta[];
+  arquivos?: ArquivoUp[];
+  total_movimentacoes?: number;
+};
+
+function mergeUploadResponses(parts: UploadResponseBody[]): UploadResponseBody {
+  const arquivos: ArquivoUp[] = [];
+  const erros: UploadErroResposta[] = [];
+  for (const part of parts) {
+    arquivos.push(...(part.arquivos ?? []));
+    erros.push(...(part.erros ?? []));
+  }
+  return {
+    arquivos,
+    erros,
+    total_movimentacoes: arquivos.reduce((s, a) => s + a.movimentacoes_criadas, 0),
   };
 }
 
@@ -191,6 +268,9 @@ export function usePrestacaoSubmit() {
   const [fileErrors, setFileErrors] = useState<FileErrorDisplay[]>([]);
   const [errorLogs, setErrorLogs] = useState<ErrorLogEntry[]>([]);
   const [activeFileName, setActiveFileName] = useState<string | null>(null);
+  const [ingestProgress, setIngestProgress] = useState<IngestProgressState | null>(
+    null,
+  );
 
   const pushErrorLog = useCallback((entry: ErrorLogEntry) => {
     setErrorLogs((prev) => [...prev, entry]);
@@ -205,6 +285,7 @@ export function usePrestacaoSubmit() {
     setFileErrors([]);
     setErrorLogs([]);
     setActiveFileName(null);
+    setIngestProgress(null);
   }, []);
 
   const submit = useCallback(
@@ -288,35 +369,218 @@ export function usePrestacaoSubmit() {
           setPhase("uploading");
           setStatusLabel(`Enviando ${label}…`);
 
-          const data = new FormData();
-          for (const file of input.files) {
-            data.append("files", file);
-          }
+          const fileCount = input.files.length;
+          const uploadParts: UploadResponseBody[] = [];
+          const pdfJobs: Array<{
+            nome: string;
+            arquivoId: string;
+            paginas: number;
+            movimentacoes_criadas: number;
+            linhas_ignoradas_sem_doc: number;
+          }> = [];
+          let status = 200;
+          let body = "";
 
-          let status: number;
-          let body: string;
-          try {
-            const res = await uploadFormData(
-              `/api/prestacao/sessoes/${sessaoId}/upload`,
-              data,
-              (loaded, total) => {
-                const ratio = total > 0 ? loaded / total : 0;
-                setProgress(15 + Math.round(70 * ratio));
-                if (loaded >= total) {
-                  currentSteps = setStepStatus(
-                    setStepStatus(currentSteps, "upload", "done"),
-                    "ingest",
-                    "active",
-                  );
-                  setSteps(currentSteps);
-                  setPhase("processing");
-                  setProgress(85);
-                  setStatusLabel("Processando movimentações…");
-                }
-              },
+          const ingestCompletedLines: string[] = [];
+          let movimentacoesIngestTotal = 0;
+
+          const movimentacoesFromJobs = () =>
+            pdfJobs.reduce((s, j) => s + j.movimentacoes_criadas, 0) +
+            movimentacoesIngestTotal;
+
+          const markIngestActive = () => {
+            currentSteps = setStepStatus(
+              setStepStatus(currentSteps, "upload", "done"),
+              "ingest",
+              "active",
             );
-            status = res.status;
-            body = res.body;
+            setSteps(currentSteps);
+            setPhase("processing");
+          };
+
+          const reportIngest = (
+            current: string,
+            percent: number,
+            movimentacoesTotal?: number,
+          ) => {
+            markIngestActive();
+            setIngestProgress({
+              percent: Math.min(100, Math.max(0, Math.round(percent))),
+              current,
+              completed: [...ingestCompletedLines],
+              movimentacoesTotal: movimentacoesTotal ?? movimentacoesFromJobs(),
+            });
+            setStatusLabel(current);
+          };
+
+          try {
+            for (let fileIndex = 0; fileIndex < fileCount; fileIndex++) {
+              const file = input.files[fileIndex]!;
+              const data = new FormData();
+              data.append("files", file);
+              if (isPdfFile(file)) {
+                data.append("modo", "armazenar");
+              }
+
+              setActiveFileName(file.name);
+              setPhase("uploading");
+              setStatusLabel(
+                fileCount === 1
+                  ? `Enviando ${file.name}…`
+                  : `Enviando ${file.name} (${fileIndex + 1}/${fileCount})…`,
+              );
+
+              const res = await uploadFormData(
+                `/api/prestacao/sessoes/${sessaoId}/upload`,
+                data,
+                (loaded, total) => {
+                  const fileRatio = total > 0 ? loaded / total : 0;
+                  const overallRatio = (fileIndex + fileRatio) / fileCount;
+                  setProgress(15 + Math.round(25 * overallRatio));
+                  if (total > 0 && loaded >= total && !isPdfFile(file)) {
+                    reportIngest(
+                      `Processando movimentações de ${file.name}…`,
+                      Math.round(((fileIndex + 0.5) / fileCount) * 100),
+                    );
+                  }
+                },
+              );
+
+              status = res.status;
+              body = res.body;
+
+              let partJson: UploadResponseBody;
+              try {
+                partJson = JSON.parse(res.body) as UploadResponseBody;
+              } catch {
+                const snippet = truncateBody(res.body);
+                pushErrorLog({
+                  etapa: "Enviar arquivos",
+                  mensagem: `HTTP ${res.status}: resposta não é JSON válido`,
+                  detalhe: snippet || "(corpo vazio)",
+                });
+                throw new Error("Resposta inválida do servidor");
+              }
+
+              if (status < 200 || status >= 300) {
+                uploadParts.push(partJson);
+                break;
+              }
+
+              const stored = partJson.arquivos?.[0];
+              if (isPdfFile(file) && stored?.arquivo_id && stored.paginas) {
+                pdfJobs.push({
+                  nome: stored.nome,
+                  arquivoId: stored.arquivo_id,
+                  paginas: stored.paginas,
+                  movimentacoes_criadas: 0,
+                  linhas_ignoradas_sem_doc: 0,
+                });
+              } else {
+                uploadParts.push(partJson);
+                const created = partJson.arquivos?.[0]?.movimentacoes_criadas ?? 0;
+                movimentacoesIngestTotal += created;
+                ingestCompletedLines.push(
+                  `${file.name}: ${created} movimentação${created === 1 ? "" : "ões"}`,
+                );
+                reportIngest(
+                  `${file.name} processado`,
+                  Math.round(((fileIndex + 1) / fileCount) * 100),
+                );
+              }
+            }
+
+            const totalPaginas = pdfJobs.reduce((s, j) => s + j.paginas, 0);
+            let paginasFeitas = 0;
+
+            if (pdfJobs.length > 0) {
+              reportIngest(
+                totalPaginas === 1
+                  ? "Iniciando extração do extrato com IA…"
+                  : `Iniciando extração de ${totalPaginas} páginas em ${pdfJobs.length} extrato(s)…`,
+                0,
+              );
+            }
+
+            for (const job of pdfJobs) {
+              for (let pagina = 1; pagina <= job.paginas; pagina += 1) {
+                const pageLabel =
+                  job.paginas === 1
+                    ? job.nome
+                    : `${job.nome} — página ${pagina}/${job.paginas}`;
+
+                reportIngest(
+                  `Extraindo transações: ${pageLabel}`,
+                  (paginasFeitas / Math.max(totalPaginas, 1)) * 100,
+                );
+                setProgress(
+                  40 +
+                    Math.round(
+                      (45 * (paginasFeitas + 0.5)) / Math.max(totalPaginas, 1),
+                    ),
+                );
+
+                const pageRes = await processarPaginaExtrato(
+                  sessaoId,
+                  job.arquivoId,
+                  pagina,
+                );
+                paginasFeitas += 1;
+
+                if (!pageRes.ok) {
+                  const errBody = pageRes.body;
+                  const codigo = errBody.codigo ?? "INGESTAO_DESCONHECIDA";
+                  const mensagem =
+                    errBody.error ?? `Erro na página ${pagina} de ${job.nome}`;
+                  uploadParts.push({
+                    erros: [
+                      {
+                        nome: `${job.nome} (p.${pagina})`,
+                        codigo,
+                        mensagem,
+                        causaTecnica: errBody.causaTecnica ?? mensagem,
+                      },
+                    ],
+                  });
+                  status = pageRes.status;
+                  throw new Error(mensagem);
+                }
+
+                job.movimentacoes_criadas += pageRes.data.movimentacoes_criadas;
+                job.linhas_ignoradas_sem_doc +=
+                  pageRes.data.linhas_ignoradas_sem_doc ?? 0;
+
+                const n = pageRes.data.movimentacoes_criadas;
+                const pageDone =
+                  job.paginas === 1
+                    ? `${job.nome}: ${n} movimentação${n === 1 ? "" : "ões"}`
+                    : `${job.nome} (p.${pagina}): ${n} movimentação${n === 1 ? "" : "ões"}`;
+                ingestCompletedLines.push(pageDone);
+
+                reportIngest(
+                  paginasFeitas >= totalPaginas
+                    ? "Extração concluída"
+                    : `Página ${paginasFeitas}/${totalPaginas} concluída`,
+                  (paginasFeitas / Math.max(totalPaginas, 1)) * 100,
+                );
+                setProgress(
+                  40 + Math.round((45 * paginasFeitas) / Math.max(totalPaginas, 1)),
+                );
+              }
+            }
+
+            if (pdfJobs.length > 0) {
+              const mergedPdfPart: UploadResponseBody = {
+                arquivos: pdfJobs.map((j) => ({
+                  nome: j.nome,
+                  movimentacoes_criadas: j.movimentacoes_criadas,
+                  ...(j.linhas_ignoradas_sem_doc > 0
+                    ? { linhas_ignoradas_sem_doc: j.linhas_ignoradas_sem_doc }
+                    : {}),
+                })),
+              };
+              uploadParts.push(mergedPdfPart);
+            }
           } catch (uploadErr) {
             const msg =
               uploadErr instanceof Error
@@ -336,28 +600,16 @@ export function usePrestacaoSubmit() {
             setSteps(currentSteps);
             setPhase("error");
             setProgress((p) => Math.max(p, 15));
+            setIngestProgress(null);
             setErrorMessage(msg);
             setStatusLabel(msg);
             throw new Error(msg);
           }
 
-          let upJson: {
-            error?: string;
-            erros?: UploadErroResposta[];
-            arquivos?: ArquivoUp[];
-            total_movimentacoes?: number;
-          };
-          try {
-            upJson = JSON.parse(body) as typeof upJson;
-          } catch {
-            const snippet = truncateBody(body);
-            upJson = { error: "Resposta inválida do servidor" };
-            pushErrorLog({
-              etapa: "Processar movimentações",
-              mensagem: `HTTP ${status}: resposta não é JSON válido`,
-              detalhe: snippet || "(corpo vazio)",
-            });
-          }
+          const upJson: UploadResponseBody =
+            uploadParts.length > 0
+              ? mergeUploadResponses(uploadParts)
+              : { error: "Resposta inválida do servidor" };
 
           const erros = upJson.erros ?? [];
           const totalMov = upJson.total_movimentacoes ?? 0;
@@ -420,6 +672,13 @@ export function usePrestacaoSubmit() {
             input.consolidarExtratos ?? false,
             countPdfFiles(input.files),
           );
+
+          setIngestProgress({
+            percent: 100,
+            current: `${totalMov} movimentação${totalMov === 1 ? "" : "ões"} processada${totalMov === 1 ? "" : "s"}`,
+            completed: ingestCompletedLines,
+            movimentacoesTotal: totalMov,
+          });
 
           currentSteps = setStepStatus(currentSteps, "ingest", "done");
           if (goConsolidacao) {
@@ -506,6 +765,7 @@ export function usePrestacaoSubmit() {
     fileErrors,
     errorLogs,
     activeFileName,
+    ingestProgress,
     isProcessing,
     submit,
     reset,

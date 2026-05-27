@@ -18,6 +18,9 @@ export interface IngestLogFields {
   filename?: string;
   duracaoMs?: number;
   transacoesExtraidas?: number;
+  pagina?: number;
+  paginas?: number;
+  movimentacoes_criadas?: number;
   codigoErro?: string;
   causa?: string;
 }
