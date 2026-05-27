@@ -1,3 +1,4 @@
+import "./pdf-node-setup";
 import pdfParse from "pdf-parse";
 
 import { assertExtratoPageLimit } from "./pdf-split";

@@ -532,18 +532,24 @@ export function usePrestacaoSubmit() {
                   const codigo = errBody.codigo ?? "INGESTAO_DESCONHECIDA";
                   const mensagem =
                     errBody.error ?? `Erro na página ${pagina} de ${job.nome}`;
+                  const causaTecnica = errBody.causaTecnica ?? mensagem;
+                  pushErrorLog({
+                    etapa: `Extrato: ${job.nome} (p.${pagina})`,
+                    mensagem: `[${codigo}] ${mensagem}`,
+                    detalhe: causaTecnica,
+                  });
                   uploadParts.push({
                     erros: [
                       {
                         nome: `${job.nome} (p.${pagina})`,
                         codigo,
                         mensagem,
-                        causaTecnica: errBody.causaTecnica ?? mensagem,
+                        causaTecnica,
                       },
                     ],
                   });
                   status = pageRes.status;
-                  throw new Error(mensagem);
+                  throw new Error(causaTecnica !== mensagem ? `${mensagem} — ${causaTecnica}` : mensagem);
                 }
 
                 job.movimentacoes_criadas += pageRes.data.movimentacoes_criadas;

@@ -41,6 +41,21 @@ describe("classifyIngestError", () => {
     expect(r.causaTecnica).toMatch(/visão/i);
   });
 
+  it("maps OpenRouter parse failures", () => {
+    const r = classifyIngestError(new Error("OpenRouter response content is not valid JSON"));
+    expect(r.codigo).toBe("OPENROUTER_FALHA");
+  });
+
+  it("maps DOMMatrix pdf-parse failures", () => {
+    const r = classifyIngestError(new Error("DOMMatrix is not defined"));
+    expect(r.codigo).toBe("PDF_INVALIDO");
+  });
+
+  it("maps blob download failures", () => {
+    const r = classifyIngestError(new Error("Falha ao baixar arquivo: 403"));
+    expect(r.codigo).toBe("STORAGE_FALHA");
+  });
+
   it("falls back to unknown with technical cause preserved", () => {
     const r = classifyIngestError(new Error("something weird"));
     expect(r.codigo).toBe("INGESTAO_DESCONHECIDA");

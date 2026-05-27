@@ -1,6 +1,6 @@
 import type { Db } from "@spc-up/db";
-import { arquivoIngestao } from "@spc-up/db";
-import { eq } from "drizzle-orm";
+import { arquivoIngestao, movimentacao } from "@spc-up/db";
+import { count, eq } from "drizzle-orm";
 
 import {
   extractTransactionsFromPdfFile,
@@ -9,7 +9,7 @@ import {
 } from "../ai/openrouter";
 import { applyDeterministicMatch } from "../match/rules";
 import { readArquivoIngestaoBuffer } from "../storage/read-arquivo";
-import { toIngestError } from "./errors";
+import { IngestError, toIngestError } from "./errors";
 import { fileHashBuffer } from "./hash";
 import { ingestLog } from "./log";
 import { persistTransactions } from "./ofx";
@@ -188,6 +188,28 @@ export async function processarPaginaPdfExtrato(
     }
 
     if (pagina >= totalPaginas) {
+      const [movRow] = await db
+        .select({ n: count() })
+        .from(movimentacao)
+        .where(eq(movimentacao.arquivoIngestaoId, arquivoId));
+      const movTotal = Number(movRow?.n ?? 0);
+      if (movTotal === 0) {
+        const detail = {
+          codigo: "PDF_SEM_TEXTO_E_VISAO_FALHOU" as const,
+          mensagem:
+            "Não foi possível extrair dados deste PDF (scan ou formato não suportado).",
+          causaTecnica: "Nenhuma movimentação válida após processar todas as páginas.",
+        };
+        await db
+          .update(arquivoIngestao)
+          .set({
+            status: ARQUIVO_INGESTAO_STATUS.ERRO,
+            erroMensagem: detail.mensagem,
+            updatedAt: new Date(),
+          })
+          .where(eq(arquivoIngestao.id, arquivoId));
+        throw new IngestError(detail);
+      }
       await db
         .update(arquivoIngestao)
         .set({ status: ARQUIVO_INGESTAO_STATUS.CONCLUIDO, updatedAt: new Date() })

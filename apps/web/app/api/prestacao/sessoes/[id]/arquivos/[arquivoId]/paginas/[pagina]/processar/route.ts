@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(
   _request: Request,

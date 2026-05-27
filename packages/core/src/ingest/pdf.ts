@@ -174,21 +174,25 @@ export function rowsFromExtratoTransactions(
   const rows: ParsedTransactionRow[] = [];
 
   for (const item of extraction.transacoes) {
-    const docLabel = docLabelFromExtratoItem(item);
-    if (docLabel != null) {
-      rows.push(
-        opts
-          ? withOrigem(rowFromExtratoItem(item, docLabel), item, opts)
-          : rowFromExtratoItem(item, docLabel),
-      );
-      continue;
+    try {
+      const docLabel = docLabelFromExtratoItem(item);
+      if (docLabel != null) {
+        rows.push(
+          opts
+            ? withOrigem(rowFromExtratoItem(item, docLabel), item, opts)
+            : rowFromExtratoItem(item, docLabel),
+        );
+        continue;
+      }
+      const semDoc = rowFromExtratoItemSemDoc(item);
+      if (semDoc != null) {
+        rows.push(opts ? withOrigem(semDoc, item, opts) : semDoc);
+        continue;
+      }
+      linhasIgnoradasSemDoc += 1;
+    } catch {
+      linhasIgnoradasSemDoc += 1;
     }
-    const semDoc = rowFromExtratoItemSemDoc(item);
-    if (semDoc != null) {
-      rows.push(opts ? withOrigem(semDoc, item, opts) : semDoc);
-      continue;
-    }
-    linhasIgnoradasSemDoc += 1;
   }
 
   return { rows, linhasIgnoradasSemDoc };

@@ -54,11 +54,28 @@ export function classifyIngestError(error: unknown): IngestErrorDetail {
     codigo = "OPENROUTER_NAO_CONFIGURADO";
   } else if (/mais de \d+ páginas/i.test(causaTecnica)) {
     codigo = "PDF_MUITAS_PAGINAS";
-  } else if (/openrouter http/i.test(causaTecnica) || msg.includes("abort")) {
+  } else if (
+    /openrouter http/i.test(causaTecnica) ||
+    msg.includes("abort") ||
+    msg.includes("openrouter response") ||
+    msg.includes("runtime timeout") ||
+    msg.includes("task timed out")
+  ) {
     codigo = "OPENROUTER_FALHA";
-  } else if (/invalid pdf/i.test(causaTecnica) || msg.includes("pdfdocument")) {
+  } else if (
+    /invalid pdf/i.test(causaTecnica) ||
+    msg.includes("pdfdocument") ||
+    msg.includes("dommatrix") ||
+    msg.includes("pdf-parse") ||
+    msg.includes("path2d") ||
+    msg.includes("imagedata")
+  ) {
     codigo = "PDF_INVALIDO";
-  } else if (msg.includes("falha no storage") || msg.includes("blob")) {
+  } else if (
+    msg.includes("falha no storage") ||
+    msg.includes("falha ao baixar arquivo") ||
+    msg.includes("blob")
+  ) {
     codigo = "STORAGE_FALHA";
   } else if (
     msg.includes("sem texto") ||
