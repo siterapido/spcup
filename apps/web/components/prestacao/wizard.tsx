@@ -32,7 +32,6 @@ export function PrestacaoWizard() {
     progress,
     statusLabel,
     steps,
-    errorMessage,
     fileErrors,
     errorLogs,
     isProcessing,
@@ -74,7 +73,7 @@ export function PrestacaoWizard() {
   async function onSubmit() {
     setMessage(null);
     try {
-      const { sessaoId, warningMessage, redirectPath } = await submit({
+      const { warningMessage, redirectPath } = await submit({
         uf,
         tipo,
         municipalId: tipo === "MUNICIPAL" ? municipalId : undefined,

@@ -13,6 +13,13 @@ const variants = {
 const base =
   "inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors duration-150 ease-out-quart disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
+export function buttonClassName(
+  variant: keyof typeof variants = "default",
+  className = "",
+) {
+  return `${base} ${variants[variant]} ${className}`.trim();
+}
+
 export function Button({
   className = "",
   variant = "default",
@@ -20,10 +27,5 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: keyof typeof variants;
 }) {
-  return (
-    <button
-      className={`${base} ${variants[variant]} ${className}`}
-      {...props}
-    />
-  );
+  return <button className={buttonClassName(variant, className)} {...props} />;
 }

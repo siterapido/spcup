@@ -440,7 +440,7 @@ export async function extractTransactionsFromPdfText(
   const normalized = trimExtratoText(statementText);
   const cached = await readExtratoTextCache(normalized, model);
   if (cached) {
-    return normalizeExtratoResponse(cached);
+    return cached;
   }
 
   const payload = buildExtratoTextPayload(normalized, model);
@@ -458,7 +458,7 @@ async function extractTransactionsFromSinglePdfBuffer(
 ): Promise<ExtratoExtraction> {
   const cached = await readExtratoPdfCache(buffer, model);
   if (cached) {
-    return normalizeExtratoResponse(cached);
+    return cached;
   }
 
   const payload = buildExtratoFilePayload(buffer, filename, model);
@@ -478,7 +478,7 @@ export async function extractTransactionsFromPdfFile(
   const model = resolveExtratoModel(options);
   const fullCached = await readExtratoPdfCache(buffer, model);
   if (fullCached) {
-    return normalizeExtratoResponse(fullCached);
+    return fullCached;
   }
 
   const baseName = options?.filename ?? "document.pdf";

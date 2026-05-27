@@ -111,7 +111,7 @@ function positionalColumnIndex(
 }
 
 function syntheticHeaders(columnCount: number): string[] {
-  const base = [...SYNTHETIC_CADASTRO_HEADERS];
+  const base: string[] = [...SYNTHETIC_CADASTRO_HEADERS];
   while (base.length < columnCount) {
     base.push(`coluna_${base.length + 1}`);
   }

@@ -17,6 +17,7 @@ export interface IngestLogFields {
   sessaoId?: string;
   filename?: string;
   duracaoMs?: number;
+  transacoesExtraidas?: number;
   codigoErro?: string;
   causa?: string;
 }

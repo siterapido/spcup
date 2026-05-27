@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 
 export type ConsolidacaoEventoRow = {
@@ -99,9 +99,12 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta }: Props) 
         <Button type="button" variant="outline" onClick={() => void aprovarLote()}>
           Aprovar ≥85% com pessoa
         </Button>
-        <Button type="button" variant="outline" asChild>
-          <Link href={`/prestacao/${sessaoId}/kanban`}>Ir ao kanban</Link>
-        </Button>
+        <Link
+          href={`/prestacao/${sessaoId}/kanban`}
+          className={buttonClassName("outline")}
+        >
+          Ir ao kanban
+        </Link>
       </div>
 
       {message && <p className="text-sm text-muted">{message}</p>}
@@ -127,7 +130,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta }: Props) 
                     <p className="text-sm text-muted">{ev.justificativa}</p>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {ev.linhas.map((l) => (
-                        <Badge key={l.id} variant="secondary">
+                        <Badge key={l.id} tone="neutral">
                           {l.papel}
                         </Badge>
                       ))}
@@ -164,7 +167,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta }: Props) 
                     <div className="flex gap-2">
                       <Button
                         type="button"
-                        size="sm"
+                        className="px-3 py-1.5 text-xs"
                         disabled={busyId === ev.id}
                         onClick={() => void act(ev.id, "aprovar")}
                       >
@@ -172,7 +175,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta }: Props) 
                       </Button>
                       <Button
                         type="button"
-                        size="sm"
+                        className="px-3 py-1.5 text-xs"
                         variant="outline"
                         disabled={busyId === ev.id}
                         onClick={() => void act(ev.id, "rejeitar")}
