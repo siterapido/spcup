@@ -29,6 +29,7 @@ export async function GET(request: Request) {
       documento_mascarado: maskDocumento(row.tipo, row.documento),
       nome: row.nome,
       movimentacoes_count: row.movimentacoes_count,
+      estado: row.ufs || null,
     })),
     total: rows.length,
   });

@@ -14,6 +14,7 @@ interface PessoaItem {
   tipo: "PF" | "PJ";
   documento_mascarado: string;
   nome: string;
+  estado: string | null;
   movimentacoes_count: number;
 }
 
@@ -86,6 +87,7 @@ export function PessoasTable() {
             <Th>Tipo</Th>
             <Th>Documento</Th>
             <Th>Nome</Th>
+            <Th>Estado</Th>
             <Th>Movimentações</Th>
             <Th />
           </tr>
@@ -100,6 +102,7 @@ export function PessoasTable() {
               </Td>
               <Td>{item.documento_mascarado}</Td>
               <Td>{item.nome}</Td>
+              <Td>{item.estado ?? "—"}</Td>
               <Td>{item.movimentacoes_count}</Td>
               <Td>
                 <Link

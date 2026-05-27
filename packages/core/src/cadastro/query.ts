@@ -16,6 +16,7 @@ export async function searchPessoas(
     documento: string;
     nome: string;
     movimentacoes_count: number;
+    ufs: string;
   }> = [];
 
   if (!tipo || tipo === "PF") {
@@ -32,6 +33,11 @@ export async function searchPessoas(
         nome: pessoaFisica.nome,
         movimentacoes_count: sql<number>`(
           select count(*)::int from ${movimentacao}
+          where ${movimentacao.pessoaFisicaId} = ${pessoaFisica.id}
+        )`,
+        ufs: sql<string>`(
+          select coalesce(string_agg(distinct ${movimentacao.uf}, ', ' order by ${movimentacao.uf}), '')
+          from ${movimentacao}
           where ${movimentacao.pessoaFisicaId} = ${pessoaFisica.id}
         )`,
       })
@@ -58,6 +64,11 @@ export async function searchPessoas(
         nome: pessoaJuridica.razaoSocial,
         movimentacoes_count: sql<number>`(
           select count(*)::int from ${movimentacao}
+          where ${movimentacao.pessoaJuridicaId} = ${pessoaJuridica.id}
+        )`,
+        ufs: sql<string>`(
+          select coalesce(string_agg(distinct ${movimentacao.uf}, ', ' order by ${movimentacao.uf}), '')
+          from ${movimentacao}
           where ${movimentacao.pessoaJuridicaId} = ${pessoaJuridica.id}
         )`,
       })
