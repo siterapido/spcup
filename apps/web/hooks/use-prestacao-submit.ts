@@ -50,7 +50,7 @@ const STEPS_IDLE: SubmitStep[] = [
   { id: "session", label: "Criar sessão", status: "pending" },
   { id: "upload", label: "Enviar arquivos", status: "pending" },
   { id: "ingest", label: "Processar movimentações", status: "pending" },
-  { id: "consolidacao", label: "Consolidar extratos", status: "pending" },
+  { id: "consolidacao", label: "Consolidar extratos bancários", status: "pending" },
   { id: "kanban", label: "Abrir kanban", status: "pending" },
 ];
 

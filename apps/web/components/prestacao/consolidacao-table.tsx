@@ -199,7 +199,7 @@ export function ConsolidacaoPageHeader({ sessaoId }: { sessaoId: string }) {
     <>
       <CardTitle>Consolidação de extratos</CardTitle>
       <p className="mt-1 text-sm text-muted">
-        Revise pares PIX ↔ extrato completo e vínculo com cadastro antes do kanban.
+        Revise movimentações entre extratos e vínculo com cadastro antes do kanban.
       </p>
       <p className="text-xs text-muted">Sessão {sessaoId}</p>
     </>

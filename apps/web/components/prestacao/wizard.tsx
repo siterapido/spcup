@@ -254,10 +254,10 @@ export function PrestacaoWizard() {
               onChange={(e) => setConsolidarExtratos(e.target.checked)}
             />
             <span>
-              Consolidar extratos (PIX + completo, etc.)
+              Consolidar extratos bancários
               <span className="mt-0.5 block text-xs text-muted">
-                Cruza PDFs com cadastro da UF e mostra confiança antes do kanban.
-                Importe pessoas em Cadastro antes.
+                Unifica vários PDFs do mesmo período, cruza com o cadastro da UF e
+                mostra confiança antes do kanban. Importe pessoas em Cadastro antes.
               </span>
             </span>
           </label>
