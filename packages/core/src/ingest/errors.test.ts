@@ -26,8 +26,17 @@ describe("classifyIngestError", () => {
     expect(r.codigo).toBe("PDF_INVALIDO");
   });
 
-  it("falls back to unknown", () => {
+  it("maps vision failure", () => {
+    const r = classifyIngestError(
+      new Error("PDF sem texto suficiente e visão falhou"),
+    );
+    expect(r.codigo).toBe("PDF_SEM_TEXTO_E_VISAO_FALHOU");
+    expect(r.causaTecnica).toMatch(/visão/i);
+  });
+
+  it("falls back to unknown with technical cause preserved", () => {
     const r = classifyIngestError(new Error("something weird"));
     expect(r.codigo).toBe("INGESTAO_DESCONHECIDA");
+    expect(r.causaTecnica).toBe("something weird");
   });
 });

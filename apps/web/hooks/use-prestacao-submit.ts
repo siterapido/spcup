@@ -30,11 +30,20 @@ export type UploadErroResposta = {
   nome: string;
   codigo: string;
   mensagem: string;
+  causaTecnica?: string;
 };
 
 export type FileErrorDisplay = {
   nome: string;
+  codigo: string;
   mensagem: string;
+  causaTecnica: string;
+};
+
+export type ErrorLogEntry = {
+  etapa: string;
+  mensagem: string;
+  detalhe?: string;
 };
 
 const STEPS_IDLE: SubmitStep[] = [
@@ -116,8 +125,29 @@ type ArquivoUp = {
   linhas_ignoradas_sem_doc?: number;
 };
 
+function truncateBody(body: string, max = 800): string {
+  const trimmed = body.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max)}…`;
+}
+
 function formatUploadErrors(erros: UploadErroResposta[]): string {
-  return erros.map((e) => `${e.nome}: ${e.mensagem}`).join(" · ");
+  return erros
+    .map((e) => {
+      const codigo = e.codigo ? ` [${e.codigo}]` : "";
+      const tech = e.causaTecnica ? ` — ${e.causaTecnica}` : "";
+      return `${e.nome}${codigo}: ${e.mensagem}${tech}`;
+    })
+    .join(" · ");
+}
+
+function toFileErrorDisplay(erro: UploadErroResposta): FileErrorDisplay {
+  return {
+    nome: erro.nome,
+    codigo: erro.codigo,
+    mensagem: erro.mensagem,
+    causaTecnica: erro.causaTecnica ?? erro.mensagem,
+  };
 }
 
 function buildUploadWarning(upJson: {
@@ -159,7 +189,12 @@ export function usePrestacaoSubmit() {
   const [steps, setSteps] = useState<SubmitStep[]>(STEPS_IDLE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fileErrors, setFileErrors] = useState<FileErrorDisplay[]>([]);
+  const [errorLogs, setErrorLogs] = useState<ErrorLogEntry[]>([]);
   const [activeFileName, setActiveFileName] = useState<string | null>(null);
+
+  const pushErrorLog = useCallback((entry: ErrorLogEntry) => {
+    setErrorLogs((prev) => [...prev, entry]);
+  }, []);
 
   const reset = useCallback(() => {
     setPhase("idle");
@@ -168,6 +203,7 @@ export function usePrestacaoSubmit() {
     setSteps(STEPS_IDLE);
     setErrorMessage(null);
     setFileErrors([]);
+    setErrorLogs([]);
     setActiveFileName(null);
   }, []);
 
@@ -197,8 +233,11 @@ export function usePrestacaoSubmit() {
               consolidarExtratos: input.consolidarExtratos ?? false,
             }),
           });
-        } catch {
+        } catch (networkErr) {
           const msg = "Erro de rede ao criar sessão.";
+          const detalhe =
+            networkErr instanceof Error ? networkErr.message : String(networkErr);
+          pushErrorLog({ etapa: "Criar sessão", mensagem: msg, detalhe });
           currentSteps = setStepStatus(currentSteps, "session", "error");
           setSteps(currentSteps);
           setPhase("error");
@@ -215,6 +254,11 @@ export function usePrestacaoSubmit() {
 
         if (!sessaoRes.ok) {
           const msg = sessaoJson.error ?? "Erro ao criar sessão";
+          pushErrorLog({
+            etapa: "Criar sessão",
+            mensagem: msg,
+            detalhe: `HTTP ${sessaoRes.status} — ${JSON.stringify(sessaoJson)}`,
+          });
           currentSteps = setStepStatus(currentSteps, "session", "error");
           setSteps(currentSteps);
           setPhase("error");
@@ -278,6 +322,12 @@ export function usePrestacaoSubmit() {
               uploadErr instanceof Error
                 ? uploadErr.message
                 : "Erro de rede no upload.";
+            pushErrorLog({
+              etapa: "Enviar arquivos",
+              mensagem: msg,
+              detalhe:
+                uploadErr instanceof Error ? uploadErr.stack ?? uploadErr.message : undefined,
+            });
             currentSteps = setStepStatus(
               setStepStatus(currentSteps, "upload", "error"),
               "ingest",
@@ -300,21 +350,39 @@ export function usePrestacaoSubmit() {
           try {
             upJson = JSON.parse(body) as typeof upJson;
           } catch {
+            const snippet = truncateBody(body);
             upJson = { error: "Resposta inválida do servidor" };
+            pushErrorLog({
+              etapa: "Processar movimentações",
+              mensagem: `HTTP ${status}: resposta não é JSON válido`,
+              detalhe: snippet || "(corpo vazio)",
+            });
           }
 
           const erros = upJson.erros ?? [];
           const totalMov = upJson.total_movimentacoes ?? 0;
-          const displayErrors = erros.map((e) => ({
-            nome: e.nome,
-            mensagem: e.mensagem,
-          }));
+          const displayErrors = erros.map(toFileErrorDisplay);
+
+          for (const erro of erros) {
+            pushErrorLog({
+              etapa: `Arquivo: ${erro.nome}`,
+              mensagem: `[${erro.codigo}] ${erro.mensagem}`,
+              detalhe: erro.causaTecnica,
+            });
+          }
 
           if (shouldBlockRedirect(status, totalMov, erros.length)) {
             const msg =
               formatUploadErrors(erros) ||
               upJson.error ||
               "Nenhum arquivo foi processado com sucesso.";
+            if (erros.length === 0 && upJson.error) {
+              pushErrorLog({
+                etapa: "Processar movimentações",
+                mensagem: upJson.error,
+                detalhe: `HTTP ${status}`,
+              });
+            }
             currentSteps = setStepStatus(
               setStepStatus(currentSteps, "upload", "error"),
               "ingest",
@@ -330,7 +398,12 @@ export function usePrestacaoSubmit() {
           }
 
           if (status < 200 || status >= 300) {
-            const msg = upJson.error ?? "Erro no upload";
+            const msg = upJson.error ?? `Erro no upload (HTTP ${status})`;
+            pushErrorLog({
+              etapa: "Enviar arquivos",
+              mensagem: msg,
+              detalhe: truncateBody(body),
+            });
             currentSteps = setStepStatus(
               setStepStatus(currentSteps, "upload", "error"),
               "ingest",
@@ -418,7 +491,7 @@ export function usePrestacaoSubmit() {
         throw error;
       }
     },
-    [reset],
+    [pushErrorLog, reset],
   );
 
   const isProcessing =
@@ -431,6 +504,7 @@ export function usePrestacaoSubmit() {
     steps,
     errorMessage,
     fileErrors,
+    errorLogs,
     activeFileName,
     isProcessing,
     submit,

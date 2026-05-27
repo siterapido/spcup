@@ -51,6 +51,16 @@ export function classifyIngestError(error: unknown): IngestErrorDetail {
     codigo = "PDF_INVALIDO";
   } else if (msg.includes("falha no storage") || msg.includes("blob")) {
     codigo = "STORAGE_FALHA";
+  } else if (
+    msg.includes("sem texto") ||
+    msg.includes("texto insuficiente") ||
+    msg.includes("visão") ||
+    msg.includes("vision") ||
+    msg.includes("não foi possível extrair")
+  ) {
+    codigo = "PDF_SEM_TEXTO_E_VISAO_FALHOU";
+  } else if (msg.includes("colunas obrigatórias")) {
+    codigo = "INGESTAO_DESCONHECIDA";
   }
 
   return { codigo, mensagem: MENSAGENS[codigo], causaTecnica };

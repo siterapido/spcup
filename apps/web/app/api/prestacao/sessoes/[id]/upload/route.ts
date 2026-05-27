@@ -18,7 +18,12 @@ export const maxDuration = 300;
 
 const ALLOWED = new Set([".ofx", ".xlsx", ".xls", ".pdf"]);
 
-type UploadErro = { nome: string; codigo: string; mensagem: string };
+type UploadErro = {
+  nome: string;
+  codigo: string;
+  mensagem: string;
+  causaTecnica: string;
+};
 
 export async function POST(
   request: Request,
@@ -66,6 +71,7 @@ export async function POST(
         nome: file.name,
         codigo: "INGESTAO_DESCONHECIDA",
         mensagem: "Formato não suportado. Use PDF, Excel ou OFX.",
+        causaTecnica: `Extensão não permitida: ${suffix || "(sem extensão)"}`,
       });
       continue;
     }
@@ -95,6 +101,7 @@ export async function POST(
         nome: file.name,
         codigo: detail.codigo,
         mensagem: detail.mensagem,
+        causaTecnica: detail.causaTecnica,
       });
       continue;
     }
@@ -135,6 +142,7 @@ export async function POST(
         nome: file.name,
         codigo: detail.codigo,
         mensagem: detail.mensagem,
+        causaTecnica: detail.causaTecnica,
       });
     }
   }

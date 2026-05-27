@@ -34,6 +34,7 @@ export function PrestacaoWizard() {
     steps,
     errorMessage,
     fileErrors,
+    errorLogs,
     isProcessing,
     submit,
     reset,
@@ -268,18 +269,12 @@ export function PrestacaoWizard() {
               steps={steps}
               fileNames={files.map((f) => f.name)}
               fileErrors={fileErrors}
+              errorLogs={errorLogs}
             />
           ) : null}
-          {(message || errorMessage) && (
-            <p
-              className={`text-sm ${
-                phase === "error" ? "text-red-700" : "text-amber-900"
-              }`}
-              role={phase === "error" ? "alert" : undefined}
-            >
-              {phase === "error" ? errorMessage : message}
-            </p>
-          )}
+          {message && phase !== "error" ? (
+            <p className="text-sm text-amber-900">{message}</p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"

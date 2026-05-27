@@ -1,6 +1,10 @@
 "use client";
 
-import type { SubmitStep } from "@/hooks/use-prestacao-submit";
+import type {
+  ErrorLogEntry,
+  FileErrorDisplay,
+  SubmitStep,
+} from "@/hooks/use-prestacao-submit";
 
 function StepIcon({ status }: { status: SubmitStep["status"] }) {
   if (status === "done") {
@@ -49,18 +53,65 @@ function StepIcon({ status }: { status: SubmitStep["status"] }) {
   );
 }
 
-export type FileErrorItem = {
-  nome: string;
-  mensagem: string;
-};
-
 export type SubmissionProgressPanelProps = {
   progress: number;
   statusLabel: string;
   steps: SubmitStep[];
   fileNames: string[];
-  fileErrors?: FileErrorItem[];
+  fileErrors?: FileErrorDisplay[];
+  errorLogs?: ErrorLogEntry[];
 };
+
+function FileErrorCard({ item }: { item: FileErrorDisplay }) {
+  return (
+    <li className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium">{item.nome}</span>
+        <span className="rounded bg-red-200/80 px-1.5 py-0.5 font-mono text-xs text-red-950">
+          {item.codigo}
+        </span>
+      </div>
+      <p className="mt-1 text-red-800">{item.mensagem}</p>
+      {item.causaTecnica && item.causaTecnica !== item.mensagem ? (
+        <details className="mt-2" open>
+          <summary className="cursor-pointer text-xs font-medium text-red-900">
+            Detalhes técnicos
+          </summary>
+          <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-red-200 bg-white p-2 font-mono text-xs text-red-950">
+            {item.causaTecnica}
+          </pre>
+        </details>
+      ) : null}
+    </li>
+  );
+}
+
+function ErrorLogList({ logs }: { logs: ErrorLogEntry[] }) {
+  if (logs.length === 0) return null;
+  return (
+    <div className="mt-3 border-t border-border-default pt-3">
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+        Log do processamento
+      </p>
+      <ol className="space-y-2">
+        {logs.map((entry, index) => (
+          <li
+            key={`${entry.etapa}-${index}`}
+            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+          >
+            <p className="font-medium text-up-black">{entry.etapa}</p>
+            <p className="text-red-800">{entry.mensagem}</p>
+            {entry.detalhe ? (
+              <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words font-mono text-xs text-slate-700">
+                {entry.detalhe}
+              </pre>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 export function SubmissionProgressPanel({
   progress,
@@ -68,8 +119,10 @@ export function SubmissionProgressPanel({
   steps,
   fileNames,
   fileErrors = [],
+  errorLogs = [],
 }: SubmissionProgressPanelProps) {
   const clamped = Math.min(100, Math.max(0, progress));
+  const hasErrors = fileErrors.length > 0 || errorLogs.length > 0;
 
   return (
     <div
@@ -94,7 +147,10 @@ export function SubmissionProgressPanel({
             style={{ width: `${clamped}%` }}
           />
         </div>
-        <p className="mt-2 text-sm text-up-black" aria-live="polite">
+        <p
+          className={`mt-2 text-sm ${hasErrors ? "text-red-800" : "text-up-black"}`}
+          aria-live="polite"
+        >
           {statusLabel}
         </p>
       </div>
@@ -141,16 +197,12 @@ export function SubmissionProgressPanel({
           aria-label="Erros no processamento"
         >
           {fileErrors.map((item) => (
-            <li
-              key={item.nome}
-              className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
-            >
-              <span className="font-medium">{item.nome}</span>
-              <span className="text-red-800"> — {item.mensagem}</span>
-            </li>
+            <FileErrorCard key={item.nome} item={item} />
           ))}
         </ul>
       ) : null}
+
+      <ErrorLogList logs={errorLogs} />
     </div>
   );
 }
