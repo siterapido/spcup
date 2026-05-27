@@ -54,6 +54,7 @@ export async function GET(request: Request) {
     valor: m.valor,
     data_movimento: m.dataMovimento,
     descricao_raw: m.descricaoRaw,
+    cred_dev: m.credDev,
     status: m.status,
     confianca_global: m.confiancaGlobal,
     bloqueio_export: m.bloqueioExport,

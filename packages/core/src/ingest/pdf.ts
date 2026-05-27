@@ -7,6 +7,7 @@ import {
   extractStructuredFromPdf,
   extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
+  parseExtratoValor,
   type ExtratoExtraction,
   type ExtractStructuredOptions,
 } from "../ai/openrouter";
@@ -39,6 +40,11 @@ function parseExtractionDate(value: string): Date {
 export interface IngestPdfExtratoResult {
   movimentacoes: Movimentacao[];
   linhasIgnoradasSemDoc: number;
+}
+
+export function credDevFromExtratoItem(item: Record<string, unknown>): string | null {
+  const raw = String(item.cred_dev ?? item.credDev ?? "").trim();
+  return raw.length > 0 ? raw : null;
 }
 
 function docLabelFromExtratoItem(item: Record<string, unknown>): string | null {
@@ -80,7 +86,7 @@ function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransact
     return null;
   }
 
-  const valorNum = Number(item.valor);
+  const valorNum = parseExtratoValor(item.valor);
   if (Number.isNaN(valorNum)) {
     return null;
   }
@@ -95,6 +101,7 @@ function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransact
     valor: Math.abs(valorNum).toFixed(2),
     descricaoRaw: nome,
     direcao,
+    credDev: credDevFromExtratoItem(item),
     nrExtratoBancario: null,
   };
 }
@@ -104,7 +111,7 @@ export function rowFromExtratoItem(
   item: Record<string, unknown>,
   docLabel: string,
 ): ParsedTransactionRow {
-  const valorNum = Number(item.valor);
+  const valorNum = parseExtratoValor(item.valor);
   if (Number.isNaN(valorNum)) {
     throw new Error(`Valor invalido: ${String(item.valor)}`);
   }
@@ -122,6 +129,7 @@ export function rowFromExtratoItem(
     valor: Math.abs(valorNum).toFixed(2),
     descricaoRaw,
     direcao,
+    credDev: credDevFromExtratoItem(item),
     nrExtratoBancario: null,
   };
 }
@@ -197,6 +205,12 @@ export async function ingestPdfExtrato(
       ? await extractTransactionsFromPdfText(text, { ...options, filename })
       : await extractTransactionsFromPdfFile(buffer, { ...options, filename });
 
+    if (!hasEnoughText && extraction.transacoes.length === 0) {
+      throw new Error(
+        "Não foi possível extrair transações do PDF (scan ou formato não suportado).",
+      );
+    }
+
     ingestLog("info", {
       fase: hasEnoughText ? "openrouter_text" : "openrouter_vision",
       arquivoId,
@@ -254,6 +268,7 @@ export function rowFromExtraction(
     valor: Math.abs(valorNum).toFixed(2),
     descricaoRaw: `${nome} CPF ${cpf}`,
     direcao,
+    credDev: null,
     nrExtratoBancario: null,
   };
 }

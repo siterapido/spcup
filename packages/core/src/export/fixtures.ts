@@ -9,6 +9,7 @@ const baseMov = {
   uf: "SP",
   exercicio: 2025,
   descricaoRaw: "fixture",
+  credDev: null,
   hashMovimento: "hash-fixture",
   status: "CONFIRMADO" as const,
   confiancaGlobal: 1,

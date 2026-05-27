@@ -13,6 +13,7 @@ interface MovItem {
   direcao: string;
   valor: string;
   descricao_raw: string;
+  cred_dev: string | null;
   status: string;
   confianca_global: number;
   pessoa_nome: string | null;
@@ -112,6 +113,7 @@ export function MovimentacoesTable({
               <Th>Direção</Th>
               <Th>Valor</Th>
               <Th>Descrição</Th>
+              <Th>Cred dev</Th>
               <Th>Pessoa</Th>
               <Th>Score</Th>
               <Th>Status</Th>
@@ -129,6 +131,9 @@ export function MovimentacoesTable({
                 <Td>{m.valor}</Td>
                 <Td className="max-w-xs truncate" title={m.descricao_raw}>
                   {m.descricao_raw}
+                </Td>
+                <Td className="max-w-[8rem] truncate" title={m.cred_dev ?? undefined}>
+                  {m.cred_dev ?? "—"}
                 </Td>
                 <Td>{m.pessoa_nome ?? "—"}</Td>
                 <Td>{m.confianca_global.toFixed(2)}</Td>

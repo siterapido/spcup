@@ -167,6 +167,8 @@ export const movimentacao = pgTable(
     valor: numeric("valor", { precision: 15, scale: 2 }).notNull(),
     dataMovimento: date("data_movimento").notNull(),
     descricaoRaw: text("descricao_raw").notNull(),
+    /** Código coluna Cred/Dev do extrato (ex. CRED TEV, PIX). */
+    credDev: varchar("cred_dev", { length: 128 }),
     nrExtratoBancario: varchar("nr_extrato_bancario", { length: 64 }),
     contaBancariaId: uuid("conta_bancaria_id").references(() => contaBancaria.id),
     pessoaFisicaId: uuid("pessoa_fisica_id").references(() => pessoaFisica.id),

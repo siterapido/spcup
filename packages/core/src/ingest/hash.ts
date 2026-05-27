@@ -24,6 +24,7 @@ export function computeHashMovimento(
     row.valor,
     row.descricaoRaw,
     row.direcao,
+    row.credDev ?? "",
     row.nrExtratoBancario ?? "",
   ].join("|");
   return createHash("sha256").update(payload, "utf8").digest("hex");

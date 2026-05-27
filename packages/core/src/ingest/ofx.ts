@@ -69,6 +69,7 @@ export function parseOfxBuffer(buffer: Buffer): ParsedTransactionRow[] {
       valor,
       descricaoRaw,
       direcao,
+      credDev: null,
       nrExtratoBancario: fitid,
     });
   }
@@ -105,6 +106,7 @@ export async function persistTransactions(
         valor: row.valor,
         descricaoRaw: row.descricaoRaw,
         direcao: row.direcao,
+        credDev: row.credDev,
         nrExtratoBancario: row.nrExtratoBancario,
         arquivoIngestaoId: arquivoId,
         sessaoPrestacaoId: prestador.sessaoPrestacaoId,

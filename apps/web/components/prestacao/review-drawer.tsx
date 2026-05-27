@@ -16,6 +16,7 @@ interface Detalhe {
   confiancaGlobal: number;
   bloqueioExport: boolean;
   descricaoRaw: string;
+  credDev: string | null;
   lacunas: string[];
   justificativaIa: string | null;
   iaIndisponivel: boolean;
@@ -217,6 +218,9 @@ export function ReviewDrawer({
                   <p className="mt-1 text-xs text-muted">Arquivo: {detalhe.nomeArquivo}</p>
                 )}
                 <p className="mt-2 whitespace-pre-wrap">{detalhe.descricaoRaw}</p>
+                {detalhe.credDev ? (
+                  <p className="mt-1 text-xs text-muted">Cred dev: {detalhe.credDev}</p>
+                ) : null}
               </div>
 
               <p>

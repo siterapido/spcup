@@ -65,6 +65,10 @@ const EXTRATO_TRANSACTION_ITEM_SCHEMA = {
       description: "ENTRADA for credits, SAIDA for debits",
     },
     descricao: { type: "string", description: "Transaction description / memo" },
+    cred_dev: {
+      type: "string",
+      description: "Cred/Dev column code from the statement (e.g. CRED TEV, PIX)",
+    },
     cpf: { type: "string", description: "CPF digits only when present" },
     cnpj: { type: "string", description: "CNPJ digits only when present" },
     nome: { type: "string", description: "Counterparty name when present" },
@@ -89,8 +93,9 @@ const EXTRATO_ARRAY_SCHEMA = {
 const KIMI_EXTRATO_SYSTEM_PROMPT =
   "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
   'Responda APENAS JSON: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
-  '"descricao":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
-  "Use ENTRADA para crédito e SAIDA para débito. cpf/cnpj só dígitos se visíveis; senão preencha nome. " +
+  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
+  "cred_dev = código da coluna Cred/Dev quando existir. Use ENTRADA para crédito e SAIDA para débito. " +
+  "cpf/cnpj só dígitos se visíveis; senão preencha nome. " +
   "Não invente linhas.";
 
 const KIMI_EXTRATO_USER_PDF =
@@ -99,8 +104,9 @@ const KIMI_EXTRATO_USER_PDF =
 const GEMINI_EXTRATO_SYSTEM_PROMPT =
   "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
   'Responda APENAS JSON válido no schema: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
-  '"descricao":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
-  "Use ENTRADA para crédito e SAIDA para débito. Preencha nome com o contraparte quando visível; cpf/cnpj só dígitos. " +
+  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
+  "cred_dev = código da coluna Cred/Dev do extrato. Use ENTRADA para crédito e SAIDA para débito. " +
+  "Preencha nome com o contraparte quando visível; cpf/cnpj só dígitos. " +
   "Não invente linhas.";
 
 export interface ExtractStructuredOptions {
@@ -461,6 +467,14 @@ function normalizeExtratoItem(item: Record<string, unknown>): Record<string, unk
     if (inferred) {
       out.nome = inferred;
     }
+  }
+
+  let credDev = String(out.cred_dev ?? out.credDev ?? "").trim();
+  if (!credDev && descricaoStr && SHORT_BANK_CODE.test(descricaoStr)) {
+    credDev = descricaoStr;
+  }
+  if (credDev) {
+    out.cred_dev = credDev;
   }
 
   const docRaw = String(out.cpf_cnpj ?? out.documento ?? "").replace(/\D/g, "");

@@ -41,6 +41,8 @@ export interface ParsedTransactionRow {
   descricaoRaw: string;
   direcao: MovimentacaoDirecao;
   nrExtratoBancario: string | null;
+  /** Código Cred/Dev do extrato bancário, quando extraído. */
+  credDev: string | null;
 }
 
 /** Alias for ParsedTransactionRow used by pipeline helpers. */

@@ -14,6 +14,7 @@ export interface MovimentacaoDetalhe {
   confiancaGlobal: number;
   bloqueioExport: boolean;
   descricaoRaw: string;
+  credDev: string | null;
   lacunas: string[];
   justificativaIa: string | null;
   iaIndisponivel: boolean;
@@ -78,6 +79,7 @@ export async function getMovimentacaoDetalhe(
     confiancaGlobal: mov.confiancaGlobal,
     bloqueioExport: mov.bloqueioExport,
     descricaoRaw: mov.descricaoRaw,
+    credDev: mov.credDev,
     lacunas,
     justificativaIa: justificativa?.detalhe ?? null,
     iaIndisponivel,

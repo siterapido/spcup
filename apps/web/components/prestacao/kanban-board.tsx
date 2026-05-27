@@ -16,6 +16,7 @@ interface KanbanCard {
   confiancaGlobal: number;
   bloqueioExport: boolean;
   descricaoRaw: string;
+  credDev: string | null;
   lacunas: string[];
   justificativaIa: string | null;
   iaIndisponivel: boolean;
@@ -194,6 +195,9 @@ export function KanbanBoard({ sessaoId }: { sessaoId: string }) {
                                 R$ {card.valor} · {card.dataMovimento}
                               </p>
                               <p className="text-xs text-muted">{card.direcao}</p>
+                              {card.credDev ? (
+                                <p className="text-xs text-muted">Cred dev: {card.credDev}</p>
+                              ) : null}
                               {card.pessoaResumo && (
                                 <p className="mt-1 text-xs">{card.pessoaResumo}</p>
                               )}

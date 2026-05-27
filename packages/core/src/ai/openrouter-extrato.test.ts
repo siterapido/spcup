@@ -320,6 +320,31 @@ describe("extrato extraction (OpenRouter)", () => {
     expect(result.transacoes[0]?.nome).toBe("GABRIEL REIS DA SILVA");
   });
 
+  it("infers cred_dev from short bank codes in descricao", async () => {
+    process.env.OPENROUTER_CACHE = "0";
+    const mockFetch = vi.fn().mockResolvedValue(
+      mockOpenRouterResponse({
+        transacoes: [
+          {
+            data: "2025-01-02",
+            valor: 10,
+            direcao: "ENTRADA",
+            descricao: "CRED TEV",
+          },
+        ],
+      }),
+    );
+
+    const result = await extractTransactionsFromPdfText("extrato", {
+      fetch: mockFetch,
+      apiKey: "test-key",
+      model: "google/gemini-3.5-flash",
+    });
+
+    expect(result.transacoes[0]?.cred_dev).toBe("CRED TEV");
+    expect(result.transacoes[0]?.nome).toBeUndefined();
+  });
+
   it("does not copy short bank codes to nome", async () => {
     process.env.OPENROUTER_CACHE = "0";
     const mockFetch = vi.fn().mockResolvedValue(

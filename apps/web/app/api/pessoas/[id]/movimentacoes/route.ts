@@ -34,6 +34,7 @@ export async function GET(
       direcao: m.direcao,
       valor: m.valor,
       descricao_raw: m.descricaoRaw,
+      cred_dev: m.credDev,
       status: m.status,
       confianca_global: m.confiancaGlobal,
     })),

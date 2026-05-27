@@ -127,6 +127,7 @@ async function parseWorkbook(workbook: ExcelJS.Workbook): Promise<ParsedTransact
       valor,
       descricaoRaw: String(record.descricao ?? "").trim(),
       direcao,
+      credDev: null,
       nrExtratoBancario: null,
     });
   });

@@ -8,6 +8,7 @@ const row = {
   descricaoRaw: "PIX",
   direcao: "ENTRADA" as const,
   nrExtratoBancario: "1",
+  credDev: null,
 };
 
 describe("computeHashMovimento", () => {

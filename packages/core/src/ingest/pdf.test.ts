@@ -3,11 +3,15 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../ai/openrouter", () => ({
-  extractStructuredFromPdf: vi.fn(),
-  extractTransactionsFromPdfText: vi.fn(),
-  extractTransactionsFromPdfFile: vi.fn(),
-}));
+vi.mock("../ai/openrouter", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../ai/openrouter")>();
+  return {
+    ...actual,
+    extractStructuredFromPdf: vi.fn(),
+    extractTransactionsFromPdfText: vi.fn(),
+    extractTransactionsFromPdfFile: vi.fn(),
+  };
+});
 
 vi.mock("./pdf-text", () => ({
   extractPdfText: vi.fn(),
@@ -38,6 +42,7 @@ const PRESTADOR_SP = {
   tipoPrestador: TIPO_PRESTADOR.ESTADUAL,
 };
 import {
+  credDevFromExtratoItem,
   ingestPdf,
   ingestPdfExtrato,
   rowFromExtraction,
@@ -63,7 +68,28 @@ describe("rowFromExtraction", () => {
   });
 });
 
+describe("credDevFromExtratoItem", () => {
+  it("reads cred_dev field", () => {
+    expect(credDevFromExtratoItem({ cred_dev: "CRED TEV" })).toBe("CRED TEV");
+  });
+});
+
 describe("rowsFromExtratoTransactions", () => {
+  it("maps cred_dev on persisted row", () => {
+    const { rows } = rowsFromExtratoTransactions({
+      transacoes: [
+        {
+          data: "2025-06-01",
+          valor: 10,
+          direcao: "ENTRADA",
+          descricao: "Histórico",
+          cred_dev: "PIX",
+        },
+      ],
+    });
+    expect(rows[0]!.credDev).toBe("PIX");
+  });
+
   it("keeps rows with valid CPF; nome-only lines become rows for match por nome", () => {
     const extraction = {
       transacoes: [

@@ -13,6 +13,7 @@ export interface KanbanCard {
   confiancaGlobal: number;
   bloqueioExport: boolean;
   descricaoRaw: string;
+  credDev: string | null;
   lacunas: string[];
   justificativaIa: string | null;
   iaIndisponivel: boolean;
@@ -118,6 +119,7 @@ export async function getKanbanPayload(
       confiancaGlobal: mov.confiancaGlobal,
       bloqueioExport: mov.bloqueioExport,
       descricaoRaw: mov.descricaoRaw,
+      credDev: mov.credDev,
       lacunas,
       justificativaIa: justificativa?.detalhe ?? null,
       iaIndisponivel,

@@ -107,6 +107,7 @@ export function dedupeExtratoTransactions(
       String(item.valor ?? ""),
       String(item.direcao ?? "").toUpperCase(),
       String(item.descricao ?? "").trim(),
+      String(item.cred_dev ?? item.credDev ?? "").trim(),
       String(item.cpf ?? ""),
       String(item.cnpj ?? ""),
       String(item.nome ?? "").trim(),
