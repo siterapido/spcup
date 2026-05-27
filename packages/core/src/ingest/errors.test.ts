@@ -21,6 +21,13 @@ describe("classifyIngestError", () => {
     expect(r.codigo).toBe("OPENROUTER_FALHA");
   });
 
+  it("maps OpenRouter 401 auth failure as not configured", () => {
+    const r = classifyIngestError(
+      new Error('OpenRouter HTTP 401: {"error":{"message":"User not found."}}'),
+    );
+    expect(r.codigo).toBe("OPENROUTER_NAO_CONFIGURADO");
+  });
+
   it("maps invalid PDF", () => {
     const r = classifyIngestError(new Error("Invalid PDF structure"));
     expect(r.codigo).toBe("PDF_INVALIDO");

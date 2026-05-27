@@ -85,8 +85,9 @@ Sem este token, as rotas `/api/upload` e `/api/prestacao/sessoes/[id]/upload` re
 |----------|-----------|
 | `AUTH_SECRET` | Segredo Auth.js (`openssl rand -base64 32`) |
 | `AUTH_URL` | URL canônica do app (ver seção 6) |
-| `OPENROUTER_API_KEY` | Ingestão de PDF via OpenRouter |
-| `OPENROUTER_MODEL` | Ex.: `anthropic/claude-sonnet-4` |
+| `OPENROUTER_API_KEY` | Chave `sk-or-v1-...` em [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `OPENROUTER_MODEL` | Match IA — ex.: `google/gemini-3.5-flash` |
+| `OPENROUTER_PDF_MODEL` | Extrato PDF (visão) — ex.: `google/gemini-3.5-flash` (não reutilize só `OPENROUTER_MODEL` se for Kimi legado) |
 | `ADMIN_EMAIL` | E-mail do admin inicial (seed) |
 | `ADMIN_PASSWORD` | Senha do admin inicial (seed) |
 

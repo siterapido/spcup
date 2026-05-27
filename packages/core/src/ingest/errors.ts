@@ -47,6 +47,11 @@ export function classifyIngestError(error: unknown): IngestErrorDetail {
   let codigo: IngestErrorCodigo = "INGESTAO_DESCONHECIDA";
   if (causaTecnica.includes("OPENROUTER_API_KEY")) {
     codigo = "OPENROUTER_NAO_CONFIGURADO";
+  } else if (
+    /openrouter http 401/i.test(causaTecnica) &&
+    (msg.includes("user not found") || msg.includes("missing authentication"))
+  ) {
+    codigo = "OPENROUTER_NAO_CONFIGURADO";
   } else if (/mais de \d+ páginas/i.test(causaTecnica)) {
     codigo = "PDF_MUITAS_PAGINAS";
   } else if (/openrouter http/i.test(causaTecnica) || msg.includes("abort")) {

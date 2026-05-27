@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AttachmentDropzone } from "@/components/prestacao/attachment-dropzone";
 import { SubmissionProgressPanel } from "@/components/prestacao/submission-progress-panel";
+import { WizardStepper } from "@/components/prestacao/wizard-stepper";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { usePrestacaoSubmit } from "@/hooks/use-prestacao-submit";
@@ -22,6 +24,7 @@ export function PrestacaoWizard() {
   const [tipo, setTipo] = useState<"ESTADUAL" | "MUNICIPAL">("ESTADUAL");
   const [municipalId, setMunicipalId] = useState("");
   const [municipais, setMunicipais] = useState<Municipal[]>([]);
+  const [loadingMunicipais, setLoadingMunicipais] = useState(false);
   const [exercicio, setExercicio] = useState("2025");
   const [files, setFiles] = useState<File[]>([]);
   const [consolidarExtratos, setConsolidarExtratos] = useState(false);
@@ -42,13 +45,28 @@ export function PrestacaoWizard() {
   const showSubmitProgress = phase !== "idle";
 
   const loadMunicipais = useCallback(async () => {
-    if (tipo !== "MUNICIPAL" || uf.length !== 2) return;
-    const res = await fetch(
-      `/api/admin/diretorios-municipais?uf=${encodeURIComponent(uf.toUpperCase())}`,
-    );
-    const json = await res.json();
-    setMunicipais(json.items ?? []);
+    if (tipo !== "MUNICIPAL" || uf.length !== 2) {
+      setMunicipais([]);
+      setLoadingMunicipais(false);
+      return;
+    }
+    setLoadingMunicipais(true);
+    try {
+      const res = await fetch(
+        `/api/admin/diretorios-municipais?uf=${encodeURIComponent(uf.toUpperCase())}`,
+      );
+      const json = await res.json();
+      setMunicipais(json.items ?? []);
+    } catch {
+      setMunicipais([]);
+    } finally {
+      setLoadingMunicipais(false);
+    }
   }, [tipo, uf]);
+
+  useEffect(() => {
+    setMunicipalId("");
+  }, [uf, tipo]);
 
   useEffect(() => {
     void loadMunicipais();
@@ -90,10 +108,23 @@ export function PrestacaoWizard() {
     }
   }
 
+  function goToStep(target: number) {
+    if (target < step && !isProcessing) {
+      setStep(target);
+    }
+  }
+
+  const municipalBlocked =
+    tipo === "MUNICIPAL" && !loadingMunicipais && municipais.length === 0;
+  const municipalNeedsSelection =
+    tipo === "MUNICIPAL" && municipais.length > 0 && !municipalId;
+  const canAdvanceFromPrestador =
+    tipo === "ESTADUAL" || (municipais.length > 0 && Boolean(municipalId));
+
   return (
     <Card>
       <CardTitle>Nova prestação de contas</CardTitle>
-      <p className="mt-1 text-sm text-muted">Passo {step} de 5</p>
+      <WizardStepper current={step} onStepClick={goToStep} />
 
       {step === 1 && (
         <div className="mt-4 space-y-3">
@@ -159,30 +190,64 @@ export function PrestacaoWizard() {
       {step === 3 && (
         <div className="mt-4 space-y-3">
           {tipo === "MUNICIPAL" ? (
-            <label className="block text-sm font-medium">
-              Município
-              <select
-                className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm"
-                value={municipalId}
-                onChange={(e) => setMunicipalId(e.target.value)}
-                required
-              >
-                <option value="">Selecione…</option>
-                {municipais.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nomeMunicipio} — CNPJ …{m.cnpjPrestador.slice(-6)}
+            <>
+              <label className="block text-sm font-medium">
+                Município
+                <select
+                  className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-muted"
+                  value={municipalId}
+                  onChange={(e) => setMunicipalId(e.target.value)}
+                  disabled={loadingMunicipais || municipalBlocked}
+                  aria-invalid={municipalNeedsSelection || municipalBlocked}
+                  aria-describedby={
+                    municipalBlocked
+                      ? "municipal-blocked-msg"
+                      : municipalNeedsSelection
+                        ? "municipal-select-msg"
+                        : undefined
+                  }
+                  required
+                >
+                  <option value="">
+                    {loadingMunicipais ? "Carregando municípios…" : "Selecione…"}
                   </option>
-                ))}
-              </select>
-              {municipais.length === 0 && (
-                <p className="mt-2 text-sm text-muted">
-                  Nenhum município cadastrado.{" "}
-                  <a href="/admin/diretorios-municipais" className="underline">
-                    Cadastrar
-                  </a>
+                  {municipais.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nomeMunicipio} — CNPJ …{m.cnpjPrestador.slice(-6)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {loadingMunicipais ? (
+                <p className="text-sm text-muted">Buscando municípios cadastrados em {uf}…</p>
+              ) : null}
+
+              {municipalBlocked ? (
+                <div
+                  id="municipal-blocked-msg"
+                  role="alert"
+                  className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900"
+                >
+                  <p className="font-medium">Nenhum município cadastrado para {uf}</p>
+                  <p className="mt-1">
+                    Cadastre o diretório municipal antes de avançar para exercício e anexos.
+                  </p>
+                  <Link
+                    href={`/admin/diretorios-municipais?uf=${encodeURIComponent(uf)}`}
+                    className="mt-3 inline-flex items-center justify-center rounded-md bg-up-black px-3 py-1.5 text-sm font-medium text-up-white hover:bg-up-black-hover"
+                  >
+                    Cadastrar município
+                  </Link>
+                </div>
+              ) : null}
+
+              {municipalNeedsSelection ? (
+                <p id="municipal-select-msg" className="text-sm text-amber-900">
+                  Selecione o município prestador para continuar.
                 </p>
-              )}
-            </label>
+              ) : null}
+            </>
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-muted">
@@ -206,7 +271,7 @@ export function PrestacaoWizard() {
             <Button
               type="button"
               onClick={() => setStep(4)}
-              disabled={tipo === "MUNICIPAL" && !municipalId}
+              disabled={!canAdvanceFromPrestador || loadingMunicipais}
             >
               Continuar
             </Button>

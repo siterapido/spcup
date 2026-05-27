@@ -1,11 +1,9 @@
-import Link from "next/link";
-
+import { PrestacaoFlowOverview } from "@/components/prestacao/prestacao-flow-overview";
 import { SystemStatsPanel } from "@/components/dashboard/system-stats-panel";
-import { UploadForm } from "@/components/upload-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getSystemStats, listRecentSessoes } from "@spc-up/core";
+import { getSystemStats } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 
 export default async function DashboardPage({
@@ -18,16 +16,12 @@ export default async function DashboardPage({
   const exercicio = Number.parseInt(params.exercicio ?? "2025", 10);
 
   let stats: Awaited<ReturnType<typeof getSystemStats>> | null = null;
-  let sessoesRecentes: Awaited<ReturnType<typeof listRecentSessoes>> = [];
   try {
     const db = getDb();
     stats = await getSystemStats(db, { uf, exercicio });
-    sessoesRecentes = await listRecentSessoes(db, 8);
   } catch {
     stats = null;
   }
-
-  const exportavel = stats?.scoped.exportavel ?? false;
 
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-6 py-10">
@@ -60,100 +54,8 @@ export default async function DashboardPage({
 
       <Card>
         <CardTitle>Fluxo guiado</CardTitle>
-        <p className="mt-2 text-sm text-muted">
-          Wizard com UF, prestador estadual/municipal, anexos e kanban por movimentação.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link
-            href="/prestacao/nova"
-            className="inline-flex items-center justify-center rounded-md bg-up-black px-4 py-2 text-sm font-medium text-up-white hover:bg-up-black-hover"
-          >
-            Nova prestação
-          </Link>
-          <Link
-            href="/admin/diretorios-estaduais"
-            className="inline-flex items-center justify-center rounded-md border border-border-default bg-white px-4 py-2 text-sm font-medium text-up-black hover:bg-slate-50"
-          >
-            Diretórios estaduais
-          </Link>
-          <Link
-            href="/admin/diretorios-municipais"
-            className="inline-flex items-center justify-center rounded-md border border-border-default bg-white px-4 py-2 text-sm font-medium text-up-black hover:bg-slate-50"
-          >
-            Diretórios municipais
-          </Link>
-        </div>
+        <PrestacaoFlowOverview />
       </Card>
-
-      {sessoesRecentes.length > 0 && (
-        <Card>
-          <CardTitle>Sessões recentes</CardTitle>
-          <ul className="mt-3 space-y-2 text-sm">
-            {sessoesRecentes.map((s) => (
-              <li key={s.id}>
-                <Link
-                  href={`/prestacao/${s.id}/kanban`}
-                  className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-2"
-                >
-                  {s.uf} · {s.tipoPrestador} · {s.exercicio}
-                </Link>
-                <span className="text-muted">
-                  {" "}
-                  — {s.diretorioMunicipal?.nomeMunicipio ?? s.diretorioEstadual?.nome}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
-      <details className="rounded-md border border-border-default p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          Operações por UF (legado)
-        </summary>
-        <div className="mt-4 space-y-8">
-          <p className="flex flex-wrap gap-4 text-sm">
-            <Link
-              href={`/movimentacoes?uf=${uf}&exercicio=${exercicio}`}
-              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4"
-            >
-              Ver movimentações
-            </Link>
-            <Link
-              href={`/pessoas?uf=${uf}&exercicio=${exercicio}`}
-              className="font-medium text-up-black underline decoration-up-yellow decoration-2 underline-offset-4"
-            >
-              Pessoas (PF/PJ)
-            </Link>
-          </p>
-
-          <Card>
-            <CardTitle>Upload</CardTitle>
-            <div className="mt-4">
-              <UploadForm defaultUf={uf} defaultExercicio={exercicio} />
-            </div>
-          </Card>
-
-          <Card>
-            <CardTitle>Exportar XML SPCA</CardTitle>
-            <p className="mt-2 text-sm text-muted">
-              Baixa ZIP com 3 XMLs (origem, aplicação, doação) quando a exportação estiver liberada.
-            </p>
-            <div className="mt-4">
-              {exportavel ? (
-                <a
-                  href={`/api/export/${uf}/${exercicio}`}
-                  className="inline-flex items-center justify-center rounded-md bg-up-black px-4 py-2 text-sm font-medium text-up-white transition-colors duration-150 ease-out-quart hover:bg-up-black-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-up-black focus-visible:ring-offset-2"
-                >
-                  Baixar ZIP
-                </a>
-              ) : (
-                <Button disabled>Baixar ZIP (bloqueado)</Button>
-              )}
-            </div>
-          </Card>
-        </div>
-      </details>
     </main>
   );
 }

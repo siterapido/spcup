@@ -1,3 +1,4 @@
+import { resolveOpenRouterApiKey } from "../ai/openrouter-api-key";
 import { DEFAULT_MATCH_MODEL } from "../ai/model-profile";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -121,10 +122,7 @@ export async function evaluateMovimentacaoWithAi(
   input: EvaluateAiMatchInput,
   options?: EvaluateAiMatchOptions,
 ): Promise<AiMatchResult> {
-  const apiKey = options?.apiKey ?? process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured");
-  }
+  const apiKey = resolveOpenRouterApiKey(options?.apiKey);
 
   const model = options?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
   const fetchFn = options?.fetch ?? fetch;

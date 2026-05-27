@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import type { ConfiancaFaixas, SystemStats } from "@spc-up/core";
@@ -112,15 +111,6 @@ export function SystemStatsPanel({ stats }: { stats: SystemStats }) {
         <CardTitle>
           UF {stats.uf} · exercício {stats.exercicio}
         </CardTitle>
-        <p className="mt-2">
-          Exportação SPCA (legado UF):{" "}
-          <Badge tone={s.exportavel ? "success" : "danger"}>
-            {s.exportavel ? "liberada" : "bloqueada"}
-          </Badge>
-        </p>
-        <p className="mt-1 text-xs text-muted">
-          Export por prestador municipal: use o kanban da sessão de prestação.
-        </p>
         <div className="mt-4 grid gap-8 lg:grid-cols-2">
           <StatusTable title="Movimentações por status" rows={s.movimentacoesPorStatus} />
           <StatusTable title="Arquivos por status" rows={s.arquivosPorStatus} />

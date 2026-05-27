@@ -4,7 +4,20 @@ import type {
   ErrorLogEntry,
   FileErrorDisplay,
   SubmitStep,
+  SubmitStepId,
 } from "@/hooks/use-prestacao-submit";
+
+const SUBMIT_STEP_SHORT_LABELS: Record<SubmitStepId, string> = {
+  session: "Sessão",
+  upload: "Upload",
+  ingest: "Ingestão",
+  consolidacao: "Extratos",
+  kanban: "Kanban",
+};
+
+function submitStepLabel(step: SubmitStep): string {
+  return SUBMIT_STEP_SHORT_LABELS[step.id] ?? step.label;
+}
 
 function StepIcon({ status }: { status: SubmitStep["status"] }) {
   if (status === "done") {
@@ -155,12 +168,39 @@ export function SubmissionProgressPanel({
         </p>
       </div>
 
-      <ol className="space-y-2 border-t border-border-default pt-3">
-        {steps.map((step) => (
-          <li key={step.id} className="flex items-center gap-2.5 text-sm">
-            <StepIcon status={step.status} />
+      <ol className="flex flex-col gap-3 border-t border-border-default pt-3 sm:flex-row sm:gap-2 sm:pb-1">
+        {steps.map((step, index) => (
+          <li
+            key={step.id}
+            className="flex min-w-0 flex-1 flex-col items-center text-center sm:min-w-[5.5rem]"
+          >
+            <div className="flex w-full items-center">
+              {index > 0 ? (
+                <span
+                  className={`hidden h-px flex-1 sm:block ${
+                    step.status === "pending" ? "bg-border-default" : "bg-up-black/25"
+                  }`}
+                  aria-hidden
+                />
+              ) : (
+                <span className="hidden flex-1 sm:block" aria-hidden />
+              )}
+              <StepIcon status={step.status} />
+              {index < steps.length - 1 ? (
+                <span
+                  className={`hidden h-px flex-1 sm:block ${
+                    step.status === "done" || step.status === "error"
+                      ? "bg-up-black/25"
+                      : "bg-border-default"
+                  }`}
+                  aria-hidden
+                />
+              ) : (
+                <span className="hidden flex-1 sm:block" aria-hidden />
+              )}
+            </div>
             <span
-              className={
+              className={`mt-1.5 text-xs leading-tight sm:line-clamp-2 ${
                 step.status === "active"
                   ? "font-medium text-up-black"
                   : step.status === "done"
@@ -168,9 +208,10 @@ export function SubmissionProgressPanel({
                     : step.status === "error"
                       ? "text-red-800"
                       : "text-muted"
-              }
+              }`}
             >
-              {step.label}
+              <span className="sm:hidden">{submitStepLabel(step)}</span>
+              <span className="hidden sm:inline">{step.label}</span>
             </span>
           </li>
         ))}
