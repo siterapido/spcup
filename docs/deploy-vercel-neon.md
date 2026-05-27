@@ -43,14 +43,41 @@ cp .env.example .env
 
 ## 3. Vercel Blob (`BLOB_READ_WRITE_TOKEN`)
 
+### Dashboard
+
 1. **Storage → Blob → Create Store** (ou integração Blob no projeto).
-2. Gere/copie o token **Read-Write** e defina:
+2. Vincule o store ao projeto `spcup`.
+3. Confirme a variável `BLOB_READ_WRITE_TOKEN` em **Production**, **Preview** e **Development**.
+
+### CLI (recomendado para desenvolvimento local)
+
+Na pasta `apps/web` (onde está o `vercel.json`):
+
+```bash
+cd apps/web
+
+# 1. Vincular ao projeto correto (monorepo → projeto spcup, não "web")
+vercel link --project spcup --yes
+
+# 2. Criar store e conectar ao projeto (só na primeira vez)
+vercel blob create-store spcup-blob --access public --yes \
+  --environment production --environment preview --environment development
+
+# 3. Conferir stores e env no projeto
+vercel blob list-stores
+vercel env ls | grep BLOB
+
+# 4. Baixar variáveis de Development para o Next.js local
+vercel env pull .env.local --yes
+```
+
+O `vercel env pull` grava `BLOB_READ_WRITE_TOKEN` em `apps/web/.env.local` (gitignored). Reinicie `pnpm dev` após o pull.
 
 | Variável | Ambientes |
 |----------|-----------|
-| `BLOB_READ_WRITE_TOKEN` | Production, Preview, Development (opcional local) |
+| `BLOB_READ_WRITE_TOKEN` | Production, Preview, Development |
 
-Sem este token, a rota de upload (`/api/upload`) falha ao gravar arquivos.
+Sem este token, as rotas `/api/upload` e `/api/prestacao/sessoes/[id]/upload` retornam `STORAGE_FALHA`.
 
 ## 4. Demais variáveis obrigatórias
 

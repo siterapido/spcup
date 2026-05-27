@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyIngestError } from "./errors";
+import { classifyIngestError, IngestError } from "./errors";
 
 describe("classifyIngestError", () => {
   it("maps missing OpenRouter key", () => {
@@ -38,5 +38,16 @@ describe("classifyIngestError", () => {
     const r = classifyIngestError(new Error("something weird"));
     expect(r.codigo).toBe("INGESTAO_DESCONHECIDA");
     expect(r.causaTecnica).toBe("something weird");
+  });
+
+  it("preserves IngestError detail (no re-classify from user message)", () => {
+    const original = new IngestError({
+      codigo: "OPENROUTER_FALHA",
+      mensagem: "Não foi possível ler o extrato com IA. Tente novamente em alguns minutos.",
+      causaTecnica: "OpenRouter HTTP 502: upstream",
+    });
+    const r = classifyIngestError(original);
+    expect(r.codigo).toBe("OPENROUTER_FALHA");
+    expect(r.causaTecnica).toBe("OpenRouter HTTP 502: upstream");
   });
 });

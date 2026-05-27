@@ -37,6 +37,10 @@ export class IngestError extends Error {
 }
 
 export function classifyIngestError(error: unknown): IngestErrorDetail {
+  if (error instanceof IngestError) {
+    return error.detail;
+  }
+
   const causaTecnica = error instanceof Error ? error.message : String(error);
   const msg = causaTecnica.toLowerCase();
 
