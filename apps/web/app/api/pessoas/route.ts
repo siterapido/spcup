@@ -1,4 +1,5 @@
 import {
+  deletePessoas,
   rematchPendingMovimentacoes,
   searchPessoas,
   upsertPessoa,
@@ -33,6 +34,37 @@ export async function GET(request: Request) {
     })),
     total: rows.length,
   });
+}
+
+export async function DELETE(request: Request) {
+  const authResult = await requireSession();
+  if ("error" in authResult) return authResult.error;
+
+  let body: { items?: Array<{ id?: string; tipo?: string }> };
+  try {
+    body = (await request.json()) as { items?: Array<{ id?: string; tipo?: string }> };
+  } catch {
+    return NextResponse.json({ error: "Corpo JSON inválido" }, { status: 400 });
+  }
+
+  const items = (body.items ?? [])
+    .map((item) => {
+      const tipo = parsePessoaTipoParam(item.tipo);
+      const id = item.id?.trim();
+      if (!tipo || !id) return null;
+      return { id, tipo };
+    })
+    .filter((item): item is { id: string; tipo: NonNullable<ReturnType<typeof parsePessoaTipoParam>> } =>
+      item !== null,
+    );
+
+  if (items.length === 0) {
+    return NextResponse.json({ error: "Nenhuma pessoa válida para excluir" }, { status: 400 });
+  }
+
+  const db = getDb();
+  const result = await deletePessoas(db, items);
+  return NextResponse.json(result);
 }
 
 export async function POST(request: Request) {

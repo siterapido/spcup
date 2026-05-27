@@ -34,3 +34,9 @@ export {
   listPessoaMovimentacoes,
   searchPessoas,
 } from "./query";
+export {
+  deletePessoas,
+  type DeletePessoasResult,
+  type DeletePessoasSkipped,
+  type PessoaRef,
+} from "./delete";

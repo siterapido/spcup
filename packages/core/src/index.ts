@@ -189,6 +189,7 @@ export { normalizeCnpj, normalizeCpf, normalizeName } from "./normalize";
 export {
   CADASTRO_TIPO,
   countPessoaMovimentacoes,
+  deletePessoas,
   extractSpreadsheetHeaders,
   getPessoa,
   importCadastroBatch,
@@ -204,6 +205,9 @@ export {
   type CadastroColumnMap,
   type CadastroRow,
   type CadastroTipo,
+  type DeletePessoasResult,
+  type DeletePessoasSkipped,
+  type PessoaRef,
   type ConflitoResolucao,
   type ImportCadastroResult,
   type SpreadsheetHeadersResult,
