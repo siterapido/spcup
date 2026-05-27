@@ -35,6 +35,8 @@ export const ARQUIVO_INGESTAO_STATUS = {
 export type MovimentacaoDirecao =
   (typeof MOVIMENTACAO_DIRECAO)[keyof typeof MOVIMENTACAO_DIRECAO];
 
+import type { OrigemExtracaoV1 } from "../provenance/types";
+
 export interface ParsedTransactionRow {
   dataMovimento: Date;
   valor: string;
@@ -43,6 +45,7 @@ export interface ParsedTransactionRow {
   nrExtratoBancario: string | null;
   /** Código Cred/Dev do extrato bancário, quando extraído. */
   credDev: string | null;
+  origemExtracao?: OrigemExtracaoV1 | null;
 }
 
 /** Alias for ParsedTransactionRow used by pipeline helpers. */

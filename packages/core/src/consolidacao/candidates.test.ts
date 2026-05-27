@@ -13,6 +13,7 @@ const pixLine: MovimentacaoCandidate = {
   descricaoRaw: "GABRIEL REIS DA SILVA",
   cpfExtraido: null,
   cnpjExtraido: null,
+  origemExtracao: null,
 };
 
 const completoLine: MovimentacaoCandidate = {
@@ -25,6 +26,7 @@ const completoLine: MovimentacaoCandidate = {
   descricaoRaw: "GABRIEL REIS DA SILVA CPF 12345678901",
   cpfExtraido: "12345678901",
   cnpjExtraido: null,
+  origemExtracao: null,
 };
 
 describe("buildConsolidacaoCandidates", () => {

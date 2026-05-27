@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
+import type { OrigemAtributosEvento } from "@spc-up/core";
+
+import { OrigensPanel } from "@/components/prestacao/origens-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -29,6 +32,7 @@ export type ConsolidacaoEventoRow = {
     confianca: number;
     payload: unknown;
   }>;
+  origemAtributos: OrigemAtributosEvento | null;
 };
 
 type Props = {
@@ -152,6 +156,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta }: Props) 
                         </div>
                       ))}
                     </div>
+                    <OrigensPanel origemAtributos={ev.origemAtributos} />
                     {ev.hipoteses.length > 0 && (
                       <div>
                         <p className="text-sm font-medium">Outras hipóteses</p>

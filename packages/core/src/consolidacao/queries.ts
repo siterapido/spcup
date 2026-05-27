@@ -5,6 +5,7 @@ import {
 } from "@spc-up/db";
 import { desc, eq } from "drizzle-orm";
 
+import type { OrigemAtributosEvento } from "../provenance/types";
 import { countPdfIngestoesForSessao, loadCadastroMatchContext, loadMovimentacaoCandidates } from "./load";
 import { buildConsolidacaoCandidates } from "./candidates";
 
@@ -31,6 +32,7 @@ export type ConsolidacaoListItem = {
     confianca: number;
     payload: unknown;
   }>;
+  origemAtributos: OrigemAtributosEvento | null;
 };
 
 export async function listConsolidacaoForSessao(
@@ -97,6 +99,7 @@ export async function listConsolidacaoForSessao(
         confianca: h.confianca,
         payload: h.payload,
       })),
+      origemAtributos: (e.origemAtributos as OrigemAtributosEvento | null) ?? null,
     })),
   };
 }

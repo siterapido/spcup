@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { REQUIRED_SPCA_FIELDS } from "../confidence";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { applyDeterministicMatch } from "../match/rules";
+import type { OrigemEnriquecimentoV1, OrigemExtracaoV1 } from "../provenance/types";
 
 export interface MovimentacaoDetalhe {
   id: string;
@@ -23,6 +24,8 @@ export interface MovimentacaoDetalhe {
   pessoaJuridicaId: string | null;
   arquivoIngestaoId: string | null;
   nomeArquivo: string | null;
+  origemExtracao: OrigemExtracaoV1 | null;
+  origemEnriquecimento: OrigemEnriquecimentoV1 | null;
   spca: {
     fonteRecurso: string | null;
     naturezaRecurso: string | null;
@@ -88,6 +91,8 @@ export async function getMovimentacaoDetalhe(
     pessoaJuridicaId: mov.pessoaJuridicaId,
     arquivoIngestaoId: mov.arquivoIngestaoId,
     nomeArquivo: mov.arquivoIngestao?.nomeArquivo ?? null,
+    origemExtracao: (mov.origemExtracao as OrigemExtracaoV1 | null) ?? null,
+    origemEnriquecimento: (mov.origemEnriquecimento as OrigemEnriquecimentoV1 | null) ?? null,
     spca: mov.spca
       ? {
           fonteRecurso: mov.spca.fonteRecurso,

@@ -16,6 +16,7 @@ describe("consolidacao bahia fixtures", () => {
       descricaoRaw: "GABRIEL REIS DA SILVA",
       cpfExtraido: null,
       cnpjExtraido: null,
+      origemExtracao: null,
     };
     const total: MovimentacaoCandidate = {
       id: "2",
@@ -27,6 +28,7 @@ describe("consolidacao bahia fixtures", () => {
       descricaoRaw: "GABRIEL REIS DA SILVA CPF 12345678901",
       cpfExtraido: "12345678901",
       cnpjExtraido: null,
+      origemExtracao: null,
     };
 
     const events = buildConsolidacaoCandidates([pix, total], {

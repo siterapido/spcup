@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import type { OrigemEnriquecimentoV1, OrigemExtracaoV1 } from "@spc-up/core";
+
+import { OrigensPanel } from "@/components/prestacao/origens-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +24,8 @@ interface Detalhe {
   justificativaIa: string | null;
   iaIndisponivel: boolean;
   nomeArquivo: string | null;
+  origemExtracao: OrigemExtracaoV1 | null;
+  origemEnriquecimento: OrigemEnriquecimentoV1 | null;
   pessoaFisicaId: string | null;
   pessoaJuridicaId: string | null;
   pessoaResumo: string | null;
@@ -73,7 +78,7 @@ export function ReviewDrawer({
         setDetalhe(null);
         return;
       }
-      setDetalhe(json as Detalhe);
+      setDetalhe((json.item ?? json) as Detalhe);
     } catch {
       setMessage("Erro de rede.");
       setDetalhe(null);
@@ -157,7 +162,7 @@ export function ReviewDrawer({
         setMessage(json.error ?? "Erro ao vincular");
         return;
       }
-      setDetalhe(json as Detalhe);
+      setDetalhe((json.item ?? json) as Detalhe);
       setPessoaQ("");
       onUpdated();
     } finally {
@@ -178,7 +183,7 @@ export function ReviewDrawer({
         setMessage(json.error ?? "IA indisponível");
         return;
       }
-      setDetalhe(json as Detalhe);
+      setDetalhe((json.item ?? json) as Detalhe);
       onUpdated();
     } finally {
       setBusy(false);
@@ -250,6 +255,11 @@ export function ReviewDrawer({
                   Exportação bloqueada — complete campos SPCA e vínculo de pessoa.
                 </p>
               )}
+
+              <OrigensPanel
+                origemExtracao={detalhe.origemExtracao}
+                origemEnriquecimento={detalhe.origemEnriquecimento}
+              />
 
               <div>
                 <p className="font-medium">Pessoa</p>

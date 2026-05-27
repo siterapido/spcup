@@ -7,6 +7,7 @@ import {
 } from "@spc-up/db";
 import { and, eq, isNull } from "drizzle-orm";
 
+import type { OrigemExtracaoV1 } from "../provenance/types";
 import type { CadastroMatchContext, MovimentacaoCandidate, PessoaRef } from "./types";
 
 export async function loadMovimentacaoCandidates(
@@ -22,6 +23,7 @@ export async function loadMovimentacaoCandidates(
       valor: movimentacao.valor,
       direcao: movimentacao.direcao,
       descricaoRaw: movimentacao.descricaoRaw,
+      origemExtracao: movimentacao.origemExtracao,
     })
     .from(movimentacao)
     .innerJoin(arquivoIngestao, eq(movimentacao.arquivoIngestaoId, arquivoIngestao.id))
@@ -42,6 +44,7 @@ export async function loadMovimentacaoCandidates(
     descricaoRaw: row.descricaoRaw,
     cpfExtraido: null,
     cnpjExtraido: null,
+    origemExtracao: (row.origemExtracao as OrigemExtracaoV1 | null) ?? null,
   }));
 }
 

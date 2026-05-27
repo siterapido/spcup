@@ -1,5 +1,6 @@
 import { extractDocumentCandidates } from "../match/rules";
 import { normalizeName } from "../normalize";
+import { buildOrigemAtributos } from "../provenance/build-origem-atributos";
 import { classifyArquivoPapel } from "./classify-arquivo";
 import type {
   CadastroMatchContext,
@@ -167,10 +168,21 @@ type PairCandidate = {
 };
 
 /** Build consolidation event drafts from session movimentações and cadastro context. */
+function finalizeDraft(
+  draft: Omit<ConsolidacaoEventDraft, "origemAtributos">,
+  movById: Map<string, MovimentacaoCandidate>,
+): ConsolidacaoEventDraft {
+  return {
+    ...draft,
+    origemAtributos: buildOrigemAtributos(draft, movById),
+  };
+}
+
 export function buildConsolidacaoCandidates(
   movs: MovimentacaoCandidate[],
   ctx: CadastroMatchContext,
 ): ConsolidacaoEventDraft[] {
+  const movById = new Map(movs.map((m) => [m.id, m]));
   const used = new Set<string>();
   const events: ConsolidacaoEventDraft[] = [];
 
@@ -217,17 +229,22 @@ export function buildConsolidacaoCandidates(
       });
     }
 
-    events.push({
-      dataMovimento: pair.a.dataMovimento,
-      valor: pair.a.valor,
-      direcao: pair.a.direcao,
-      confianca: pair.confianca,
-      justificativa: pair.justificativa,
-      ...pessoaIds(pair.pessoa),
-      linhas,
-      hipoteses,
-      evidencias,
-    });
+    events.push(
+      finalizeDraft(
+        {
+          dataMovimento: pair.a.dataMovimento,
+          valor: pair.a.valor,
+          direcao: pair.a.direcao,
+          confianca: pair.confianca,
+          justificativa: pair.justificativa,
+          ...pessoaIds(pair.pessoa),
+          linhas,
+          hipoteses,
+          evidencias,
+        },
+        movById,
+      ),
+    );
   }
 
   for (const m of movs) {
@@ -235,25 +252,30 @@ export function buildConsolidacaoCandidates(
       continue;
     }
     const single = scoreSingle(m, ctx);
-    events.push({
-      dataMovimento: m.dataMovimento,
-      valor: m.valor,
-      direcao: m.direcao,
-      confianca: single.confianca,
-      justificativa: single.justificativa,
-      ...pessoaIds(single.pessoa),
-      linhas: [linhaDraft(m)],
-      hipoteses: [],
-      evidencias: single.pessoa
-        ? [
-            {
-              tipo: "CADASTRO_UF",
-              detalhe: single.pessoa.nome,
-              peso: single.confianca,
-            },
-          ]
-        : [],
-    });
+    events.push(
+      finalizeDraft(
+        {
+          dataMovimento: m.dataMovimento,
+          valor: m.valor,
+          direcao: m.direcao,
+          confianca: single.confianca,
+          justificativa: single.justificativa,
+          ...pessoaIds(single.pessoa),
+          linhas: [linhaDraft(m)],
+          hipoteses: [],
+          evidencias: single.pessoa
+            ? [
+                {
+                  tipo: "CADASTRO_UF",
+                  detalhe: single.pessoa.nome,
+                  peso: single.confianca,
+                },
+              ]
+            : [],
+        },
+        movById,
+      ),
+    );
   }
 
   return events.sort((a, b) => b.confianca - a.confianca);

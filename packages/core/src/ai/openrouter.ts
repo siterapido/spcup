@@ -18,6 +18,7 @@ import {
   writeExtratoPdfCache,
   writeExtratoTextCache,
 } from "./openrouter-cache";
+import { resolveOpenRouterApiKey } from "./openrouter-api-key";
 
 export { isKimiModel } from "./model-profile";
 
@@ -72,6 +73,23 @@ const EXTRATO_TRANSACTION_ITEM_SCHEMA = {
     cpf: { type: "string", description: "CPF digits only when present" },
     cnpj: { type: "string", description: "CNPJ digits only when present" },
     nome: { type: "string", description: "Counterparty name when present" },
+    pagina: { type: "integer", description: "1-based page number in the PDF" },
+    indice_linha: {
+      type: "integer",
+      description: "1-based row index on that page in visual order",
+    },
+    bbox: {
+      type: "object",
+      properties: {
+        x: { type: "number" },
+        y: { type: "number" },
+        w: { type: "number" },
+        h: { type: "number" },
+      },
+      required: ["x", "y", "w", "h"],
+      additionalProperties: false,
+      description: "Normalized 0-1 box around the transaction row on the page",
+    },
   },
   required: ["data", "valor", "direcao", "descricao"],
   additionalProperties: false,
@@ -93,9 +111,11 @@ const EXTRATO_ARRAY_SCHEMA = {
 const KIMI_EXTRATO_SYSTEM_PROMPT =
   "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
   'Responda APENAS JSON: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
-  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
+  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos",' +
+  '"pagina":1,"indice_linha":1,"bbox":{"x":0,"y":0,"w":1,"h":0.05}}]}. ' +
   "cred_dev = código da coluna Cred/Dev quando existir. Use ENTRADA para crédito e SAIDA para débito. " +
   "cpf/cnpj só dígitos se visíveis; senão preencha nome. " +
+  "pagina e indice_linha por transação; bbox normalizado 0-1 na página. " +
   "Não invente linhas.";
 
 const KIMI_EXTRATO_USER_PDF =
@@ -104,9 +124,11 @@ const KIMI_EXTRATO_USER_PDF =
 const GEMINI_EXTRATO_SYSTEM_PROMPT =
   "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
   'Responda APENAS JSON válido no schema: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
-  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos"}]}. ' +
+  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos",' +
+  '"pagina":1,"indice_linha":1,"bbox":{"x":0,"y":0,"w":1,"h":0.05}}]}. ' +
   "cred_dev = código da coluna Cred/Dev do extrato. Use ENTRADA para crédito e SAIDA para débito. " +
   "Preencha nome com o contraparte quando visível; cpf/cnpj só dígitos. " +
+  "pagina e indice_linha por transação; bbox normalizado 0-1 na página. " +
   "Não invente linhas.";
 
 export interface ExtractStructuredOptions {
@@ -511,10 +533,7 @@ async function callOpenRouterJson(
   payload: Record<string, unknown>,
   options?: ExtractStructuredOptions,
 ): Promise<OpenRouterJsonResult> {
-  const apiKey = options?.apiKey ?? process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured");
-  }
+  const apiKey = resolveOpenRouterApiKey(options?.apiKey);
 
   const fetchFn = options?.fetch ?? fetch;
   const sleepFn = options?.sleep ?? defaultSleep;
@@ -668,6 +687,10 @@ export async function extractTransactionsFromPdfFile(
       model,
       batchName,
     );
+    const batchPagina = index + 1;
+    for (const tx of part.transacoes) {
+      tx.__batch_pagina = batchPagina;
+    }
     merged.push(...part.transacoes);
   }
 

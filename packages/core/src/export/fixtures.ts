@@ -20,6 +20,8 @@ const baseMov = {
   diretorioMunicipalId: null,
   sessaoPrestacaoId: null,
   movimentacaoCanonicaId: null,
+  origemExtracao: null,
+  origemEnriquecimento: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

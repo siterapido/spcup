@@ -12,6 +12,7 @@ import { rematchPendingMovimentacoes } from "../cadastro/rematch";
 import { MOVIMENTACAO_STATUS } from "../ingest/types";
 import { applyDeterministicMatch } from "../match/rules";
 import { getSessao } from "../prestacao/sessao";
+import type { OrigemAtributosEvento, OrigemEnriquecimentoV1, OrigemRef } from "../provenance/types";
 async function pickCanonicaMovimentacaoId(
   db: Db,
   eventoId: string,
@@ -64,6 +65,18 @@ export async function approveConsolidacaoEvento(
   const descricoes = evento.linhas.map((l) => l.movimentacao.descricaoRaw);
   const enrichedDescricao = mergeDescricao(descricoes);
 
+  const canonicaLinha = evento.linhas.find((l) => l.movimentacaoId === canonicaId);
+  const origemExtracao = canonicaLinha?.movimentacao.origemExtracao ?? null;
+  const origemAtributos = evento.origemAtributos as OrigemAtributosEvento | null;
+  const enriquecimentoRefs: OrigemRef[] = origemAtributos
+    ? [
+        ...origemAtributos.pessoa.filter((r) => r.tipo !== "PDF"),
+        ...origemAtributos.confianca,
+      ]
+    : [];
+  const origemEnriquecimento: OrigemEnriquecimentoV1 | null =
+    enriquecimentoRefs.length > 0 ? { versao: 1, refs: enriquecimentoRefs } : null;
+
   await db
     .update(movimentacao)
     .set({
@@ -71,6 +84,8 @@ export async function approveConsolidacaoEvento(
       pessoaFisicaId: evento.pessoaFisicaId,
       pessoaJuridicaId: evento.pessoaJuridicaId,
       confiancaGlobal: evento.confianca,
+      origemExtracao,
+      origemEnriquecimento,
     })
     .where(eq(movimentacao.id, canonicaId));
 

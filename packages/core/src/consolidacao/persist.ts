@@ -42,6 +42,7 @@ export async function persistConsolidacaoDrafts(
         pessoaFisicaId: draft.pessoaFisicaId,
         pessoaJuridicaId: draft.pessoaJuridicaId,
         justificativa: draft.justificativa,
+        origemAtributos: draft.origemAtributos,
       })
       .returning({ id: consolidacaoEvento.id });
     if (!evento) {

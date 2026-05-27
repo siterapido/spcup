@@ -29,6 +29,20 @@
       "when": 1779836337230,
       "tag": "0003_deep_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0004_movimentacao_cred_dev",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779900000001,
+      "tag": "0005_origem_proveniencia",
+      "breakpoints": true
     }
   ]
 }

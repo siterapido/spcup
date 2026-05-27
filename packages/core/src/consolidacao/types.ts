@@ -1,5 +1,7 @@
 import type { CONSOLIDACAO_LINHA_PAPEL } from "@spc-up/db";
 
+import type { OrigemAtributosEvento, OrigemExtracaoV1 } from "../provenance/types";
+
 export type ConsolidacaoLinhaPapel =
   (typeof CONSOLIDACAO_LINHA_PAPEL)[keyof typeof CONSOLIDACAO_LINHA_PAPEL];
 
@@ -13,6 +15,7 @@ export type MovimentacaoCandidate = {
   descricaoRaw: string;
   cpfExtraido: string | null;
   cnpjExtraido: string | null;
+  origemExtracao: OrigemExtracaoV1 | null;
 };
 
 export type PessoaRef =
@@ -48,4 +51,5 @@ export type ConsolidacaoEventDraft = {
   linhas: ConsolidacaoLinhaDraft[];
   hipoteses: ConsolidacaoHipoteseDraft[];
   evidencias: Array<{ tipo: string; detalhe: string; peso: number }>;
+  origemAtributos: OrigemAtributosEvento;
 };

@@ -78,6 +78,18 @@ export {
   approveConsolidacaoEvento,
   rejectConsolidacaoEvento,
 } from "./consolidacao/approve";
+export {
+  type BboxNorm,
+  type CampoExtrato,
+  type OrigemAtributosEvento,
+  type OrigemEnriquecimentoV1,
+  type OrigemExtracaoV1,
+  type OrigemRef,
+} from "./provenance/types";
+export { clampBbox, validateOrigemExtracao } from "./provenance/validate";
+export { origemFromExtratoItem, type AttachExtracaoCtx } from "./provenance/attach-extracao";
+export { buildOrigemAtributos, regraFromJustificativa } from "./provenance/build-origem-atributos";
+export { readArquivoIngestaoBuffer } from "./storage/read-arquivo";
 export { buildConsolidacaoCandidates } from "./consolidacao/candidates";
 export {
   consolidateSession,
@@ -149,6 +161,7 @@ export {
   type IngestBufferResult,
   type IngestFileParams,
 } from "./ingest/pipeline";
+export { storeIngestBuffer } from "./storage/store-buffer";
 export {
   ARQUIVO_INGESTAO_STATUS,
   MOVIMENTACAO_DIRECAO,

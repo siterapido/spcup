@@ -16,6 +16,8 @@ import { extractDocumentCandidates } from "../match/rules";
 import { normalizeCnpj, normalizeCpf } from "../normalize";
 import { toIngestError } from "./errors";
 import { ingestLog } from "./log";
+import { origemFromExtratoItem } from "../provenance/attach-extracao";
+import { getPdfPageCount } from "./pdf-split";
 import { extractPdfText } from "./pdf-text";
 import { persistTransactions } from "./ofx";
 import {
@@ -134,8 +136,36 @@ export function rowFromExtratoItem(
   };
 }
 
+export type RowsFromExtratoOptions = {
+  attachOrigem: boolean;
+  arquivoIngestaoId: string;
+  nomeArquivo: string;
+  pageCount: number;
+};
+
+function withOrigem(
+  row: ParsedTransactionRow,
+  item: Record<string, unknown>,
+  opts: RowsFromExtratoOptions,
+): ParsedTransactionRow {
+  if (!opts.attachOrigem) {
+    return row;
+  }
+  const batchPagina = Number(item.__batch_pagina ?? 1);
+  const origemExtracao = origemFromExtratoItem(item, {
+    arquivoIngestaoId: opts.arquivoIngestaoId,
+    nomeArquivo: opts.nomeArquivo,
+    batchPagina: Number.isFinite(batchPagina) && batchPagina >= 1 ? batchPagina : 1,
+    pageCount: opts.pageCount,
+  });
+  return { ...row, origemExtracao };
+}
+
 /** Map extrato AI output to rows; lines without valid CPF/CNPJ increment `linhasIgnoradasSemDoc`. */
-export function rowsFromExtratoTransactions(extraction: ExtratoExtraction): {
+export function rowsFromExtratoTransactions(
+  extraction: ExtratoExtraction,
+  opts?: RowsFromExtratoOptions,
+): {
   rows: ParsedTransactionRow[];
   linhasIgnoradasSemDoc: number;
 } {
@@ -145,12 +175,16 @@ export function rowsFromExtratoTransactions(extraction: ExtratoExtraction): {
   for (const item of extraction.transacoes) {
     const docLabel = docLabelFromExtratoItem(item);
     if (docLabel != null) {
-      rows.push(rowFromExtratoItem(item, docLabel));
+      rows.push(
+        opts
+          ? withOrigem(rowFromExtratoItem(item, docLabel), item, opts)
+          : rowFromExtratoItem(item, docLabel),
+      );
       continue;
     }
     const semDoc = rowFromExtratoItemSemDoc(item);
     if (semDoc != null) {
-      rows.push(semDoc);
+      rows.push(opts ? withOrigem(semDoc, item, opts) : semDoc);
       continue;
     }
     linhasIgnoradasSemDoc += 1;
@@ -218,7 +252,13 @@ export async function ingestPdfExtrato(
       transacoesExtraidas: extraction.transacoes.length,
     });
 
-    const { rows, linhasIgnoradasSemDoc } = rowsFromExtratoTransactions(extraction);
+    const pageCount = await getPdfPageCount(buffer);
+    const { rows, linhasIgnoradasSemDoc } = rowsFromExtratoTransactions(extraction, {
+      attachOrigem: !hasEnoughText,
+      arquivoIngestaoId: arquivoId,
+      nomeArquivo: filename,
+      pageCount,
+    });
 
     if (rows.length === 0) {
       ingestLog("info", { fase: "concluido", arquivoId, filename, duracaoMs: Date.now() - t0 });

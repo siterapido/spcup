@@ -115,6 +115,7 @@ export async function persistTransactions(
         diretorioMunicipalId: prestador.diretorioMunicipalId,
         status: MOVIMENTACAO_STATUS.RASCUNHO,
         hashMovimento: computeHashMovimento(prestador.cnpjPrestador, exercicio, row),
+        origemExtracao: row.origemExtracao ?? null,
       })
       .returning();
 
