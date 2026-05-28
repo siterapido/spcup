@@ -1,22 +1,37 @@
 {
   "name": "@spc-up/cli",
   "version": "0.1.0",
+  "description": "CLI spcup — importação e processamento de prestação de contas SPC UP",
   "private": true,
   "bin": {
-    "spc-up": "./dist/main.js"
+    "spcup": "./dist/launcher.js",
+    "spc-up": "./dist/launcher.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist/launcher.js",
+    "dist/main.js",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsup",
     "lint": "tsc --noEmit -p tsconfig.lint.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
-    "@spc-up/core": "workspace:*",
-    "@spc-up/db": "workspace:*",
-    "@spc-up/spca": "workspace:*",
+    "@napi-rs/canvas": "^0.1.67",
     "commander": "^13.0.0"
   },
   "devDependencies": {
+    "@spc-up/core": "workspace:*",
+    "@spc-up/db": "workspace:*",
+    "@spc-up/spca": "workspace:*",
     "@types/node": "^22.0.0",
     "tsup": "^8.4.0",
     "typescript": "^5.8.0",

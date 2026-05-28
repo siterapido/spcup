@@ -78,6 +78,23 @@ export {
   type PrestadorResolvido,
 } from "./prestacao/sessao";
 export {
+  uploadFilesToSessao,
+  type PersistStorageFn,
+  type UploadArquivoResult,
+  type UploadErroItem,
+  type UploadFileInput,
+  type UploadFilesResult,
+} from "./prestacao/upload-files";
+export {
+  processSessaoPdfArquivos,
+  type ProcessPdfArquivoResult,
+  type ProcessSessaoResult,
+} from "./prestacao/process-sessao";
+export {
+  getPrestacaoCliStatus,
+  type PrestacaoCliStatus,
+} from "./prestacao/cli-status";
+export {
   approveConsolidacaoEvento,
   rejectConsolidacaoEvento,
 } from "./consolidacao/approve";

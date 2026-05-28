@@ -1,0 +1,44 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and pack CLI
+        run: ./scripts/pack-cli.sh
+
+      - name: Upload GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          TARBALL="dist/releases/spc-up-cli-0.1.0.tgz"
+          if [ ! -f "$TARBALL" ]; then
+            TARBALL="$(ls dist/releases/spc-up-cli-*.tgz | head -1)"
+          fi
+          gh release upload "$TAG" "$TARBALL" --clobber
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" "$TARBALL" \
+              --title "spcup CLI $TAG" \
+              --notes "Instalação: curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install-spcup.sh | bash"
+          fi

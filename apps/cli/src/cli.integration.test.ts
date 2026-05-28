@@ -47,6 +47,8 @@ vi.mock("@spc-up/db", () => ({
 describe("CLI program", () => {
   it("lists ingest and validate-xsd in root help", () => {
     const help = createProgram().helpInformation();
+    expect(help).toContain("cadastro");
+    expect(help).toContain("prestacao");
     expect(help).toContain("ingest");
     expect(help).toContain("pendencias");
     expect(help).toContain("confirm");

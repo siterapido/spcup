@@ -16,14 +16,15 @@
 
 ## Fluxo E2E
 
-1. [ ] `pnpm seed:diretorios`
-2. [ ] `pnpm spc-up ingest --uf XX --exercicio 2025 --path ./dados/`
-3. [ ] `pnpm dev` → revisar em `/movimentacoes`
-4. [ ] Confirmar lançamentos com score ≥ 0,85 (ou corrigir manualmente no banco)
-5. [ ] `pnpm spc-up pendencias --uf XX --exercicio 2025 --output pendencias.csv` → enviar ao estado
-6. [ ] `pnpm spc-up export --uf XX --exercicio 2025 --out ./export/`
-7. [ ] Importar os 3 XMLs no SPCA Cadastro (homologação)
-8. [ ] Registrar resultado abaixo
+1. [ ] `./bin/spcup install` (depois: `spcup` de qualquer pasta)
+2. [ ] `pnpm seed:diretorios` + configurar `~/.spc-up/.env`
+3. [ ] **Web:** `/prestacao/nova` → criar sessão → copiar UUID
+4. [ ] `spc-up cadastro import --uf XX --exercicio 2025 --file pessoas.xlsx` (se houver cadastro)
+5. [ ] `spc-up prestacao run --sessao <uuid> --path ./dados/`
+6. [ ] **Web:** `/prestacao/<uuid>/kanban` → revisar, vincular pessoa, confirmar
+7. [ ] **Web:** export ZIP SPCA (se consolidação: aprovar em `/prestacao/<uuid>/consolidacao` antes)
+8. [ ] Importar XMLs no SPCA Cadastro (homologação)
+9. [ ] Registrar resultado abaixo
 
 ## Resultado
 

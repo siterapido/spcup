@@ -7,6 +7,10 @@ export async function runIngest(opts: {
   exercicio: string;
   path: string;
 }): Promise<void> {
+  console.error(
+    "[deprecated] Use: spcup prestacao upload --sessao <uuid> --path ./lote/",
+  );
+
   const exercicio = Number.parseInt(opts.exercicio, 10);
   if (Number.isNaN(exercicio)) {
     throw new Error("--exercicio must be a number");

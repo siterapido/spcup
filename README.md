@@ -5,7 +5,7 @@ Consolidação de lançamentos financeiros dos diretórios estaduais da UP e exp
 ## Quick start
 
 ```bash
-git clone https://github.com/unidade-popular/spc-up.git
+git clone https://github.com/siterapido/spcup.git
 cd spc-up
 pnpm install
 cp .env.example .env
@@ -21,18 +21,33 @@ Ambiente automatizado (Postgres Docker opcional): `./scripts/run-local.sh`
 
 Deploy produção: **[docs/deploy-vercel-neon.md](docs/deploy-vercel-neon.md)**
 
-## CLI
+## CLI — `spcup` (usuários finais)
+
+**Não precisa clonar o repositório.** Ver [docs/spcup-instalacao-usuarios.md](docs/spcup-instalacao-usuarios.md).
 
 ```bash
-pnpm --filter @spc-up/cli build
-pnpm spc-up ingest --uf SP --exercicio 2025 --path ./dados/
+# Usuário (após UP publicar release no GitHub):
+curl -fsSL https://raw.githubusercontent.com/siterapido/spcup/main/scripts/install-spcup.sh | bash
+
+spcup prestacao run --sessao <uuid> --path ./lote/
+```
+
+### Desenvolvedores (monorepo)
+
+```bash
+./bin/spcup install    # configura ~/.spc-up/.env
+pnpm spcup --help
+```
+
+Comandos legados (scripts/CI):
+
+```bash
 pnpm spc-up pendencias --uf SP --exercicio 2025 --output pendencias.csv
-pnpm spc-up confirm --ids "uuid1,uuid2"
 pnpm spc-up export --uf SP --exercicio 2025 --out ./export/
 pnpm spc-up validate-xsd --file ./export/origem_SP.xml --schema origem
 ```
 
-Ingest CLI: `DATABASE_URL` + `STORAGE_ROOT` (default `./data/uploads`).
+Documentação completa: [apps/cli/README.md](apps/cli/README.md)
 
 ## Fluxo operacional
 
