@@ -14,9 +14,6 @@ import { NextResponse } from "next/server";
 
 import { requireSession } from "@/lib/api-auth";
 
-export const paginaPdfRuntime = "nodejs";
-export const paginaPdfMaxDuration = 300;
-
 type PaginaParams = { id: string; arquivoId: string; pagina: string };
 
 async function resolvePaginaContext(params: PaginaParams) {

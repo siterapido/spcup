@@ -1,6 +1,6 @@
-import { handleIgnorarPaginaPdf, paginaPdfRuntime } from "@/lib/pagina-pdf-route";
+import { handleIgnorarPaginaPdf } from "@/lib/pagina-pdf-route";
 
-export const runtime = paginaPdfRuntime;
+export const runtime = "nodejs";
 
 export async function POST(
   _request: Request,

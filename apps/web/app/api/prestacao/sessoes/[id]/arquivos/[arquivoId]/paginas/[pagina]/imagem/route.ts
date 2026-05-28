@@ -1,6 +1,6 @@
-import { handlePaginaPdfImagem, paginaPdfRuntime } from "@/lib/pagina-pdf-route";
+import { handlePaginaPdfImagem } from "@/lib/pagina-pdf-route";
 
-export const runtime = paginaPdfRuntime;
+export const runtime = "nodejs";
 
 export async function GET(
   _request: Request,

@@ -1,11 +1,7 @@
-import {
-  handleProcessarPaginaPdf,
-  paginaPdfMaxDuration,
-  paginaPdfRuntime,
-} from "@/lib/pagina-pdf-route";
+import { handleProcessarPaginaPdf } from "@/lib/pagina-pdf-route";
 
-export const runtime = paginaPdfRuntime;
-export const maxDuration = paginaPdfMaxDuration;
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(
   request: Request,
