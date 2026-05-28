@@ -21,6 +21,8 @@ export interface IngestLogFields {
   pagina?: number;
   paginas?: number;
   movimentacoes_criadas?: number;
+  statusPagina?: string;
+  modo?: string;
   codigoErro?: string;
   causa?: string;
 }

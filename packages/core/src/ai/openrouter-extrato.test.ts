@@ -143,7 +143,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     const result = await extractTransactionsFromPdfText("Saldo inicial ... linhas ...", {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       model: "google/gemini-2.5-flash",
     });
 
@@ -184,7 +184,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     const result = await extractTransactionsFromPdfText("extrato lines", {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
     });
 
     expect(result.transacoes).toHaveLength(2);
@@ -197,7 +197,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     const result = await extractTransactionsFromPdfFile(buf, {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       filename: "extrato.pdf",
     });
 
@@ -259,7 +259,7 @@ describe("extrato extraction (OpenRouter)", () => {
     const buf = Buffer.from("%PDF-1.4 demo");
     const result = await extractTransactionsFromPdfFile(buf, {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       filename: "extrato.pdf",
       model: "moonshotai/kimi-k2.6",
     });
@@ -281,7 +281,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     await extractTransactionsFromPdfFile(buf, {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       filename: "extrato.pdf",
       model: "google/gemini-3.5-flash",
     });
@@ -313,7 +313,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     const result = await extractTransactionsFromPdfText("extrato", {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       model: "google/gemini-3.5-flash",
     });
 
@@ -337,7 +337,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     const result = await extractTransactionsFromPdfText("extrato", {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       model: "google/gemini-3.5-flash",
     });
 
@@ -362,7 +362,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     const result = await extractTransactionsFromPdfText("extrato", {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       model: "google/gemini-3.5-flash",
     });
 
@@ -376,7 +376,7 @@ describe("extrato extraction (OpenRouter)", () => {
 
     await extractTransactionsFromPdfFile(buf, {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       filename: "extrato.pdf",
       model: "moonshotai/kimi-k2.6",
     });

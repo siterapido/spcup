@@ -36,7 +36,7 @@ describe("evaluateMovimentacaoWithAi", () => {
         tipoPrestador: "ESTADUAL",
         candidatos: [{ tipo: "PF", documento: "12345678901", nome: "Joao" }],
       },
-      { fetch: mockFetch, apiKey: "test-key" },
+      { fetch: mockFetch, apiKey: "sk-or-v1-test-key" },
     );
 
     expect(out.confianca).toBe(0.91);

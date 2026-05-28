@@ -12,5 +12,5 @@ export async function POST(
   context: { params: Promise<{ id: string; arquivoId: string; pagina: string }> },
 ) {
   const params = await context.params;
-  return handleProcessarPaginaPdf(request, params, "auto");
+  return handleProcessarPaginaPdf(request, params, "imagem");
 }

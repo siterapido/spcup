@@ -138,6 +138,8 @@ export interface ExtractStructuredOptions {
   filename?: string;
   sleep?: (ms: number) => Promise<void>;
   timeoutMs?: number;
+  /** When true, bypass OpenRouter disk cache (retry / force reprocess). */
+  skipCache?: boolean;
 }
 
 function extratoSystemPrompt(model: string): string {
@@ -267,6 +269,64 @@ function buildExtratoTextPayload(statementText: string, model: string): Record<s
     ),
   });
 }
+
+function encodePng(buffer: Buffer): string {
+  return `data:image/png;base64,${buffer.toString("base64")}`;
+}
+
+function buildExtratoImagePayload(
+  pngBuffer: Buffer,
+  filename: string,
+  model: string,
+): Record<string, unknown> {
+  return withMaxTokens({
+    model,
+    messages: [
+      { role: "system", content: extratoSystemPrompt(model) },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text:
+              "Extraia todas as transações visíveis nesta imagem de extrato bancário. " +
+              "Retorne somente o JSON.",
+          },
+          {
+            type: "image_url",
+            image_url: { url: encodePng(pngBuffer) },
+          },
+        ],
+      },
+    ],
+    response_format: buildStructuredResponseFormat(
+      model,
+      "extrato_transacoes",
+      EXTRATO_ARRAY_SCHEMA as unknown as Record<string, unknown>,
+    ),
+  });
+}
+
+const LINHA_SCORE_SCHEMA = {
+  type: "object",
+  properties: {
+    linhas: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          indice: { type: "integer" },
+          score: { type: "integer", description: "0-100 confidence" },
+          motivo: { type: "string" },
+        },
+        required: ["indice", "score"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["linhas"],
+  additionalProperties: false,
+} as const;
 
 function buildExtratoFilePayload(
   buffer: Buffer,
@@ -446,7 +506,26 @@ async function resolvePdfInput(
 }
 
 export function resolveExtratoModel(options?: ExtractStructuredOptions): string {
-  return options?.model ?? process.env.OPENROUTER_PDF_MODEL ?? DEFAULT_PDF_MODEL;
+  return (
+    options?.model ??
+    process.env.OPENROUTER_MODEL_PRIMARY ??
+    process.env.OPENROUTER_PDF_MODEL ??
+    DEFAULT_PDF_MODEL
+  );
+}
+
+export function resolveSecondaryExtratoModel(): string {
+  return (
+    process.env.OPENROUTER_MODEL_SECONDARY?.trim() || "openai/gpt-4o-mini"
+  );
+}
+
+export function resolveReviewerExtratoModel(): string {
+  const reviewer = process.env.OPENROUTER_MODEL_REVIEWER?.trim();
+  if (reviewer) {
+    return reviewer;
+  }
+  return resolveSecondaryExtratoModel();
 }
 
 export function parseExtratoValor(value: unknown): number {
@@ -605,9 +684,11 @@ export async function extractTransactionsFromPdfText(
 ): Promise<ExtratoExtraction> {
   const model = resolveExtratoModel(options);
   const normalized = trimExtratoText(statementText);
-  const cached = await readExtratoTextCache(normalized, model);
-  if (cached) {
-    return cached;
+  if (!options?.skipCache) {
+    const cached = await readExtratoTextCache(normalized, model);
+    if (cached) {
+      return cached;
+    }
   }
 
   const payload = buildExtratoTextPayload(normalized, model);
@@ -617,15 +698,119 @@ export async function extractTransactionsFromPdfText(
   return extraction;
 }
 
+/** Extract extrato transactions from a PNG page image (scan path). */
+export async function extractTransactionsFromImagePng(
+  pngBuffer: Buffer,
+  options?: ExtractStructuredOptions,
+): Promise<ExtratoExtraction> {
+  const model = resolveExtratoModel(options);
+  if (!options?.skipCache) {
+    const cached = await readExtratoPdfCache(pngBuffer, model);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const payload = buildExtratoImagePayload(
+    pngBuffer,
+    options?.filename ?? "page.png",
+    model,
+  );
+  const { parsed } = await callOpenRouterJson(payload, {
+    ...options,
+    timeoutMs: options?.timeoutMs ?? resolvePdfTimeoutMs(),
+  });
+  const extraction = normalizeExtratoResponse(parsed);
+  await writeExtratoPdfCache(pngBuffer, model, extraction);
+  return extraction;
+}
+
+export type LinhaScoreResult = { score: number; motivo: string };
+
+/** Reviewer scores divergent lines (0–100) in one batch call. */
+export async function scoreExtratoLinhas(
+  pageText: string,
+  items: Array<Record<string, unknown>>,
+  options?: ExtractStructuredOptions,
+): Promise<LinhaScoreResult[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const model = options?.model ?? resolveReviewerExtratoModel();
+  const linesJson = JSON.stringify(
+    items.map((item, indice) => ({ indice, ...item })),
+    null,
+    0,
+  );
+
+  const payload = withMaxTokens({
+    model,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You validate bank statement transaction rows extracted from OCR. " +
+          "Return a score 0-100 per line: how likely the row is a real transaction " +
+          "with correct date, amount, and direction given the page text.",
+      },
+      {
+        role: "user",
+        content:
+          "Page text sample:\n---\n" +
+          pageText.slice(0, 8000) +
+          "\n---\n\nCandidate rows:\n" +
+          linesJson,
+      },
+    ],
+    response_format: buildStructuredResponseFormat(
+      model,
+      "linha_scores",
+      LINHA_SCORE_SCHEMA as unknown as Record<string, unknown>,
+    ),
+  });
+
+  const { parsed } = await callOpenRouterJson(payload, options);
+  const rawLinhas = parsed.linhas;
+  const byIndex = new Map<number, LinhaScoreResult>();
+
+  if (Array.isArray(rawLinhas)) {
+    for (const entry of rawLinhas) {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+        continue;
+      }
+      const row = entry as Record<string, unknown>;
+      const indice = Number(row.indice);
+      const score = Number(row.score);
+      if (!Number.isInteger(indice) || indice < 0 || indice >= items.length) {
+        continue;
+      }
+      const clamped = Number.isFinite(score)
+        ? Math.min(100, Math.max(0, Math.round(score)))
+        : 0;
+      byIndex.set(indice, {
+        score: clamped,
+        motivo: String(row.motivo ?? "").trim() || "Revisor",
+      });
+    }
+  }
+
+  return items.map((_, indice) =>
+    byIndex.get(indice) ?? { score: 0, motivo: "Sem score do revisor" },
+  );
+}
+
 async function extractTransactionsFromSinglePdfBuffer(
   buffer: Buffer,
   options: ExtractStructuredOptions | undefined,
   model: string,
   filename: string,
 ): Promise<ExtratoExtraction> {
-  const cached = await readExtratoPdfCache(buffer, model);
-  if (cached) {
-    return cached;
+  if (!options?.skipCache) {
+    const cached = await readExtratoPdfCache(buffer, model);
+    if (cached) {
+      return cached;
+    }
   }
 
   const payload = buildExtratoFilePayload(buffer, filename, model);
@@ -658,9 +843,11 @@ export async function extractTransactionsFromPdfFile(
   options?: ExtractStructuredOptions,
 ): Promise<ExtratoExtraction> {
   const model = resolveExtratoModel(options);
-  const fullCached = await readExtratoPdfCache(buffer, model);
-  if (fullCached) {
-    return fullCached;
+  if (!options?.skipCache) {
+    const fullCached = await readExtratoPdfCache(buffer, model);
+    if (fullCached) {
+      return fullCached;
+    }
   }
 
   const baseName = options?.filename ?? "document.pdf";

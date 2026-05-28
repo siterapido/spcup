@@ -46,6 +46,8 @@ export interface ParsedTransactionRow {
   /** Código Cred/Dev do extrato bancário, quando extraído. */
   credDev: string | null;
   origemExtracao?: OrigemExtracaoV1 | null;
+  /** 0–100 from dual-model pipeline; defaults to 0 in persist when omitted. */
+  confiancaGlobal?: number;
 }
 
 /** Alias for ParsedTransactionRow used by pipeline helpers. */

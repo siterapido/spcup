@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AttachmentDropzone } from "@/components/prestacao/attachment-dropzone";
+import { PaginaVerificarPanel } from "@/components/prestacao/pagina-verificar-panel";
 import { SubmissionProgressPanel } from "@/components/prestacao/submission-progress-panel";
 import { WizardStepper } from "@/components/prestacao/wizard-stepper";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { usePrestacaoSubmit } from "@/hooks/use-prestacao-submit";
+import {
+  processarPaginaExtrato,
+  usePrestacaoSubmit,
+  type PaginaVerificarItem,
+} from "@/hooks/use-prestacao-submit";
 const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
@@ -30,6 +35,11 @@ export function PrestacaoWizard() {
   const [consolidarExtratos, setConsolidarExtratos] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [estadualPlaceholder, setEstadualPlaceholder] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
+  const [sessaoIdAfterSubmit, setSessaoIdAfterSubmit] = useState<string | null>(null);
+  const [activeVerificar, setActiveVerificar] = useState<PaginaVerificarItem | null>(
+    null,
+  );
   const {
     phase,
     progress,
@@ -38,6 +48,8 @@ export function PrestacaoWizard() {
     fileErrors,
     errorLogs,
     ingestProgress,
+    paginasVerificar,
+    dismissPaginaVerificar,
     isProcessing,
     submit,
     reset,
@@ -91,8 +103,12 @@ export function PrestacaoWizard() {
 
   async function onSubmit() {
     setMessage(null);
+    setPendingRedirect(null);
+    setSessaoIdAfterSubmit(null);
+    setActiveVerificar(null);
     try {
-      const { warningMessage, redirectPath } = await submit({
+      const { warningMessage, redirectPath, sessaoId, paginasVerificar: verificar } =
+        await submit({
         uf,
         tipo,
         municipalId: tipo === "MUNICIPAL" ? municipalId : undefined,
@@ -103,9 +119,64 @@ export function PrestacaoWizard() {
       if (warningMessage) {
         setMessage(warningMessage);
       }
+      if (verificar.length > 0) {
+        setPendingRedirect(redirectPath);
+        setSessaoIdAfterSubmit(sessaoId);
+        return;
+      }
       router.push(redirectPath);
     } catch {
       /* hook sets errorMessage / fileErrors */
+    }
+  }
+
+  function continueAfterVerificar() {
+    if (pendingRedirect) {
+      router.push(pendingRedirect);
+    }
+  }
+
+  async function ignorarPaginaVerificar(item: PaginaVerificarItem) {
+    if (!sessaoIdAfterSubmit) return;
+    const res = await fetch(
+      `/api/prestacao/sessoes/${sessaoIdAfterSubmit}/arquivos/${item.arquivoId}/paginas/${item.pagina}/ignorar`,
+      { method: "POST" },
+    );
+    if (!res.ok) {
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(json.error ?? "Não foi possível ignorar a página.");
+    }
+    const remaining = paginasVerificar.filter(
+      (p) => !(p.arquivoId === item.arquivoId && p.pagina === item.pagina),
+    );
+    dismissPaginaVerificar(item.arquivoId, item.pagina);
+    setActiveVerificar(null);
+    if (remaining.length === 0 && pendingRedirect) {
+      router.push(pendingRedirect);
+    }
+  }
+
+  async function retryPaginaVerificar(item: PaginaVerificarItem) {
+    if (!sessaoIdAfterSubmit) return;
+    const res = await processarPaginaExtrato(
+      sessaoIdAfterSubmit,
+      item.arquivoId,
+      item.pagina,
+      { force: true },
+    );
+    if (!res.ok) {
+      throw new Error(res.body.error ?? "Erro ao reprocessar a página.");
+    }
+    if ((res.data.statusPagina ?? "OK") === "VERIFICAR") {
+      throw new Error("A página ainda precisa de verificação após nova tentativa.");
+    }
+    const remaining = paginasVerificar.filter(
+      (p) => !(p.arquivoId === item.arquivoId && p.pagina === item.pagina),
+    );
+    dismissPaginaVerificar(item.arquivoId, item.pagina);
+    setActiveVerificar(null);
+    if (remaining.length === 0 && pendingRedirect) {
+      router.push(pendingRedirect);
     }
   }
 
@@ -121,6 +192,10 @@ export function PrestacaoWizard() {
     tipo === "MUNICIPAL" && municipais.length > 0 && !municipalId;
   const canAdvanceFromPrestador =
     tipo === "ESTADUAL" || (municipais.length > 0 && Boolean(municipalId));
+
+  const continueLabel = pendingRedirect?.includes("/consolidacao")
+    ? "Continuar para consolidação"
+    : "Continuar para o kanban";
 
   return (
     <Card>
@@ -336,6 +411,14 @@ export function PrestacaoWizard() {
               ingestProgress={ingestProgress}
               fileErrors={fileErrors}
               errorLogs={errorLogs}
+              paginasVerificar={paginasVerificar}
+              onReviewPagina={pendingRedirect ? setActiveVerificar : undefined}
+              onContinueAfterVerificar={
+                pendingRedirect && paginasVerificar.length > 0
+                  ? continueAfterVerificar
+                  : undefined
+              }
+              continueLabel={continueLabel}
             />
           ) : null}
           {message && phase !== "error" ? (
@@ -365,6 +448,18 @@ export function PrestacaoWizard() {
           </div>
         </div>
       )}
+      {activeVerificar && sessaoIdAfterSubmit ? (
+        <PaginaVerificarPanel
+          sessaoId={sessaoIdAfterSubmit}
+          arquivoId={activeVerificar.arquivoId}
+          pagina={activeVerificar.pagina}
+          nomeArquivo={activeVerificar.nomeArquivo}
+          incertas={activeVerificar.incertas}
+          onIgnorar={() => ignorarPaginaVerificar(activeVerificar)}
+          onRetry={() => retryPaginaVerificar(activeVerificar)}
+          onClose={() => setActiveVerificar(null)}
+        />
+      ) : null}
     </Card>
   );
 }

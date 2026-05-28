@@ -3,7 +3,8 @@
 **Data:** 2026-05-26  
 **Produto:** SPC UP — Unidade Popular  
 **Status:** Aprovado (2026-05-26)  
-**Relacionado:** `2026-05-26-pdf-extrato-prestacao-design.md`, `2026-05-26-prestacao-submit-progress-design.md`
+**Relacionado:** `2026-05-26-pdf-extrato-prestacao-design.md`, `2026-05-26-prestacao-submit-progress-design.md`  
+**Sucessor planejado:** `2026-05-28-pdf-dual-model-fila-design.md` (regra de conclusão do arquivo, fila de PDFs)
 
 ---
 

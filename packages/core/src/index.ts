@@ -54,7 +54,10 @@ export {
   extractStructuredFromPdf,
   extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
+  extractTransactionsFromImagePng,
   resolveExtratoModel,
+  resolveSecondaryExtratoModel,
+  resolveReviewerExtratoModel,
   type ExtratoExtraction,
   type ExtractStructuredOptions,
 } from "./ai/openrouter";
@@ -145,12 +148,32 @@ export {
   rowsFromExtratoTransactions,
   type IngestPdfExtratoResult,
 } from "./ingest/pdf";
+export {
+  dualExtractPage,
+  INGESTAO_PAGINA_STATUS,
+  isNonTransactionalPage,
+  partitionDualTransactions,
+  resolveNonTransactionalMinChars,
+  resolveScoreThreshold,
+  transactionConsensusKey,
+  type DualDivergente,
+  type DualExtractCandidate,
+  type DualExtractModo,
+  type DualExtractPageResult,
+  type IngestaoPaginaStatus,
+} from "./ingest/dual-extract";
+export { renderPdfPageToPng, type RenderPdfPageOptions } from "./ingest/pdf-render";
 export { extractPdfText, MAX_EXTRATO_PAGES, MIN_TEXT_CHARS } from "./ingest/pdf-text";
 export {
   armazenarPdfIngestBuffer,
+  ignorarPaginaPdfExtrato,
+  loadPaginaPdfComoPng,
   processarPaginaPdfExtrato,
   type ArmazenarPdfResult,
+  type ProcessarPaginaPdfModo,
+  type ProcessarPaginaPdfOptions,
   type ProcessarPaginaPdfResult,
+  type IncertaPreview,
 } from "./ingest/pdf-pagina";
 export { extractSinglePageBuffer } from "./ingest/pdf-split";
 export { computeHashMovimento, parseOfx, persistTransactions } from "./ingest/ofx";

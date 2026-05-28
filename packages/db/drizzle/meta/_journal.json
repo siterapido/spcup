@@ -43,6 +43,13 @@
       "when": 1779900000001,
       "tag": "0005_origem_proveniencia",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779925000000,
+      "tag": "0006_ingestao_pagina_fila",
+      "breakpoints": true
     }
   ]
 }

@@ -114,6 +114,10 @@ export async function persistTransactions(
         tipoPrestador: prestador.tipoPrestador,
         diretorioMunicipalId: prestador.diretorioMunicipalId,
         status: MOVIMENTACAO_STATUS.RASCUNHO,
+        confiancaGlobal:
+          row.confiancaGlobal != null && Number.isFinite(row.confiancaGlobal)
+            ? row.confiancaGlobal
+            : 0,
         hashMovimento: computeHashMovimento(prestador.cnpjPrestador, exercicio, row),
         origemExtracao: row.origemExtracao ?? null,
       })

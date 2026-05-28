@@ -74,10 +74,49 @@ export type PrestacaoSubmitInput = {
   consolidarExtratos?: boolean;
 };
 
+export type IncertaPreview = {
+  id: string;
+  score: number;
+  motivo: string;
+  preview: { data?: string; valor?: unknown; direcao?: string; nome?: string };
+};
+
+export type PaginaProcessadaStatus =
+  | "OK"
+  | "NAO_TRANSACIONAL"
+  | "VERIFICAR"
+  | "ERRO";
+
+export type PaginaProcessada = {
+  pagina: number;
+  totalPaginas: number;
+  movimentacoes_criadas: number;
+  linhas_ignoradas_sem_doc?: number;
+  statusPagina: PaginaProcessadaStatus;
+  modo: "texto" | "imagem";
+  linhas_incertas?: number;
+  incertas?: IncertaPreview[];
+  error?: string;
+  codigo?: string;
+  causaTecnica?: string;
+};
+
+export type PaginaVerificarItem = {
+  arquivoId: string;
+  nomeArquivo: string;
+  pagina: number;
+  totalPaginas: number;
+  statusPagina: "VERIFICAR";
+  incertas: IncertaPreview[];
+  linhas_incertas?: number;
+  modo: "texto" | "imagem";
+};
+
 export type PrestacaoSubmitResult = {
   sessaoId: string;
   warningMessage: string | null;
   redirectPath: string;
+  paginasVerificar: PaginaVerificarItem[];
 };
 
 export function countPdfFiles(files: File[]): number {
@@ -139,31 +178,44 @@ type ArquivoUp = {
   linhas_ignoradas_sem_doc?: number;
 };
 
-type PaginaProcessada = {
-  movimentacoes_criadas: number;
-  linhas_ignoradas_sem_doc?: number;
-  pagina: number;
-  totalPaginas: number;
-  error?: string;
-  codigo?: string;
-  causaTecnica?: string;
-};
-
 export function isPdfFile(file: File): boolean {
   return file.name.toLowerCase().endsWith(".pdf");
 }
 
-async function processarPaginaExtrato(
+function formatPdfPageProgressLabel(
+  fileIndex: number,
+  totalFiles: number,
+  nome: string,
+  pagina: number,
+  totalPaginas: number,
+): string {
+  const filePart =
+    totalFiles === 1
+      ? nome
+      : `Arquivo ${fileIndex + 1} de ${totalFiles} — ${nome}`;
+  if (totalPaginas === 1) {
+    return filePart;
+  }
+  return `${filePart} — página ${pagina}/${totalPaginas}`;
+}
+
+export async function processarPaginaExtrato(
   sessaoId: string,
   arquivoId: string,
   pagina: number,
+  options?: { force?: boolean },
 ): Promise<
   | { ok: true; data: PaginaProcessada }
   | { ok: false; status: number; body: PaginaProcessada & { error?: string } }
 > {
+  const init: RequestInit = { method: "POST" };
+  if (options?.force) {
+    init.headers = { "Content-Type": "application/json" };
+    init.body = JSON.stringify({ force: true });
+  }
   const res = await fetch(
     `/api/prestacao/sessoes/${sessaoId}/arquivos/${arquivoId}/paginas/${pagina}/processar`,
-    { method: "POST" },
+    init,
   );
   let json: PaginaProcessada & { error?: string; codigo?: string; causaTecnica?: string };
   try {
@@ -172,7 +224,14 @@ async function processarPaginaExtrato(
     return {
       ok: false,
       status: res.status,
-      body: { pagina, totalPaginas: pagina, movimentacoes_criadas: 0, error: "Resposta inválida" },
+      body: {
+        pagina,
+        totalPaginas: pagina,
+        movimentacoes_criadas: 0,
+        statusPagina: "ERRO",
+        modo: "texto",
+        error: "Resposta inválida",
+      },
     };
   }
   if (!res.ok) {
@@ -271,6 +330,9 @@ export function usePrestacaoSubmit() {
   const [ingestProgress, setIngestProgress] = useState<IngestProgressState | null>(
     null,
   );
+  const [paginasVerificar, setPaginasVerificar] = useState<PaginaVerificarItem[]>(
+    [],
+  );
 
   const pushErrorLog = useCallback((entry: ErrorLogEntry) => {
     setErrorLogs((prev) => [...prev, entry]);
@@ -286,6 +348,7 @@ export function usePrestacaoSubmit() {
     setErrorLogs([]);
     setActiveFileName(null);
     setIngestProgress(null);
+    setPaginasVerificar([]);
   }, []);
 
   const submit = useCallback(
@@ -359,6 +422,7 @@ export function usePrestacaoSubmit() {
         setProgress(15);
 
         let warningMessage: string | null = null;
+        let collectedPaginasVerificar: PaginaVerificarItem[] = [];
 
         if (input.files.length > 0) {
           const label =
@@ -375,8 +439,10 @@ export function usePrestacaoSubmit() {
             nome: string;
             arquivoId: string;
             paginas: number;
+            fileIndex: number;
             movimentacoes_criadas: number;
             linhas_ignoradas_sem_doc: number;
+            paginasVerificar: PaginaVerificarItem[];
           }> = [];
           let status = 200;
           let body = "";
@@ -473,8 +539,10 @@ export function usePrestacaoSubmit() {
                   nome: stored.nome,
                   arquivoId: stored.arquivo_id,
                   paginas: stored.paginas,
+                  fileIndex,
                   movimentacoes_criadas: 0,
                   linhas_ignoradas_sem_doc: 0,
+                  paginasVerificar: [],
                 });
               } else {
                 uploadParts.push(partJson);
@@ -504,13 +572,16 @@ export function usePrestacaoSubmit() {
 
             for (const job of pdfJobs) {
               for (let pagina = 1; pagina <= job.paginas; pagina += 1) {
-                const pageLabel =
-                  job.paginas === 1
-                    ? job.nome
-                    : `${job.nome} — página ${pagina}/${job.paginas}`;
+                const pageLabel = formatPdfPageProgressLabel(
+                  job.fileIndex,
+                  fileCount,
+                  job.nome,
+                  pagina,
+                  job.paginas,
+                );
 
                 reportIngest(
-                  `Extraindo transações: ${pageLabel}`,
+                  pageLabel,
                   (paginasFeitas / Math.max(totalPaginas, 1)) * 100,
                 );
                 setProgress(
@@ -556,11 +627,31 @@ export function usePrestacaoSubmit() {
                 job.linhas_ignoradas_sem_doc +=
                   pageRes.data.linhas_ignoradas_sem_doc ?? 0;
 
+                if ((pageRes.data.statusPagina ?? "OK") === "VERIFICAR") {
+                  job.paginasVerificar.push({
+                    arquivoId: job.arquivoId,
+                    nomeArquivo: job.nome,
+                    pagina,
+                    totalPaginas: job.paginas,
+                    statusPagina: "VERIFICAR",
+                    incertas: pageRes.data.incertas ?? [],
+                    linhas_incertas: pageRes.data.linhas_incertas,
+                    modo: pageRes.data.modo,
+                  });
+                }
+
                 const n = pageRes.data.movimentacoes_criadas;
+                const pageStatus = pageRes.data.statusPagina ?? "OK";
+                const statusNote =
+                  pageStatus === "VERIFICAR"
+                    ? " — verificar"
+                    : pageStatus === "NAO_TRANSACIONAL"
+                      ? " — não transacional"
+                      : "";
                 const pageDone =
                   job.paginas === 1
-                    ? `${job.nome}: ${n} movimentação${n === 1 ? "" : "ões"}`
-                    : `${job.nome} (p.${pagina}): ${n} movimentação${n === 1 ? "" : "ões"}`;
+                    ? `${job.nome}: ${n} movimentação${n === 1 ? "" : "ões"}${statusNote}`
+                    : `${job.nome} (p.${pagina}): ${n} movimentação${n === 1 ? "" : "ões"}${statusNote}`;
                 ingestCompletedLines.push(pageDone);
 
                 reportIngest(
@@ -574,6 +665,9 @@ export function usePrestacaoSubmit() {
                 );
               }
             }
+
+            collectedPaginasVerificar = pdfJobs.flatMap((j) => j.paginasVerificar);
+            setPaginasVerificar(collectedPaginasVerificar);
 
             if (pdfJobs.length > 0) {
               const mergedPdfPart: UploadResponseBody = {
@@ -722,7 +816,12 @@ export function usePrestacaoSubmit() {
           setProgress(100);
           setPhase("done");
 
-          return { sessaoId, warningMessage, redirectPath };
+          return {
+            sessaoId,
+            warningMessage,
+            redirectPath,
+            paginasVerificar: collectedPaginasVerificar,
+          };
         } else {
           currentSteps = setStepStatus(
             setStepStatus(currentSteps, "upload", "done"),
@@ -747,6 +846,7 @@ export function usePrestacaoSubmit() {
           sessaoId,
           warningMessage,
           redirectPath: `/prestacao/${sessaoId}/kanban`,
+          paginasVerificar: collectedPaginasVerificar,
         };
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Erro de rede.";
@@ -757,6 +857,15 @@ export function usePrestacaoSubmit() {
       }
     },
     [pushErrorLog, reset],
+  );
+
+  const dismissPaginaVerificar = useCallback(
+    (arquivoId: string, pagina: number) => {
+      setPaginasVerificar((prev) =>
+        prev.filter((p) => !(p.arquivoId === arquivoId && p.pagina === pagina)),
+      );
+    },
+    [],
   );
 
   const isProcessing =
@@ -772,6 +881,8 @@ export function usePrestacaoSubmit() {
     errorLogs,
     activeFileName,
     ingestProgress,
+    paginasVerificar,
+    dismissPaginaVerificar,
     isProcessing,
     submit,
     reset,

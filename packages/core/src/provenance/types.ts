@@ -9,6 +9,15 @@ export type CampoExtrato =
   | "nome"
   | "descricao";
 
+export type OrigemExtracaoDualMeta = {
+  modo: "dual";
+  consenso: boolean;
+  score: number;
+  modelo_primario: string;
+  modelo_secundario: string;
+  modelo_origem_linha: "consenso" | "primario" | "secundario" | "revisor";
+};
+
 export type OrigemExtracaoV1 = {
   versao: 1;
   arquivoIngestaoId: string;
@@ -19,6 +28,7 @@ export type OrigemExtracaoV1 = {
   campos?: Partial<
     Record<CampoExtrato, { pagina: number; indiceLinha: number; bbox?: BboxNorm }>
   >;
+  dual?: OrigemExtracaoDualMeta;
 };
 
 export type OrigemRef =

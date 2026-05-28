@@ -4,9 +4,11 @@ import type {
   ErrorLogEntry,
   FileErrorDisplay,
   IngestProgressState,
+  PaginaVerificarItem,
   SubmitStep,
   SubmitStepId,
 } from "@/hooks/use-prestacao-submit";
+import { Button } from "@/components/ui/button";
 
 const SUBMIT_STEP_SHORT_LABELS: Record<SubmitStepId, string> = {
   session: "Sessão",
@@ -75,7 +77,70 @@ export type SubmissionProgressPanelProps = {
   ingestProgress?: IngestProgressState | null;
   fileErrors?: FileErrorDisplay[];
   errorLogs?: ErrorLogEntry[];
+  paginasVerificar?: PaginaVerificarItem[];
+  onReviewPagina?: (item: PaginaVerificarItem) => void;
+  onContinueAfterVerificar?: () => void;
+  continueLabel?: string;
 };
+
+function PaginasVerificarBanner({
+  items,
+  onReviewPagina,
+  onContinue,
+  continueLabel,
+}: {
+  items: PaginaVerificarItem[];
+  onReviewPagina?: (item: PaginaVerificarItem) => void;
+  onContinue?: () => void;
+  continueLabel?: string;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div
+      className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3"
+      role="status"
+      aria-label="Páginas para verificar"
+    >
+      <p className="text-sm font-medium text-amber-950">
+        {items.length === 1
+          ? "1 página precisa de verificação"
+          : `${items.length} páginas precisam de verificação`}
+      </p>
+      <p className="mt-1 text-xs text-amber-900/90">
+        A extração continuou, mas algumas páginas ficaram com linhas incertas. Revise antes
+        de seguir para o kanban.
+      </p>
+      <ul className="mt-2 space-y-1">
+        {items.map((item) => (
+          <li key={`${item.arquivoId}-${item.pagina}`} className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-amber-950">
+              {item.nomeArquivo} · p.{item.pagina}/{item.totalPaginas}
+              {item.incertas.length > 0
+                ? ` · ${item.incertas.length} incerta${item.incertas.length === 1 ? "" : "s"}`
+                : ""}
+            </span>
+            {onReviewPagina ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-7 border-amber-400 bg-white px-2 text-xs"
+                onClick={() => onReviewPagina(item)}
+              >
+                Revisar
+              </Button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {onContinue ? (
+        <Button type="button" className="mt-3 h-8 px-3 text-sm" onClick={onContinue}>
+          {continueLabel ?? "Continuar para o kanban"}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
 function IngestProgressBlock({ ingest }: { ingest: IngestProgressState }) {
   const clamped = Math.min(100, Math.max(0, ingest.percent));
@@ -197,6 +262,10 @@ export function SubmissionProgressPanel({
   ingestProgress = null,
   fileErrors = [],
   errorLogs = [],
+  paginasVerificar = [],
+  onReviewPagina,
+  onContinueAfterVerificar,
+  continueLabel,
 }: SubmissionProgressPanelProps) {
   const clamped = Math.min(100, Math.max(0, progress));
   const hasErrors = fileErrors.length > 0 || errorLogs.length > 0;
@@ -286,6 +355,13 @@ export function SubmissionProgressPanel({
       </ol>
 
       {showIngestBlock ? <IngestProgressBlock ingest={ingestProgress} /> : null}
+
+      <PaginasVerificarBanner
+        items={paginasVerificar}
+        onReviewPagina={onReviewPagina}
+        onContinue={onContinueAfterVerificar}
+        continueLabel={continueLabel}
+      />
 
       {fileNames.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border-default pt-3">

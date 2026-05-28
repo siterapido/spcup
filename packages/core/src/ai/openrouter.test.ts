@@ -47,7 +47,7 @@ describe("extractStructuredFromPdf", () => {
 
     const result = await extractStructuredFromPdf(pdfPath, {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
     });
 
     expect(result).toEqual(SAMPLE_EXTRACTION);
@@ -73,7 +73,7 @@ describe("extractStructuredFromPdf", () => {
 
     const result = await extractStructuredFromPdf(pdfPath, {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
       sleep,
     });
 
@@ -95,7 +95,7 @@ describe("extractStructuredFromPdf", () => {
 
     const result = await extractStructuredFromPdf(pdfPath, {
       fetch: mockFetch,
-      apiKey: "test-key",
+      apiKey: "sk-or-v1-test-key",
     });
 
     expect(result).toEqual(SAMPLE_EXTRACTION);

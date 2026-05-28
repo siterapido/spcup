@@ -157,6 +157,61 @@ export const arquivoIngestao = pgTable("arquivo_ingestao", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const INGESTAO_PAGINA_STATUS = {
+  OK: "OK",
+  NAO_TRANSACIONAL: "NAO_TRANSACIONAL",
+  VERIFICAR: "VERIFICAR",
+  ERRO: "ERRO",
+} as const;
+
+export const ingestaoPagina = pgTable(
+  "ingestao_pagina",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    arquivoIngestaoId: uuid("arquivo_ingestao_id")
+      .notNull()
+      .references(() => arquivoIngestao.id, { onDelete: "cascade" }),
+    pagina: integer("pagina").notNull(),
+    status: varchar("status", { length: 24 }).notNull(),
+    modo: varchar("modo", { length: 12 }).notNull(),
+    aceitas: integer("aceitas").notNull().default(0),
+    incertas: integer("incertas").notNull().default(0),
+    motivo: text("motivo"),
+    textoAmostra: text("texto_amostra"),
+    processadoEm: timestamp("processado_em", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_ingestao_pagina_arquivo_pagina").on(
+      table.arquivoIngestaoId,
+      table.pagina,
+    ),
+    index("ix_ingestao_pagina_arquivo").on(table.arquivoIngestaoId),
+  ],
+);
+
+export const ingestaoLinhaPendente = pgTable(
+  "ingestao_linha_pendente",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    arquivoIngestaoId: uuid("arquivo_ingestao_id")
+      .notNull()
+      .references(() => arquivoIngestao.id, { onDelete: "cascade" }),
+    pagina: integer("pagina").notNull(),
+    payload: jsonb("payload").notNull(),
+    score: real("score").notNull(),
+    motivo: varchar("motivo", { length: 64 }).notNull(),
+    snapshot: jsonb("snapshot"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("ix_ingestao_linha_pendente_arquivo_pagina").on(
+      table.arquivoIngestaoId,
+      table.pagina,
+    ),
+  ],
+);
+
 export const movimentacao = pgTable(
   "movimentacao",
   {
@@ -507,6 +562,10 @@ export type ContaBancaria = typeof contaBancaria.$inferSelect;
 export type NewContaBancaria = typeof contaBancaria.$inferInsert;
 export type ArquivoIngestao = typeof arquivoIngestao.$inferSelect;
 export type NewArquivoIngestao = typeof arquivoIngestao.$inferInsert;
+export type IngestaoPagina = typeof ingestaoPagina.$inferSelect;
+export type NewIngestaoPagina = typeof ingestaoPagina.$inferInsert;
+export type IngestaoLinhaPendente = typeof ingestaoLinhaPendente.$inferSelect;
+export type NewIngestaoLinhaPendente = typeof ingestaoLinhaPendente.$inferInsert;
 export type Movimentacao = typeof movimentacao.$inferSelect;
 export type NewMovimentacao = typeof movimentacao.$inferInsert;
 export type ConsolidacaoEvento = typeof consolidacaoEvento.$inferSelect;
