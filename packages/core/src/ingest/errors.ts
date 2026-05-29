@@ -63,6 +63,11 @@ export function classifyIngestError(error: unknown): IngestErrorDetail {
   ) {
     codigo = "OPENROUTER_FALHA";
   } else if (
+    msg.includes("@napi-rs/canvas") ||
+    msg.includes("cannot find module '@napi-rs/canvas'")
+  ) {
+    codigo = "PDF_INVALIDO";
+  } else if (
     /invalid pdf/i.test(causaTecnica) ||
     msg.includes("pdfdocument") ||
     msg.includes("dommatrix") ||

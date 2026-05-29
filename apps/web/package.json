@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.67",
     "@spc-up/core": "workspace:*",
     "@spc-up/db": "workspace:*",
     "@spc-up/spca": "workspace:*",
