@@ -3,6 +3,7 @@ import {
   getSessao,
   listRecentSessoes,
   prestadorFromSessao,
+  softDeleteSessoes,
 } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 import { NextResponse } from "next/server";
@@ -23,10 +24,20 @@ export async function GET(request: Request) {
   if ("error" in authResult) return authResult.error;
 
   const url = new URL(request.url);
-  const limit = Number.parseInt(url.searchParams.get("limit") ?? "10", 10);
+  const limit = Number.parseInt(url.searchParams.get("limit") ?? "50", 10);
+  const ufParam = url.searchParams.get("uf")?.trim();
+  const exercicioParam = url.searchParams.get("exercicio")?.trim();
+  const exercicio =
+    exercicioParam && exercicioParam.length > 0
+      ? Number.parseInt(exercicioParam, 10)
+      : undefined;
 
   const db = getDb();
-  const sessoes = await listRecentSessoes(db, limit);
+  const sessoes = await listRecentSessoes(db, {
+    limit: Number.isFinite(limit) ? limit : 50,
+    uf: ufParam && ufParam.length === 2 ? ufParam : undefined,
+    exercicio: exercicio != null && Number.isFinite(exercicio) ? exercicio : undefined,
+  });
 
   return NextResponse.json({
     items: sessoes.map((s) => {
@@ -44,7 +55,9 @@ export async function GET(request: Request) {
         cnpjPrestador: prestador.cnpjPrestador,
         prestadorNome:
           s.diretorioMunicipal?.nomeMunicipio ?? s.diretorioEstadual?.nome ?? "",
+        consolidarExtratos: s.consolidarExtratos,
         createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
       };
     }),
   });
@@ -93,4 +106,28 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+}
+
+export async function DELETE(request: Request) {
+  const authResult = await requireSession();
+  if ("error" in authResult) return authResult.error;
+
+  let body: { ids?: string[] };
+  try {
+    body = (await request.json()) as { ids?: string[] };
+  } catch {
+    return NextResponse.json({ error: "Corpo JSON inválido" }, { status: 400 });
+  }
+
+  const ids = (body.ids ?? []).map((id) => id.trim()).filter(Boolean);
+  if (ids.length === 0) {
+    return NextResponse.json(
+      { error: "Nenhuma prestação válida para excluir" },
+      { status: 400 },
+    );
+  }
+
+  const db = getDb();
+  const result = await softDeleteSessoes(db, ids);
+  return NextResponse.json(result);
 }

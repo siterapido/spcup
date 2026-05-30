@@ -1,6 +1,6 @@
 /** Confirm movimentacoes for export. */
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { movimentacao, type Db } from "@spc-up/db";
 
@@ -23,7 +23,7 @@ export async function confirmMovimentacoes(
   }
 
   const rows = await db.query.movimentacao.findMany({
-    where: inArray(movimentacao.id, ids),
+    where: and(inArray(movimentacao.id, ids), isNull(movimentacao.deletedAt)),
     with: { spca: true, evidencias: true },
   });
 

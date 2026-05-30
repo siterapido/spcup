@@ -3,7 +3,7 @@ import {
   CONSOLIDACAO_EVENTO_STATUS,
   type Db,
 } from "@spc-up/db";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import type { OrigemAtributosEvento } from "../provenance/types";
 import { countPdfIngestoesForSessao, loadCadastroMatchContext, loadMovimentacaoCandidates } from "./load";
@@ -19,6 +19,11 @@ export type ConsolidacaoListItem = {
   justificativa: string | null;
   pessoaFisicaId: string | null;
   pessoaJuridicaId: string | null;
+  pessoa: {
+    nome: string;
+    documento: string;
+    tipo: "PF" | "PJ";
+  } | null;
   linhas: Array<{
     id: string;
     movimentacaoId: string;
@@ -46,7 +51,10 @@ export async function listConsolidacaoForSessao(
   const pdfCount = await countPdfIngestoesForSessao(db, sessaoId);
 
   const eventos = await db.query.consolidacaoEvento.findMany({
-    where: eq(consolidacaoEvento.sessaoPrestacaoId, sessaoId),
+    where: and(
+      eq(consolidacaoEvento.sessaoPrestacaoId, sessaoId),
+      isNull(consolidacaoEvento.deletedAt),
+    ),
     with: {
       linhas: {
         with: {
@@ -86,6 +94,19 @@ export async function listConsolidacaoForSessao(
       justificativa: e.justificativa,
       pessoaFisicaId: e.pessoaFisicaId,
       pessoaJuridicaId: e.pessoaJuridicaId,
+      pessoa: e.pessoaFisica
+        ? {
+            nome: e.pessoaFisica.nome,
+            documento: e.pessoaFisica.cpf,
+            tipo: "PF" as const,
+          }
+        : e.pessoaJuridica
+          ? {
+              nome: e.pessoaJuridica.razaoSocial,
+              documento: e.pessoaJuridica.cnpj,
+              tipo: "PJ" as const,
+            }
+          : null,
       linhas: e.linhas.map((l) => ({
         id: l.id,
         movimentacaoId: l.movimentacaoId,
@@ -106,7 +127,10 @@ export async function listConsolidacaoForSessao(
 
 export async function countPendingConsolidacao(db: Db, sessaoId: string): Promise<number> {
   const rows = await db.query.consolidacaoEvento.findMany({
-    where: eq(consolidacaoEvento.sessaoPrestacaoId, sessaoId),
+    where: and(
+      eq(consolidacaoEvento.sessaoPrestacaoId, sessaoId),
+      isNull(consolidacaoEvento.deletedAt),
+    ),
     columns: { id: true, status: true },
   });
   return rows.filter((r) => r.status === CONSOLIDACAO_EVENTO_STATUS.PENDENTE).length;

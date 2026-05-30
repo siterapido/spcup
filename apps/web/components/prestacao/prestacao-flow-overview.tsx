@@ -45,10 +45,16 @@ export function PrestacaoFlowOverview() {
         </ol>
       </nav>
       <p className="mt-3 text-sm text-muted">
-        Configure UF e prestador, anexe extratos/planilhas, revise no kanban e exporte
+        Configure UF e prestador, anexe extratos/planilhas, revise as movimentações e exporte
         o pacote SPCA quando a exportação estiver liberada.
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
+        <Link
+          href="/prestacao"
+          className="inline-flex items-center justify-center rounded-md border border-border-default bg-white px-4 py-2 text-sm font-medium text-up-black hover:bg-slate-50"
+        >
+          Ver prestações
+        </Link>
         <Link
           href="/prestacao/nova"
           className="inline-flex items-center justify-center rounded-md bg-up-black px-4 py-2 text-sm font-medium text-up-white hover:bg-up-black-hover"

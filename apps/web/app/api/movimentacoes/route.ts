@@ -1,6 +1,6 @@
-import { canExport } from "@spc-up/core";
+import { canExport, softDeleteMovimentacoes } from "@spc-up/core";
 import { getDb, movimentacao } from "@spc-up/db";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { requireSession } from "@/lib/api-auth";
@@ -31,6 +31,7 @@ export async function GET(request: Request) {
   const conditions = [
     eq(movimentacao.uf, uf),
     eq(movimentacao.exercicio, exercicio),
+    isNull(movimentacao.deletedAt),
   ];
   if (status) conditions.push(eq(movimentacao.status, status));
   if (minScoreRaw != null) {
@@ -71,4 +72,28 @@ export async function GET(request: Request) {
     total: items.length,
     items,
   });
+}
+
+export async function DELETE(request: Request) {
+  const authResult = await requireSession();
+  if ("error" in authResult) return authResult.error;
+
+  let body: { ids?: string[] };
+  try {
+    body = (await request.json()) as { ids?: string[] };
+  } catch {
+    return NextResponse.json({ error: "Corpo JSON inválido" }, { status: 400 });
+  }
+
+  const ids = (body.ids ?? []).map((id) => id.trim()).filter(Boolean);
+  if (ids.length === 0) {
+    return NextResponse.json(
+      { error: "Nenhuma movimentação válida para excluir" },
+      { status: 400 },
+    );
+  }
+
+  const db = getDb();
+  const result = await softDeleteMovimentacoes(db, ids);
+  return NextResponse.json(result);
 }

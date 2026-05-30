@@ -128,6 +128,18 @@ export {
 } from "./prestacao/kanban";
 export { updateMovimentacaoStatus } from "./prestacao/status";
 export {
+  MOVIMENTACAO_DELETE_CODES,
+  softDeleteMovimentacoes,
+  type SoftDeleteMovimentacaoSkipped,
+  type SoftDeleteMovimentacoesResult,
+} from "./prestacao/delete-movimentacao";
+export {
+  SESSAO_DELETE_CODES,
+  softDeleteSessoes,
+  type SoftDeleteSessaoSkipped,
+  type SoftDeleteSessoesResult,
+} from "./prestacao/delete-sessao";
+export {
   assignPessoaToMovimentacao,
   getMovimentacaoDetalhe,
   reprocessarIaMovimentacao,

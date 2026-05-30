@@ -65,6 +65,12 @@ export function AppNav() {
         </summary>
         <div className="absolute left-0 top-full z-20 mt-1 min-w-[10rem] rounded-md border border-border-default bg-white py-1 shadow-md">
           <Link
+            href="/prestacao"
+            className="block px-3 py-2 text-sm hover:bg-slate-50"
+          >
+            Prestações realizadas
+          </Link>
+          <Link
             href="/prestacao/nova"
             className="block px-3 py-2 text-sm hover:bg-slate-50"
           >

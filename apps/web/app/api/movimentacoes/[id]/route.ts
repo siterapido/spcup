@@ -1,6 +1,7 @@
 import {
   assignPessoaToMovimentacao,
   getMovimentacaoDetalhe,
+  softDeleteMovimentacoes,
 } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 import { NextResponse } from "next/server";
@@ -57,4 +58,32 @@ export async function PATCH(
       { status: 400 },
     );
   }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const authResult = await requireSession();
+  if ("error" in authResult) return authResult.error;
+
+  const { id } = await context.params;
+  const db = getDb();
+  const result = await softDeleteMovimentacoes(db, [id]);
+
+  if (result.deleted === 1) {
+    return NextResponse.json({ ok: true });
+  }
+
+  const first = result.skipped[0];
+  if (!first) {
+    return NextResponse.json({ error: "Movimentação não encontrada" }, { status: 404 });
+  }
+
+  const status =
+    first.code === "MOVIMENTACAO_EXPORTADA" || first.code === "MOVIMENTACAO_CONFIRMADA"
+      ? 409
+      : 404;
+
+  return NextResponse.json({ error: first.reason, code: first.code }, { status });
 }

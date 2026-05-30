@@ -75,6 +75,7 @@ export const sessaoPrestacao = pgTable("sessao_prestacao", {
   consolidarExtratos: boolean("consolidar_extratos").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const pessoaFisica = pgTable("pessoa_fisica", {
@@ -242,6 +243,7 @@ export const movimentacao = pgTable(
     origemEnriquecimento: jsonb("origem_enriquecimento"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     uniqueIndex("uq_mov_prestador_exercicio_hash").on(
@@ -281,6 +283,7 @@ export const consolidacaoEvento = pgTable(
     origemAtributos: jsonb("origem_atributos"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     index("ix_consolidacao_evento_sessao_status").on(

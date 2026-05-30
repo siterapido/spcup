@@ -1,7 +1,8 @@
 import { movimentacao, sessaoPrestacao, type Db } from "@spc-up/db";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 
 import { REQUIRED_SPCA_FIELDS } from "../confidence";
+import type { OrigemEnriquecimentoV1, OrigemExtracaoV1 } from "../provenance/types";
 import { getSessao, prestadorFromSessao } from "./sessao";
 
 export interface KanbanCard {
@@ -19,6 +20,9 @@ export interface KanbanCard {
   iaIndisponivel: boolean;
   pessoaResumo: string | null;
   arquivoIngestaoId: string | null;
+  nomeArquivo: string | null;
+  origemExtracao: OrigemExtracaoV1 | null;
+  origemEnriquecimento: OrigemEnriquecimentoV1 | null;
 }
 
 export interface KanbanArquivoGroup {
@@ -68,7 +72,10 @@ export async function getKanbanPayload(
     prestador.cnpjPrestador;
 
   const movs = await db.query.movimentacao.findMany({
-    where: eq(movimentacao.sessaoPrestacaoId, sessaoId),
+    where: and(
+      eq(movimentacao.sessaoPrestacaoId, sessaoId),
+      isNull(movimentacao.deletedAt),
+    ),
     with: {
       pessoaFisica: true,
       pessoaJuridica: true,
@@ -125,6 +132,10 @@ export async function getKanbanPayload(
       iaIndisponivel,
       pessoaResumo,
       arquivoIngestaoId: mov.arquivoIngestaoId,
+      nomeArquivo: mov.arquivoIngestao?.nomeArquivo ?? null,
+      origemExtracao: (mov.origemExtracao as OrigemExtracaoV1 | null) ?? null,
+      origemEnriquecimento:
+        (mov.origemEnriquecimento as OrigemEnriquecimentoV1 | null) ?? null,
     });
   }
 
@@ -143,10 +154,27 @@ export async function getKanbanPayload(
   };
 }
 
-export async function listRecentSessoes(db: Db, limit = 10) {
+export type ListSessoesFilters = {
+  limit?: number;
+  uf?: string;
+  exercicio?: number;
+};
+
+export async function listRecentSessoes(db: Db, filters: ListSessoesFilters = {}) {
+  const limit = Math.min(Math.max(filters.limit ?? 10, 1), 100);
+  const conditions = [];
+  if (filters.uf) {
+    conditions.push(eq(sessaoPrestacao.uf, filters.uf.toUpperCase()));
+  }
+  if (filters.exercicio != null) {
+    conditions.push(eq(sessaoPrestacao.exercicio, filters.exercicio));
+  }
+  conditions.push(isNull(sessaoPrestacao.deletedAt));
+
   return db.query.sessaoPrestacao.findMany({
     limit,
     orderBy: [desc(sessaoPrestacao.createdAt)],
+    where: and(...conditions),
     with: {
       diretorioEstadual: true,
       diretorioMunicipal: true,

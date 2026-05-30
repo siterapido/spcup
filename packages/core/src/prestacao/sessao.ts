@@ -9,7 +9,7 @@ import {
   type DiretorioMunicipal,
   type SessaoPrestacao,
 } from "@spc-up/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 export type TipoPrestadorSessao =
   (typeof TIPO_PRESTADOR)[keyof typeof TIPO_PRESTADOR];
@@ -127,7 +127,7 @@ export async function getSessao(
   | undefined
 > {
   return db.query.sessaoPrestacao.findFirst({
-    where: eq(sessaoPrestacao.id, sessaoId),
+    where: and(eq(sessaoPrestacao.id, sessaoId), isNull(sessaoPrestacao.deletedAt)),
     with: {
       diretorioEstadual: true,
       diretorioMunicipal: true,

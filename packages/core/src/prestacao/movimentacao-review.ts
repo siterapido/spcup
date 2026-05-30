@@ -1,5 +1,5 @@
 import { movimentacao, type Db } from "@spc-up/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { REQUIRED_SPCA_FIELDS } from "../confidence";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
@@ -47,7 +47,7 @@ export async function getMovimentacaoDetalhe(
   id: string,
 ): Promise<MovimentacaoDetalhe | null> {
   const mov = await db.query.movimentacao.findFirst({
-    where: eq(movimentacao.id, id),
+    where: and(eq(movimentacao.id, id), isNull(movimentacao.deletedAt)),
     with: {
       pessoaFisica: true,
       pessoaJuridica: true,
