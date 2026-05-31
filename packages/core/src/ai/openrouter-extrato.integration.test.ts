@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { DEFAULT_REVIEWER_EXTRATO_MODEL } from "./model-profile";
 import {
   extractTransactionsFromPdfFile,
   resolveExtratoModel,
@@ -164,7 +165,8 @@ describe
 
 describe.runIf(runIntegration).sequential("Reviewer scoring (integration)", () => {
   it("scores transaction lines using reviewer model", async () => {
-    const model = process.env.OPENROUTER_MODEL_REVIEWER || "openai/gpt-5.5";
+    const model =
+      process.env.OPENROUTER_MODEL_REVIEWER || DEFAULT_REVIEWER_EXTRATO_MODEL;
     const sampleText = "30/01/2025 PIX RECEBIDO JOAO SILVA R$ 150,00";
     const candidates = [
       {

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_EXTRATO_MODEL,
   DEFAULT_MATCH_MODEL,
+  DEFAULT_REVIEWER_EXTRATO_MODEL,
+  DEFAULT_SECONDARY_EXTRATO_MODEL,
   resolveModelProfile,
 } from "./model-profile";
 
@@ -10,6 +12,8 @@ describe("resolveModelProfile", () => {
   it("exposes Gemini defaults", () => {
     expect(DEFAULT_EXTRATO_MODEL).toBe("google/gemini-3.5-flash");
     expect(DEFAULT_MATCH_MODEL).toBe("google/gemini-3.5-flash");
+    expect(DEFAULT_SECONDARY_EXTRATO_MODEL).toBe("google/gemini-2.5-pro");
+    expect(DEFAULT_REVIEWER_EXTRATO_MODEL).toBe("google/gemini-2.5-pro");
   });
 
   it("returns kimi profile", () => {

@@ -18,6 +18,8 @@ Copie e edite `~/.spc-up/.env` (criado pelo script de instalação):
 
 - `DATABASE_URL` — Neon Postgres
 - `OPENROUTER_API_KEY` — obrigatório para PDF
+- `OPENROUTER_PDF_MODEL` / `OPENROUTER_MODEL` — padrão `google/gemini-3.5-flash` (OpenRouter)
+- `OPENROUTER_MODEL_SECONDARY` / `OPENROUTER_MODEL_REVIEWER` — padrão `google/gemini-2.5-pro` no dual-extract; `none` desliga o secundário
 - `STORAGE_ROOT` — default `./data/uploads`
 - `AUTH_URL` — opcional, para link do kanban na saída
 

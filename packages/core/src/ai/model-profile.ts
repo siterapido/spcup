@@ -1,5 +1,25 @@
 export const DEFAULT_EXTRATO_MODEL = "google/gemini-3.5-flash";
 export const DEFAULT_MATCH_MODEL = "google/gemini-3.5-flash";
+/** Second pass in dual-extract (consensus) via OpenRouter. */
+export const DEFAULT_SECONDARY_EXTRATO_MODEL = "google/gemini-2.5-pro";
+/** Scores divergent extrato lines via OpenRouter. */
+export const DEFAULT_REVIEWER_EXTRATO_MODEL = "google/gemini-2.5-pro";
+
+const geminiWarned = new Set<string>();
+
+/** Log once when an extrato-related env model is not a Gemini slug (dev aid). */
+export function warnNonGeminiExtratoModel(envKey: string, model: string): void {
+  if (/gemini/i.test(model)) {
+    return;
+  }
+  if (geminiWarned.has(envKey)) {
+    return;
+  }
+  geminiWarned.add(envKey);
+  console.warn(
+    `[spc-up] ${envKey}=${model} não é um slug Gemini; o piloto usa OpenRouter com google/gemini-* por padrão.`,
+  );
+}
 
 export type ResponseFormatKind = "json_schema" | "json_object";
 export type PdfBatchingStrategy = "gemini_native" | "kimi_conservative";

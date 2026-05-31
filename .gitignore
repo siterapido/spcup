@@ -16,6 +16,11 @@ data/
 *.zip
 .DS_Store
 
+# Local test PDFs / fixtures (large; keep out of git)
+Documentos para teste/
+Documentos para teste /
+apps/web/public/e2e-docs/
+
 # TSE SPCA import guides (PDFs too large for repo; XSD copies in packages/spca/schemas/)
 Guia importação SPCA/*.pdf
 Guia importação SPCA/

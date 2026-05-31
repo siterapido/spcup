@@ -232,6 +232,8 @@ Segunda ingestão do mesmo arquivo/modelo: **0 chamadas** (cache).
 | Medida | Variável / código | Efeito |
 |--------|-------------------|--------|
 | Modelo extrato | `OPENROUTER_PDF_MODEL=google/gemini-3.5-flash` | PDF nativo; Kimi via override + mistral-ocr |
+| Dual-extract secundário | `OPENROUTER_MODEL_SECONDARY=google/gemini-2.5-pro` | 2º passe OpenRouter; `none` desliga |
+| Revisor divergências | `OPENROUTER_MODEL_REVIEWER=google/gemini-2.5-pro` | `scoreExtratoLinhas` — só Gemini no piloto |
 | Cache em disco | `OPENROUTER_CACHE=1` | Re-ingestão gratuita (mesmo modelo + mesmo arquivo) |
 | Cache por modelo | `openrouter-cache.ts` | Troca Gemini→Kimi não reusa saída errada |
 | `max_tokens` | default 8192 | Evita completion gigante |
@@ -239,7 +241,7 @@ Segunda ingestão do mesmo arquivo/modelo: **0 chamadas** (cache).
 | Truncar texto | `MAX_EXTRATO_TEXT_CHARS=24000` | Só no caminho texto |
 | Lotes por página | `OPENROUTER_PDF_PAGES_PER_BATCH=1` | Payload menor por request; mais requests, porém mais estáveis |
 
-**Match de movimentação** continua em `OPENROUTER_MODEL` (mesmo Kimi por padrão no `match/ai.ts`) — separado do PDF.
+**Match de movimentação** continua em `OPENROUTER_MODEL` (`google/gemini-3.5-flash` por padrão em `match/ai.ts`) — separado do PDF.
 
 ---
 
@@ -254,6 +256,10 @@ OPENROUTER_PDF_MODEL=google/gemini-3.5-flash
 
 # Match IA movimentações
 OPENROUTER_MODEL=google/gemini-3.5-flash
+
+# Dual-extract (consenso + revisor) — todos via OpenRouter/Gemini
+OPENROUTER_MODEL_SECONDARY=google/gemini-2.5-pro
+OPENROUTER_MODEL_REVIEWER=google/gemini-2.5-pro
 
 # Cache (0 = desliga)
 OPENROUTER_CACHE=1

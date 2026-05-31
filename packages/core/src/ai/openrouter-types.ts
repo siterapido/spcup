@@ -1,0 +1,16 @@
+export interface ExtractStructuredOptions {
+  fetch?: typeof fetch;
+  apiKey?: string;
+  model?: string;
+  filename?: string;
+  sleep?: (ms: number) => Promise<void>;
+  timeoutMs?: number;
+  /** When true, bypass OpenRouter disk cache (retry / force reprocess). */
+  skipCache?: boolean;
+}
+
+export interface ExtratoExtraction {
+  transacoes: Array<Record<string, unknown>>;
+}
+
+export type LinhaScoreResult = { score: number; motivo: string };

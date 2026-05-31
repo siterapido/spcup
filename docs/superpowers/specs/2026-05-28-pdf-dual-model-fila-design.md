@@ -21,7 +21,7 @@ Processar extratos PDF com **dois modelos OpenRouter** (primário + secundário)
 
 | Tema | Decisão |
 |------|---------|
-| Modelos | Primário: extrato atual (ex. Gemini); secundário: `openai/gpt-4o-mini` ou slug OpenRouter confirmado (`gpt-mini-latest`); revisor: mesmo secundário por padrão |
+| Modelos | Primário: `google/gemini-3.5-flash`; secundário: `google/gemini-2.5-pro`; revisor: `google/gemini-2.5-pro` (padrão piloto OpenRouter; antes `openai/gpt-4o-mini` / `gpt-5.5`) |
 | Página com texto | `processar-dual`: ambos leem o **mesmo** texto (ou PDF com texto suficiente) |
 | Página imagem / scan | `processar-imagem`: render PNG **uma vez**; **ambos** modelos analisam o **mesmo** bitmap |
 | Consenso | Interseção estrita: `data` + `valor` + `direção` (nome/doc fora da chave) |
@@ -251,7 +251,7 @@ Preencher `confiancaGlobal` (0–100) e `origemExtracao`:
   "consenso": true,
   "score": 92,
   "modelo_primario": "...",
-  "modelo_secundario": "openai/gpt-4o-mini",
+  "modelo_secundario": "google/gemini-2.5-pro",
   "modelo_origem_linha": "consenso"
 }
 ```
@@ -292,9 +292,9 @@ Banner se fila terminou com algum `verificar`: revisar antes de confiar nos tota
 
 | Variável | Default | Uso |
 |----------|---------|-----|
-| `OPENROUTER_MODEL_PRIMARY` | modelo extrato atual | Extrator 1 |
-| `OPENROUTER_MODEL_SECONDARY` | `openai/gpt-4o-mini` | Extrator 2 |
-| `OPENROUTER_MODEL_REVIEWER` | = secundário | Score |
+| `OPENROUTER_MODEL_PRIMARY` | `google/gemini-3.5-flash` | Extrator 1 |
+| `OPENROUTER_MODEL_SECONDARY` | `google/gemini-2.5-pro` | Extrator 2 |
+| `OPENROUTER_MODEL_REVIEWER` | `google/gemini-2.5-pro` | Score |
 | `INGEST_SCORE_THRESHOLD` | `80` | Auto-aceite |
 | `INGEST_NON_TRANSACTIONAL_MIN_CHARS` | `50` | Heurística |
 | `OPENROUTER_API_KEY` | — | Obrigatório |

@@ -70,6 +70,7 @@ Estados enviam arquivos → Equipe nacional ingere → Revisa pendências → Co
 | [docs/piloto-checklist.md](docs/piloto-checklist.md) | Piloto 1 semana (TypeScript) |
 | [docs/superpowers/specs/2026-05-26-cadastro-pf-pj-design.md](docs/superpowers/specs/2026-05-26-cadastro-pf-pj-design.md) | Cadastro PF/PJ, importação e perfil |
 | [docs/spca-fontes.md](docs/spca-fontes.md) | Fontes SPCA / XSD |
+| [docs/dev-scripts.md](docs/dev-scripts.md) | Scripts de debug local (não produto) |
 | `docs/superpowers/specs/2026-05-25-spc-up-prestacao-contas-design.md` | Regras de negócio |
 | `docs/superpowers/specs/2026-05-25-nextjs-vercel-neon-migration-design.md` | Design migração |
 | `scripts/migrate-db.md` | pg_dump / restore → Neon |
@@ -78,7 +79,7 @@ Estados enviam arquivos → Equipe nacional ingere → Revisa pendências → Co
 
 **Produção:** Next.js 15 (App Router), Auth.js v5, Drizzle ORM, Neon Postgres, Vercel Blob, Turborepo, Commander CLI (`apps/cli`), Vitest.
 
-**Legado (cutover):** Python 3.12, FastAPI, Alembic — `LEGACY_PYTHON=1 ./scripts/run-local.sh`
+**Legado (somente dev/arquivo):** Python em [`legacy/python/`](legacy/python/) — `LEGACY_PYTHON=1 ./scripts/run-local.sh` (não usar no fluxo normal)
 
 ## SPCA XSD
 

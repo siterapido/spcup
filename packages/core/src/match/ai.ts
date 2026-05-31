@@ -1,8 +1,6 @@
-import { resolveOpenRouterApiKey } from "../ai/openrouter-api-key";
 import { DEFAULT_MATCH_MODEL } from "../ai/model-profile";
-
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = DEFAULT_MATCH_MODEL;
+import { openRouterChatCompletion } from "../ai/openrouter/client";
+import type { ExtractStructuredOptions } from "../ai/openrouter-types";
 
 export const AI_MATCH_SCHEMA = {
   type: "object",
@@ -122,11 +120,7 @@ export async function evaluateMovimentacaoWithAi(
   input: EvaluateAiMatchInput,
   options?: EvaluateAiMatchOptions,
 ): Promise<AiMatchResult> {
-  const apiKey = resolveOpenRouterApiKey(options?.apiKey);
-
-  const model = options?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
-  const fetchFn = options?.fetch ?? fetch;
-
+  const model = options?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MATCH_MODEL;
   const userPayload = JSON.stringify(input, null, 2);
   const payload = {
     model,
@@ -154,18 +148,11 @@ export async function evaluateMovimentacaoWithAi(
     },
   };
 
-  const response = await fetchFn(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenRouter HTTP ${response.status}`);
-  }
-
-  return parseAiMatchBody(await response.json());
+  const orOptions: ExtractStructuredOptions = {
+    fetch: options?.fetch,
+    apiKey: options?.apiKey,
+    model,
+  };
+  const parsed = await openRouterChatCompletion(payload, orOptions);
+  return parseAiMatchBody({ choices: [{ message: { content: parsed } }] });
 }

@@ -9,7 +9,7 @@ vi.mock("../ai/openrouter", () => {
     scoreExtratoLinhas: vi.fn(),
     resolveExtratoModel: vi.fn().mockReturnValue("google/gemini-3.5-flash"),
     resolveSecondaryExtratoModel: vi.fn().mockReturnValue(null),
-    resolveReviewerExtratoModel: vi.fn().mockReturnValue("openai/gpt-5.5"),
+    resolveReviewerExtratoModel: vi.fn().mockReturnValue("google/gemini-2.5-pro"),
     resolveScoreThreshold: () => 80,
     parseExtratoValor: (val: any) => Number(val),
   };
