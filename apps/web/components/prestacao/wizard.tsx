@@ -195,7 +195,7 @@ export function PrestacaoWizard() {
 
   const continueLabel = pendingRedirect?.includes("/consolidacao")
     ? "Continuar para consolidação"
-    : "Continuar para o kanban";
+    : "Continuar para movimentações";
 
   return (
     <Card>
@@ -398,7 +398,7 @@ export function PrestacaoWizard() {
               Consolidar extratos bancários
               <span className="mt-0.5 block text-xs text-muted">
                 Unifica vários PDFs do mesmo período, cruza com o cadastro da UF e
-                mostra confiança antes do kanban. Importe pessoas em Cadastro antes.
+                mostra confiança antes da revisão final. Importe pessoas em Cadastro antes.
               </span>
             </span>
           </label>

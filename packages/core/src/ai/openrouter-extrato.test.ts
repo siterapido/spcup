@@ -274,6 +274,34 @@ describe("extrato extraction (OpenRouter)", () => {
     ]);
   });
 
+  it("extrato json_schema lists every property in required (Azure strict)", async () => {
+    process.env.OPENROUTER_CACHE = "0";
+    const mockFetch = vi.fn().mockResolvedValue(mockOpenRouterResponse(SAMPLE_EXTRATO));
+
+    await extractTransactionsFromPdfText("extrato", {
+      fetch: mockFetch,
+      apiKey: "sk-or-v1-test-key",
+      model: "google/gemini-3.5-flash",
+    });
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as {
+      response_format: {
+        json_schema: {
+          schema: {
+            properties: {
+              transacoes: { items: { properties: Record<string, unknown>; required: string[] } };
+            };
+          };
+        };
+      };
+    };
+    const item = body.response_format.json_schema.schema.properties.transacoes.items;
+    const propKeys = Object.keys(item.properties).sort();
+    expect([...item.required].sort()).toEqual(propKeys);
+    expect(propKeys).toContain("cred_dev");
+  });
+
   it("Gemini PDF extrato uses json_schema and no plugins", async () => {
     process.env.OPENROUTER_CACHE = "0";
     const mockFetch = vi.fn().mockResolvedValue(mockOpenRouterResponse(SAMPLE_EXTRATO));

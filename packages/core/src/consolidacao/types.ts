@@ -16,6 +16,7 @@ export type MovimentacaoCandidate = {
   cpfExtraido: string | null;
   cnpjExtraido: string | null;
   origemExtracao: OrigemExtracaoV1 | null;
+  contaBancariaId: string | null;
 };
 
 export type PessoaRef =

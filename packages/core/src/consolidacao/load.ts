@@ -24,6 +24,7 @@ export async function loadMovimentacaoCandidates(
       direcao: movimentacao.direcao,
       descricaoRaw: movimentacao.descricaoRaw,
       origemExtracao: movimentacao.origemExtracao,
+      contaBancariaId: movimentacao.contaBancariaId,
     })
     .from(movimentacao)
     .innerJoin(arquivoIngestao, eq(movimentacao.arquivoIngestaoId, arquivoIngestao.id))
@@ -45,6 +46,7 @@ export async function loadMovimentacaoCandidates(
     cpfExtraido: null,
     cnpjExtraido: null,
     origemExtracao: (row.origemExtracao as OrigemExtracaoV1 | null) ?? null,
+    contaBancariaId: row.contaBancariaId,
   }));
 }
 

@@ -41,7 +41,7 @@ export async function consolidateSession(
   let drafts = buildConsolidacaoCandidates(movs, ctx);
 
   if (process.env.OPENROUTER_API_KEY) {
-    drafts = await enrichAmbiguousWithAi(drafts, movs, {
+    drafts = await enrichAmbiguousWithAi(db, drafts, movs, {
       uf: sessao.uf,
       exercicio: sessao.exercicio,
     });

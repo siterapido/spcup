@@ -58,8 +58,9 @@ describe("processSessaoPdfArquivos", () => {
     const result = await processSessaoPdfArquivos(db, "sess-1");
 
     expect(processarPaginaMock).toHaveBeenCalled();
+    expect(consolidateMock).toHaveBeenCalledTimes(1);
     expect(consolidateMock).toHaveBeenCalledWith(db, "sess-1");
-    expect(result.consolidacao?.eventos).toBe(2);
+    expect(result.consolidacao).toMatchObject({ skipped: false, eventos: 2 });
     expect(result.movimentacoesTotal).toBe(5);
     expect(result.arquivos).toHaveLength(1);
   });

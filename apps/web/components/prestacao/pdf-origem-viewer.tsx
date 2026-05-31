@@ -40,10 +40,7 @@ export function PdfOrigemViewer({
       setError(null);
       try {
         const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          "pdfjs-dist/build/pdf.worker.min.mjs",
-          import.meta.url,
-        ).toString();
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
         const res = await fetch(`/api/arquivos-ingestao/${arquivoIngestaoId}/pdf`);
         if (!res.ok) {
@@ -104,19 +101,21 @@ export function PdfOrigemViewer({
         </div>
         {loading && <p className="text-sm text-muted">Carregando PDF…</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <div ref={wrapRef} className="relative max-h-[70vh] overflow-auto">
-          <canvas ref={canvasRef} className="mx-auto block" />
-          {bbox && (
-            <div
-              className="pointer-events-none absolute border-2 border-amber-500 bg-amber-400/20"
-              style={{
-                left: `${bbox.x * 100}%`,
-                top: `${bbox.y * 100}%`,
-                width: `${bbox.w * 100}%`,
-                height: `${bbox.h * 100}%`,
-              }}
-            />
-          )}
+        <div ref={wrapRef} className="relative max-h-[70vh] overflow-auto p-4 bg-slate-50/50 rounded-md border border-slate-100">
+          <div className="relative mx-auto w-fit border border-slate-200 rounded-md shadow-lg overflow-hidden bg-white">
+            <canvas ref={canvasRef} className="block" />
+            {bbox && (
+              <div
+                className="pointer-events-none absolute border-2 border-amber-500 bg-amber-400/20"
+                style={{
+                  left: `${bbox.x * 100}%`,
+                  top: `${bbox.y * 100}%`,
+                  width: `${bbox.w * 100}%`,
+                  height: `${bbox.h * 100}%`,
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

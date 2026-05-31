@@ -37,7 +37,10 @@ program
     .requiredOption("--file <path>", "Planilha xlsx/csv")
     .option("--dry-run", "Parse only, sem persistir")
     .option("--json", "Saída JSON")
-    .option("--env-file <path>", "Arquivo .env (default: ~/.spc-up/.env)")
+    .option(
+      "--env-file <path>",
+      "Env extra (mescla ~/.spc-up/.env, .env e .env.local do repo)",
+    )
     .action(
       async (
         opts: EnvFileOpts & {
@@ -63,7 +66,10 @@ program
     .requiredOption("--sessao <uuid>", "ID da sessão criada na web")
     .requiredOption("--path <path>", "Arquivo ou pasta com OFX/Excel/PDF")
     .option("--json", "Saída JSON")
-    .option("--env-file <path>", "Arquivo .env (default: ~/.spc-up/.env)")
+    .option(
+      "--env-file <path>",
+      "Env extra (mescla ~/.spc-up/.env, .env e .env.local do repo)",
+    )
     .action(
       async (
         opts: EnvFileOpts & { sessao: string; path: string; json?: boolean },
@@ -79,7 +85,10 @@ program
     .requiredOption("--sessao <uuid>", "ID da sessão")
     .option("--skip-consolidacao", "Não executar consolidação")
     .option("--json", "Saída JSON")
-    .option("--env-file <path>", "Arquivo .env (default: ~/.spc-up/.env)")
+    .option(
+      "--env-file <path>",
+      "Env extra (mescla ~/.spc-up/.env, .env e .env.local do repo)",
+    )
     .action(
       async (
         opts: EnvFileOpts & {
@@ -104,7 +113,10 @@ program
     .requiredOption("--path <path>", "Arquivo ou pasta com OFX/Excel/PDF")
     .option("--skip-consolidacao", "Não executar consolidação")
     .option("--json", "Saída JSON")
-    .option("--env-file <path>", "Arquivo .env (default: ~/.spc-up/.env)")
+    .option(
+      "--env-file <path>",
+      "Env extra (mescla ~/.spc-up/.env, .env e .env.local do repo)",
+    )
     .action(
       async (
         opts: EnvFileOpts & {
@@ -129,7 +141,10 @@ program
     .description("Resumo da sessão (arquivos, movimentações, consolidação)")
     .requiredOption("--sessao <uuid>", "ID da sessão")
     .option("--json", "Saída JSON")
-    .option("--env-file <path>", "Arquivo .env (default: ~/.spc-up/.env)")
+    .option(
+      "--env-file <path>",
+      "Env extra (mescla ~/.spc-up/.env, .env e .env.local do repo)",
+    )
     .action(
       async (opts: EnvFileOpts & { sessao: string; json?: boolean }) => {
         loadEnvFile(opts.envFile);

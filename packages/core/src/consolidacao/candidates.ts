@@ -76,6 +76,8 @@ function scorePair(
   const docsB = extractDocsFromMov(b);
   const cpfA = docsA.cpf;
   const cpfB = docsB.cpf;
+  const cnpjA = docsA.cnpj;
+  const cnpjB = docsB.cnpj;
 
   if (cpfA && cpfB && cpfA === cpfB) {
     const pessoa = resolvePessoa(cpfA, null, ctx);
@@ -86,10 +88,21 @@ function scorePair(
     };
   }
 
+  if (cnpjA && cnpjB && cnpjA === cnpjB) {
+    const pessoa = resolvePessoa(null, cnpjA, ctx);
+    return {
+      confianca: 0.95,
+      justificativa: "Mesmo CNPJ nos dois extratos",
+      pessoa,
+    };
+  }
+
   const cpfCompleto = cpfB ?? cpfA;
+  const cnpjCompleto = cnpjB ?? cnpjA;
   const nomePix = nomeFromDescricao(a.descricaoRaw);
   const nomeCompleto = nomeFromDescricao(b.descricaoRaw);
   const pessoaByCpf = cpfCompleto ? resolvePessoa(cpfCompleto, null, ctx) : null;
+  const pessoaByCnpj = cnpjCompleto ? resolvePessoa(null, cnpjCompleto, ctx) : null;
 
   if (
     cpfCompleto &&
@@ -103,14 +116,25 @@ function scorePair(
     };
   }
 
+  if (
+    cnpjCompleto &&
+    pessoaByCnpj &&
+    (nomePix === normalizeName(pessoaByCnpj.nome) || nomePix === nomeCompleto)
+  ) {
+    return {
+      confianca: 0.9,
+      justificativa: "CNPJ no extrato completo e nome alinhado ao cadastro",
+      pessoa: pessoaByCnpj,
+    };
+  }
+
   if (nomePix.length >= 3 && nomePix === nomeCompleto) {
     const pessoa =
       pessoaByCpf ??
-      (ctx.pessoaByCpf.size === 0
-        ? null
-        : [...ctx.pessoaByCpf.values()].find(
-            (p) => normalizeName(p.nome) === nomePix,
-          ) ?? null);
+      pessoaByCnpj ??
+      [...ctx.pessoaByCpf.values()].find((p) => normalizeName(p.nome) === nomePix) ??
+      [...ctx.pessoaByCnpj.values()].find((p) => normalizeName(p.nome) === nomePix) ??
+      null;
     return {
       confianca: pessoa ? 0.8 : 0.65,
       justificativa: pessoa
@@ -146,15 +170,25 @@ function scoreSingle(
 ): { confianca: number; justificativa: string; pessoa: PessoaRef | null } {
   const { cpf, cnpj } = extractDocsFromMov(m);
   const pessoa = resolvePessoa(cpf, cnpj, ctx);
-  if (pessoa && cpf) {
-    return { confianca: 0.85, justificativa: "CPF na linha com cadastro", pessoa };
+  if (pessoa && (cpf || cnpj)) {
+    return {
+      confianca: 0.85,
+      justificativa: cpf ? "CPF na linha com cadastro" : "CNPJ na linha com cadastro",
+      pessoa,
+    };
   }
   const nome = nomeFromDescricao(m.descricaoRaw);
-  const byNome = [...ctx.pessoaByCpf.values()].find(
+  const byNomePF = [...ctx.pessoaByCpf.values()].find(
     (p) => normalizeName(p.nome) === nome,
   );
-  if (byNome) {
-    return { confianca: 0.8, justificativa: "Nome único no cadastro", pessoa: byNome };
+  if (byNomePF) {
+    return { confianca: 0.8, justificativa: "Nome único no cadastro", pessoa: byNomePF };
+  }
+  const byNomePJ = [...ctx.pessoaByCnpj.values()].find(
+    (p) => normalizeName(p.nome) === nome,
+  );
+  if (byNomePJ) {
+    return { confianca: 0.8, justificativa: "Nome único no cadastro", pessoa: byNomePJ };
   }
   return { confianca: 0.4, justificativa: "Sem vínculo cadastro", pessoa: null };
 }
@@ -178,6 +212,26 @@ function finalizeDraft(
   };
 }
 
+function isDateWindowMatch(a: MovimentacaoCandidate, b: MovimentacaoCandidate): boolean {
+  const papelA = classifyArquivoPapel(a.nomeArquivo);
+  const papelB = classifyArquivoPapel(b.nomeArquivo);
+
+  if ((papelA === "PIX" && papelB === "COMPLETO") || (papelA === "COMPLETO" && papelB === "PIX")) {
+    const pix = papelA === "PIX" ? a : b;
+    const completo = papelA === "COMPLETO" ? a : b;
+
+    const datePix = new Date(pix.dataMovimento + "T12:00:00");
+    const dateComp = new Date(completo.dataMovimento + "T12:00:00");
+
+    const diffTime = dateComp.getTime() - datePix.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays >= 0 && diffDays <= 3;
+  }
+
+  return a.dataMovimento === b.dataMovimento;
+}
+
 export function buildConsolidacaoCandidates(
   movs: MovimentacaoCandidate[],
   ctx: CadastroMatchContext,
@@ -186,15 +240,22 @@ export function buildConsolidacaoCandidates(
   const used = new Set<string>();
   const events: ConsolidacaoEventDraft[] = [];
 
+  // Sort movimentacoes chronologically to guarantee stable chronological pairing (FIFO) for repeating values
+  const sortedMovs = [...movs].sort((x, y) => x.dataMovimento.localeCompare(y.dataMovimento));
+
   const pairCandidates: PairCandidate[] = [];
-  for (let i = 0; i < movs.length; i++) {
-    for (let j = i + 1; j < movs.length; j++) {
-      const a = movs[i]!;
-      const b = movs[j]!;
+  for (let i = 0; i < sortedMovs.length; i++) {
+    for (let j = i + 1; j < sortedMovs.length; j++) {
+      const a = sortedMovs[i]!;
+      const b = sortedMovs[j]!;
       if (a.arquivoIngestaoId === b.arquivoIngestaoId) {
         continue;
       }
-      if (transactionKey(a) !== transactionKey(b)) {
+      // Ensure transactions belong to the same bank account if specified
+      if (a.contaBancariaId && b.contaBancariaId && a.contaBancariaId !== b.contaBancariaId) {
+        continue;
+      }
+      if (a.valor !== b.valor || a.direcao !== b.direcao || !isDateWindowMatch(a, b)) {
         continue;
       }
       const scored = scorePair(a, b, ctx);
@@ -202,7 +263,13 @@ export function buildConsolidacaoCandidates(
     }
   }
 
-  pairCandidates.sort((x, y) => y.confianca - x.confianca);
+  // Sort by confidence descending, then by chronological order of transaction to preserve FIFO resolution
+  pairCandidates.sort((x, y) => {
+    if (y.confianca !== x.confianca) {
+      return y.confianca - x.confianca;
+    }
+    return x.a.dataMovimento.localeCompare(y.a.dataMovimento);
+  });
 
   for (const pair of pairCandidates) {
     if (used.has(pair.a.id) || used.has(pair.b.id)) {

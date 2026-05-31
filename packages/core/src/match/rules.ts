@@ -60,19 +60,41 @@ export function extractDocumentCandidates(
   return candidates;
 }
 
-async function getOrCreatePessoaFisica(db: Db, cpf: string): Promise<PessoaFisica> {
+export function cleanNomeSugestao(desc: string, docString: string): string {
+  let clean = desc.replace(docString, "").replace(/\b(?:CPF|CNPJ)\b/gi, "");
+  clean = clean.replace(/\b(CRED PIX|DEB PIX|CRED TEV|DEB TEV|PIX TRANSF|PIX RECEBIDO|RECEBIDO EFETIVADO|PAGTO|PAGAMENTO|TED|DOC|DOC\/TED|DEPOSITO|SAQUE|TARIFA|SALDO|TRANSFERENCIA|TRANSF)\b/gi, "");
+  clean = clean.replace(/[-|:,]/g, "").replace(/\s+/g, " ").trim();
+  return clean.length >= 3 ? clean : "";
+}
+
+async function getOrCreatePessoaFisica(
+  db: Db,
+  cpf: string,
+  nomeSugestao?: string,
+): Promise<PessoaFisica> {
   const existing = await db
     .select()
     .from(pessoaFisica)
     .where(eq(pessoaFisica.cpf, cpf))
     .limit(1);
   if (existing[0]) {
+    if (isStubNome("PF", existing[0].nome) && nomeSugestao && !isStubNome("PF", nomeSugestao)) {
+      const [updated] = await db
+        .update(pessoaFisica)
+        .set({ nome: nomeSugestao })
+        .where(eq(pessoaFisica.id, existing[0].id))
+        .returning();
+      if (updated) {
+        return updated;
+      }
+    }
     return existing[0];
   }
 
+  const nome = nomeSugestao && !isStubNome("PF", nomeSugestao) ? nomeSugestao : STUB_PF_NOME;
   const [created] = await db
     .insert(pessoaFisica)
-    .values({ cpf, nome: STUB_PF_NOME })
+    .values({ cpf, nome })
     .returning();
   if (!created) {
     throw new Error(`Failed to create pessoa_fisica for CPF ${cpf}`);
@@ -117,6 +139,7 @@ async function findUniquePessoaByNome(
 async function getOrCreatePessoaJuridica(
   db: Db,
   cnpj: string,
+  nomeSugestao?: string,
 ): Promise<PessoaJuridica> {
   const existing = await db
     .select()
@@ -124,12 +147,27 @@ async function getOrCreatePessoaJuridica(
     .where(eq(pessoaJuridica.cnpj, cnpj))
     .limit(1);
   if (existing[0]) {
+    if (
+      isStubNome("PJ", existing[0].razaoSocial) &&
+      nomeSugestao &&
+      !isStubNome("PJ", nomeSugestao)
+    ) {
+      const [updated] = await db
+        .update(pessoaJuridica)
+        .set({ razaoSocial: nomeSugestao })
+        .where(eq(pessoaJuridica.id, existing[0].id))
+        .returning();
+      if (updated) {
+        return updated;
+      }
+    }
     return existing[0];
   }
 
+  const razaoSocial = nomeSugestao && !isStubNome("PJ", nomeSugestao) ? nomeSugestao : STUB_PJ_RAZAO;
   const [created] = await db
     .insert(pessoaJuridica)
-    .values({ cnpj, razaoSocial: STUB_PJ_RAZAO })
+    .values({ cnpj, razaoSocial })
     .returning();
   if (!created) {
     throw new Error(`Failed to create pessoa_juridica for CNPJ ${cnpj}`);
@@ -214,7 +252,9 @@ export async function applyDeterministicMatch(
     });
   } else if (cpfs.length === 1) {
     const cpf = cpfs[0]!;
-    const pessoa = await getOrCreatePessoaFisica(db, cpf);
+    const docString = current.descricaoRaw.match(CPF_PATTERN)?.[0] || cpf;
+    const nomeSugestao = cleanNomeSugestao(current.descricaoRaw, docString);
+    const pessoa = await getOrCreatePessoaFisica(db, cpf, nomeSugestao);
     pessoaFisicaId = pessoa.id;
     pessoaJuridicaId = null;
     const cadastroReal = !isStubNome("PF", pessoa.nome);
@@ -227,7 +267,9 @@ export async function applyDeterministicMatch(
     });
   } else if (cnpjs.length === 1) {
     const cnpj = cnpjs[0]!;
-    const pessoa = await getOrCreatePessoaJuridica(db, cnpj);
+    const docString = current.descricaoRaw.match(CNPJ_PATTERN)?.[0] || cnpj;
+    const nomeSugestao = cleanNomeSugestao(current.descricaoRaw, docString);
+    const pessoa = await getOrCreatePessoaJuridica(db, cnpj, nomeSugestao);
     pessoaJuridicaId = pessoa.id;
     pessoaFisicaId = null;
     const cadastroReal = !isStubNome("PJ", pessoa.razaoSocial);

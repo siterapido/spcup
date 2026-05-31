@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { movimentacao, matchEvidencia, pessoaFisica } from "@spc-up/db";
 
 import { DEFAULT_WEIGHTS } from "../confidence";
-import { applyDeterministicMatch, extractDocumentCandidates } from "./rules";
+import { applyDeterministicMatch, extractDocumentCandidates, cleanNomeSugestao } from "./rules";
 
 describe("extractDocumentCandidates", () => {
   it("extracts CPF from description", () => {
@@ -107,5 +107,21 @@ describe("applyDeterministicMatch", () => {
     const result = await applyDeterministicMatch(db as never, movimentacaoId);
 
     expect(result.pessoaFisicaId).toBe(existing.id);
+  });
+});
+
+describe("cleanNomeSugestao", () => {
+  it("removes document and prefixes, returning a clean name", () => {
+    expect(
+      cleanNomeSugestao("CRED PIX GABRIEL REIS DA SILVA CPF 12345678909", "12345678909"),
+    ).toBe("GABRIEL REIS DA SILVA");
+
+    expect(
+      cleanNomeSugestao("DEB PIX MERCADINHO CNPJ 12.345.678/0001-99", "12.345.678/0001-99"),
+    ).toBe("MERCADINHO");
+
+    expect(
+      cleanNomeSugestao("TED GABRIEL REIS DA SILVA CPF 12345678909", "12345678909"),
+    ).toBe("GABRIEL REIS DA SILVA");
   });
 });

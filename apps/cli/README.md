@@ -21,7 +21,14 @@ Copie e edite `~/.spc-up/.env` (criado pelo script de instalação):
 - `STORAGE_ROOT` — default `./data/uploads`
 - `AUTH_URL` — opcional, para link do kanban na saída
 
-Ou passe `--env-file /caminho/.env` em qualquer comando.
+O CLI mescla automaticamente, nesta ordem (o último vence): `~/.spc-up/.env` → `.env` → `.env.local` → `--env-file` (se passado). Valores vazios (`DATABASE_URL=`) são ignorados.
+
+Exemplo após `vercel env pull .env.local`:
+
+```bash
+spcup prestacao run --sessao <uuid> --path ./lote/
+# não precisa --env-file se .env e .env.local estão na raiz do repo
+```
 
 ## Fluxo operacional
 

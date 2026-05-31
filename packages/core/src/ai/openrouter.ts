@@ -28,7 +28,7 @@ const DEFAULT_PDF_TIMEOUT_MS = 180_000;
 const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = 1000;
 /** Cap model output size (extrato lists are bounded; saves cost on runaway completions). */
-const DEFAULT_MAX_TOKENS = 8192;
+const DEFAULT_MAX_TOKENS = 16384;
 /** Text-path statements above this are truncated before the API call. */
 export const MAX_EXTRATO_TEXT_CHARS = 24_000;
 const DEFAULT_PDF_MODEL = DEFAULT_EXTRATO_MODEL;
@@ -55,6 +55,7 @@ const SYSTEM_PROMPT =
   "Return only the requested JSON fields. Use ENTRADA for credits and SAIDA for debits. " +
   "Normalize CPF to digits only.";
 
+/** Azure/OpenRouter strict json_schema: every property key must appear in `required`. */
 const EXTRATO_TRANSACTION_ITEM_SCHEMA = {
   type: "object",
   properties: {
@@ -67,19 +68,22 @@ const EXTRATO_TRANSACTION_ITEM_SCHEMA = {
     },
     descricao: { type: "string", description: "Transaction description / memo" },
     cred_dev: {
-      type: "string",
-      description: "Cred/Dev column code from the statement (e.g. CRED TEV, PIX)",
+      type: ["string", "null"],
+      description: "Cred/Dev column code from the statement (e.g. CRED TEV, PIX); null if absent",
     },
-    cpf: { type: "string", description: "CPF digits only when present" },
-    cnpj: { type: "string", description: "CNPJ digits only when present" },
-    nome: { type: "string", description: "Counterparty name when present" },
-    pagina: { type: "integer", description: "1-based page number in the PDF" },
+    cpf: { type: ["string", "null"], description: "CPF digits only when present; otherwise null" },
+    cnpj: { type: ["string", "null"], description: "CNPJ digits only when present; otherwise null" },
+    nome: { type: ["string", "null"], description: "Counterparty name when present; otherwise null" },
+    pagina: {
+      type: ["integer", "null"],
+      description: "1-based page number in the PDF; null if unknown",
+    },
     indice_linha: {
-      type: "integer",
-      description: "1-based row index on that page in visual order",
+      type: ["integer", "null"],
+      description: "1-based row index on that page in visual order; null if unknown",
     },
     bbox: {
-      type: "object",
+      type: ["object", "null"],
       properties: {
         x: { type: "number" },
         y: { type: "number" },
@@ -88,10 +92,22 @@ const EXTRATO_TRANSACTION_ITEM_SCHEMA = {
       },
       required: ["x", "y", "w", "h"],
       additionalProperties: false,
-      description: "Normalized 0-1 box around the transaction row on the page",
+      description: "Normalized 0-1 box around the transaction row; null if unknown",
     },
   },
-  required: ["data", "valor", "direcao", "descricao"],
+  required: [
+    "data",
+    "valor",
+    "direcao",
+    "descricao",
+    "cred_dev",
+    "cpf",
+    "cnpj",
+    "nome",
+    "pagina",
+    "indice_linha",
+    "bbox",
+  ],
   additionalProperties: false,
 } as const;
 
@@ -113,6 +129,8 @@ const KIMI_EXTRATO_SYSTEM_PROMPT =
   'Responda APENAS JSON: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
   '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos",' +
   '"pagina":1,"indice_linha":1,"bbox":{"x":0,"y":0,"w":1,"h":0.05}}]}. ' +
+  "Analise detalhadamente cada linha e coluna. O texto extraído de tabelas pode estar fora de ordem visual: identifique e associe corretamente a data, valor e descrição de cada movimentação. " +
+  "Não pule NENHUMA transação de entrada/crédito ou saída/débito visível. " +
   "cred_dev = código da coluna Cred/Dev quando existir. Use ENTRADA para crédito e SAIDA para débito. " +
   "cpf/cnpj só dígitos se visíveis; senão preencha nome. " +
   "pagina e indice_linha por transação; bbox normalizado 0-1 na página. " +
@@ -126,6 +144,8 @@ const GEMINI_EXTRATO_SYSTEM_PROMPT =
   'Responda APENAS JSON válido no schema: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
   '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos",' +
   '"pagina":1,"indice_linha":1,"bbox":{"x":0,"y":0,"w":1,"h":0.05}}]}. ' +
+  "Analise detalhadamente cada linha e coluna. O texto extraído de tabelas pode estar fora de ordem visual: identifique e associe corretamente a data, valor e descrição de cada movimentação. " +
+  "Não pule NENHUMA transação de entrada/crédito ou saída/débito visível. " +
   "cred_dev = código da coluna Cred/Dev do extrato. Use ENTRADA para crédito e SAIDA para débito. " +
   "Preencha nome com o contraparte quando visível; cpf/cnpj só dígitos. " +
   "pagina e indice_linha por transação; bbox normalizado 0-1 na página. " +
@@ -198,7 +218,11 @@ function resolveMaxTokens(): number {
 }
 
 function withMaxTokens(payload: Record<string, unknown>): Record<string, unknown> {
-  return { ...payload, max_tokens: resolveMaxTokens() };
+  return {
+    temperature: 0.0,
+    ...payload,
+    max_tokens: resolveMaxTokens(),
+  };
 }
 
 /** Kimi on OpenRouter often misses native PDF; force OCR parsing for file inputs. */
@@ -317,9 +341,12 @@ const LINHA_SCORE_SCHEMA = {
         properties: {
           indice: { type: "integer" },
           score: { type: "integer", description: "0-100 confidence" },
-          motivo: { type: "string" },
+          motivo: {
+            type: ["string", "null"],
+            description: "Short reason for the score; null if not provided",
+          },
         },
-        required: ["indice", "score"],
+        required: ["indice", "score", "motivo"],
         additionalProperties: false,
       },
     },
@@ -514,10 +541,12 @@ export function resolveExtratoModel(options?: ExtractStructuredOptions): string 
   );
 }
 
-export function resolveSecondaryExtratoModel(): string {
-  return (
-    process.env.OPENROUTER_MODEL_SECONDARY?.trim() || "openai/gpt-4o-mini"
-  );
+export function resolveSecondaryExtratoModel(): string | null {
+  const val = process.env.OPENROUTER_MODEL_SECONDARY?.trim();
+  if (val === "none" || !val) {
+    return null;
+  }
+  return val;
 }
 
 export function resolveReviewerExtratoModel(): string {
@@ -525,7 +554,7 @@ export function resolveReviewerExtratoModel(): string {
   if (reviewer) {
     return reviewer;
   }
-  return resolveSecondaryExtratoModel();
+  return resolveSecondaryExtratoModel() || "openai/gpt-4o-mini";
 }
 
 export function parseExtratoValor(value: unknown): number {
@@ -570,7 +599,9 @@ function normalizeExtratoItem(item: Record<string, unknown>): Record<string, unk
     }
   }
 
-  let credDev = String(out.cred_dev ?? out.credDev ?? "").trim();
+  let credDev = String(out.cred_dev ?? out.credDev ?? "")
+    .trim()
+    .replace(/^null$/i, "");
   if (!credDev && descricaoStr && SHORT_BANK_CODE.test(descricaoStr)) {
     credDev = descricaoStr;
   }
@@ -608,7 +639,7 @@ function normalizeExtratoResponse(parsed: Record<string, unknown>): ExtratoExtra
   };
 }
 
-async function callOpenRouterJson(
+export async function callOpenRouterJson(
   payload: Record<string, unknown>,
   options?: ExtractStructuredOptions,
 ): Promise<OpenRouterJsonResult> {
@@ -671,7 +702,7 @@ export async function extractStructuredFromPdf(
   pathOrBuffer: string | Buffer,
   options?: ExtractStructuredOptions,
 ): Promise<Record<string, unknown>> {
-  const model = options?.model ?? process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4";
+  const model = options?.model ?? process.env.OPENROUTER_MODEL ?? "google/gemini-3.5-flash";
   const { buffer, filename } = await resolvePdfInput(pathOrBuffer, options?.filename);
   const payload = buildPayload(buffer, filename, model);
   const { parsed } = await callOpenRouterJson(payload, options);
@@ -886,4 +917,189 @@ export async function extractTransactionsFromPdfFile(
   };
   await writeExtratoPdfCache(buffer, model, extraction);
   return extraction;
+}
+
+export async function runConsolidacaoCritique(
+  drafts: any[],
+  cadastros: { pfs: any[]; pjs: any[] },
+  sessaoCtx: { uf: string; exercicio: number },
+  options?: ExtractStructuredOptions,
+): Promise<any[]> {
+  if (drafts.length === 0) {
+    return drafts;
+  }
+
+  // 1. Call primary model (Gemini 3.5 Flash) to generate proposals
+  const primaryModel = options?.model ?? resolveExtratoModel(options);
+  const promptPrimary = `
+Você é o modelo de IA primário responsável por analisar lançamentos de extratos bancários de uma prestação de contas eleitoral (${sessaoCtx.uf} / ${sessaoCtx.exercicio}) e encontrar possíveis vínculos com as pessoas físicas (PF) ou jurídicas (PJ) cadastradas no sistema.
+
+Cadastros de Pessoas:
+PFs: ${JSON.stringify(cadastros.pfs.map(p => ({ id: p.id, nome: p.nome, cpf: p.cpf })))}
+PJs: ${JSON.stringify(cadastros.pjs.map(p => ({ id: p.id, nome: p.nome, cnpj: p.cnpj })))}
+
+Eventos Candidatos a Consolidação:
+${JSON.stringify(drafts.map((d, index) => ({
+  index,
+  dataMovimento: d.dataMovimento,
+  valor: d.valor,
+  direcao: d.direcao,
+  linhas: d.linhas.map((l: any) => ({ papel: l.papel, descricaoRaw: l.descricaoRaw }))
+})))}
+
+Instruções:
+1. Examine as descrições brutas (descricaoRaw) de cada candidato.
+2. Identifique se a pessoa mencionada na transação corresponde a algum cadastro (PF ou PJ). Use lógica de similaridade de nome: ignore diferenças de caixa (Caps Lock), acentuação, preposições ("de", "da", "dos", etc.) e abreviações de nomes do meio (focando no primeiro nome e no último sobrenome).
+3. Se houver homônimos (nomes iguais ou muito similares) com o mesmo valor, ou qualquer ambiguidade, não faça o vínculo automaticamente; marque para avaliação do revisor.
+4. Para cada candidato, proponha o melhor match, se houver.
+5. Sua resposta DEVE ser um objeto JSON no seguinte formato:
+{
+  "propostas": [
+    {
+      "index": 0,
+      "pessoaFisicaId": "id-do-cadastro-ou-null-ou-vazio",
+      "pessoaJuridicaId": "id-do-cadastro-ou-null-ou-vazio",
+      "justificativa": "Sua explicação detalhada do match"
+    }
+  ]
+}
+`;
+
+  const primaryPayload = withMaxTokens({
+    model: primaryModel,
+    messages: [
+      {
+        role: "system",
+        content: "Você é um assistente especialista em conciliação contábil que extrai e sugere correspondências em formato JSON estruturado.",
+      },
+      {
+        role: "user",
+        content: promptPrimary,
+      },
+    ],
+    response_format: { type: "json_object" }
+  });
+
+  let sugestoesPrimarias: any = { propostas: [] };
+  try {
+    const { parsed } = await callOpenRouterJson(primaryPayload, options);
+    sugestoesPrimarias = parsed;
+  } catch (err) {
+    console.error("Erro no modelo primário durante a consolidação AI:", err);
+  }
+
+  // 2. Call reviewer model (GPT-4o-mini) to critique the proposals
+  const reviewerModel = resolveReviewerExtratoModel();
+  const promptReviewer = `
+Você é o modelo revisor/avaliador crítico de contabilidade eleitoral.
+Sua missão é avaliar rigorosamente as propostas de match entre lançamentos bancários e pessoas cadastradas (PF/PJ) geradas pelo modelo primário.
+Evite a todo custo matches incorretos (falsos positivos) que possam invalidar a prestação de contas oficial.
+
+Cadastros de Pessoas:
+PFs: ${JSON.stringify(cadastros.pfs.map(p => ({ id: p.id, nome: p.nome, cpf: p.cpf })))}
+PJs: ${JSON.stringify(cadastros.pjs.map(p => ({ id: p.id, nome: p.nome, cnpj: p.cnpj })))}
+
+Eventos Candidatos a Consolidação:
+${JSON.stringify(drafts.map((d, index) => ({
+  index,
+  dataMovimento: d.dataMovimento,
+  valor: d.valor,
+  direcao: d.direcao,
+  linhas: d.linhas.map((l: any) => ({ papel: l.papel, descricaoRaw: l.descricaoRaw }))
+})))}
+
+Sugestões do Modelo Primário:
+${JSON.stringify(sugestoesPrimarias, null, 2)}
+
+Instruções para a Crítica:
+1. Para cada evento, analise as sugestões do modelo primário. Se o match for forçado ou incorreto, você DEVE rejeitá-lo (retornando vazio ou null para os IDs).
+2. Use similaridade de nome rigorosa (ignore acentos, caixa, preposições e abreviações).
+3. Se houver homônimos (nomes parecidos) com o mesmo valor, ou se a semelhança for fraca/duvidosa, atribua uma nota de confiança baixa (abaixo de 0.65) e explique o motivo na justificativa. Isso colocará o item em análise manual pelo operador.
+4. Defina uma nota final de confiança (de 0.00 a 1.00) com base na solidez do match:
+   - 0.90 a 0.95: CPF/CNPJ ou nome idêntico e único.
+   - 0.70 a 0.85: Nome com abreviações óbvias, e valor correspondente.
+   - 0.40 a 0.65: Indícios mas sem certeza absoluta (match duvidoso/homônimo).
+   - Abaixo de 0.40: Sem vínculo seguro.
+5. Escreva uma justificativa final clara e direta baseada na sua crítica (ex: "Match aprovado pelo revisor: GABRIEL R SILVA coincide com GABRIEL REIS DA SILVA", ou "Divergência/homônimo: match marcado como duvidoso para verificação humana").
+6. Sua resposta DEVE ser um objeto JSON contendo o array 'eventos'.
+`;
+
+  const REVISOR_SCHEMA = {
+    type: "object",
+    properties: {
+      eventos: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            index: { type: "integer" },
+            confianca: { type: "number" },
+            justificativa: { type: "string" },
+            pessoaFisicaId: { type: "string", description: "ID de Pessoa Física ou vazio se não houver match" },
+            pessoaJuridicaId: { type: "string", description: "ID de Pessoa Jurídica ou vazio se não houver match" },
+          },
+          required: ["index", "confianca", "justificativa"],
+        },
+      },
+    },
+    required: ["eventos"],
+  };
+
+  const reviewerPayload = withMaxTokens({
+    model: reviewerModel,
+    messages: [
+      {
+        role: "system",
+        content: "Você é um revisor crítico de conciliação bancária eleitoral que valida propostas de correspondência em formato JSON estruturado.",
+      },
+      {
+        role: "user",
+        content: promptReviewer,
+      },
+    ],
+    response_format: buildStructuredResponseFormat(
+      reviewerModel,
+      "critique_match",
+      REVISOR_SCHEMA as unknown as Record<string, unknown>,
+    ),
+  });
+
+  try {
+    const { parsed } = await callOpenRouterJson(reviewerPayload, options);
+    const rawEventos = parsed.eventos;
+    if (Array.isArray(rawEventos)) {
+      for (const entry of rawEventos) {
+        if (typeof entry !== "object" || entry === null) {
+          continue;
+        }
+        const row = entry as Record<string, unknown>;
+        const index = Number(row.index);
+        if (!Number.isInteger(index) || index < 0 || index >= drafts.length) {
+          continue;
+        }
+        const target = drafts[index]!;
+        const confianca = Number(row.confianca);
+        target.confianca = Number.isFinite(confianca) ? Math.min(1, Math.max(0, confianca)) : target.confianca;
+        target.justificativa = String(row.justificativa ?? "").trim() || target.justificativa;
+        
+        const pfId = String(row.pessoaFisicaId ?? "").trim();
+        const pjId = String(row.pessoaJuridicaId ?? "").trim();
+
+        if (pfId && pfId.toLowerCase() !== "null" && pfId.toLowerCase() !== "undefined") {
+          target.pessoaFisicaId = pfId;
+          delete target.pessoaJuridicaId;
+        } else if (pjId && pjId.toLowerCase() !== "null" && pjId.toLowerCase() !== "undefined") {
+          target.pessoaJuridicaId = pjId;
+          delete target.pessoaFisicaId;
+        } else {
+          delete target.pessoaFisicaId;
+          delete target.pessoaJuridicaId;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Erro no modelo revisor durante a consolidação AI:", err);
+  }
+
+  return drafts;
 }

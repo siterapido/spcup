@@ -62,7 +62,7 @@ const STEPS_IDLE: SubmitStep[] = [
   { id: "upload", label: "Enviar arquivos", status: "pending" },
   { id: "ingest", label: "Processar movimentações", status: "pending" },
   { id: "consolidacao", label: "Consolidar extratos bancários", status: "pending" },
-  { id: "kanban", label: "Abrir kanban", status: "pending" },
+  { id: "kanban", label: "Abrir movimentações", status: "pending" },
 ];
 
 export type PrestacaoSubmitInput = {
@@ -183,16 +183,16 @@ export function isPdfFile(file: File): boolean {
 }
 
 function formatPdfPageProgressLabel(
-  fileIndex: number,
-  totalFiles: number,
+  pdfIndex: number,
+  totalPdfs: number,
   nome: string,
   pagina: number,
   totalPaginas: number,
 ): string {
   const filePart =
-    totalFiles === 1
+    totalPdfs === 1
       ? nome
-      : `Arquivo ${fileIndex + 1} de ${totalFiles} — ${nome}`;
+      : `Extrato ${pdfIndex + 1} de ${totalPdfs} — ${nome}`;
   if (totalPaginas === 1) {
     return filePart;
   }
@@ -435,11 +435,12 @@ export function usePrestacaoSubmit() {
 
           const fileCount = input.files.length;
           const uploadParts: UploadResponseBody[] = [];
+          const consolidarExtratos = input.consolidarExtratos ?? false;
           const pdfJobs: Array<{
             nome: string;
             arquivoId: string;
             paginas: number;
-            fileIndex: number;
+            pdfIndex: number;
             movimentacoes_criadas: number;
             linhas_ignoradas_sem_doc: number;
             paginasVerificar: PaginaVerificarItem[];
@@ -539,7 +540,7 @@ export function usePrestacaoSubmit() {
                   nome: stored.nome,
                   arquivoId: stored.arquivo_id,
                   paginas: stored.paginas,
-                  fileIndex,
+                  pdfIndex: pdfJobs.length,
                   movimentacoes_criadas: 0,
                   linhas_ignoradas_sem_doc: 0,
                   paginasVerificar: [],
@@ -570,11 +571,16 @@ export function usePrestacaoSubmit() {
               );
             }
 
+            const goConsolidacao = shouldRedirectToConsolidacao(
+              consolidarExtratos,
+              countPdfFiles(input.files),
+            );
+
             for (const job of pdfJobs) {
               for (let pagina = 1; pagina <= job.paginas; pagina += 1) {
                 const pageLabel = formatPdfPageProgressLabel(
-                  job.fileIndex,
-                  fileCount,
+                  job.pdfIndex,
+                  pdfJobs.length,
                   job.nome,
                   pagina,
                   job.paginas,
@@ -663,6 +669,25 @@ export function usePrestacaoSubmit() {
                 setProgress(
                   40 + Math.round((45 * paginasFeitas) / Math.max(totalPaginas, 1)),
                 );
+              }
+
+              if (goConsolidacao) {
+                currentSteps = setStepStatus(currentSteps, "consolidacao", "active");
+                setSteps(currentSteps);
+                setStatusLabel(
+                  pdfJobs.length === 1
+                    ? "Consolidando extrato…"
+                    : `Consolidando extrato ${job.pdfIndex + 1} de ${pdfJobs.length}…`,
+                );
+                setProgress(
+                  85 +
+                    Math.round(
+                      (8 * (job.pdfIndex + 1)) / Math.max(pdfJobs.length, 1),
+                    ),
+                );
+                await fetch(`/api/prestacao/sessoes/${sessaoId}/consolidacao/run`, {
+                  method: "POST",
+                });
               }
             }
 
@@ -769,7 +794,7 @@ export function usePrestacaoSubmit() {
           }
 
           const goConsolidacao = shouldRedirectToConsolidacao(
-            input.consolidarExtratos ?? false,
+            consolidarExtratos,
             countPdfFiles(input.files),
           );
 
@@ -782,16 +807,6 @@ export function usePrestacaoSubmit() {
 
           currentSteps = setStepStatus(currentSteps, "ingest", "done");
           if (goConsolidacao) {
-            currentSteps = setStepStatus(currentSteps, "consolidacao", "active");
-            setSteps(currentSteps);
-            setPhase("processing");
-            setStatusLabel("Consolidando extratos…");
-            setProgress(94);
-
-            await fetch(`/api/prestacao/sessoes/${sessaoId}/consolidacao/run`, {
-              method: "POST",
-            });
-
             currentSteps = setStepStatus(currentSteps, "consolidacao", "done");
           }
           currentSteps = setStepStatus(currentSteps, "kanban", "active");
@@ -808,7 +823,7 @@ export function usePrestacaoSubmit() {
 
           setPhase("redirecting");
           setStatusLabel(
-            goConsolidacao ? "Abrindo consolidação…" : "Abrindo kanban…",
+            goConsolidacao ? "Abrindo consolidação…" : "Abrindo movimentações…",
           );
           setProgress(98);
           currentSteps = setStepStatus(currentSteps, "kanban", "done");
@@ -834,7 +849,7 @@ export function usePrestacaoSubmit() {
         }
 
         setPhase("redirecting");
-        setStatusLabel("Abrindo kanban…");
+        setStatusLabel("Abrindo movimentações…");
         setProgress(98);
 
         currentSteps = setStepStatus(currentSteps, "kanban", "done");

@@ -1,4 +1,4 @@
-import { listConsolidacaoForSessao } from "@spc-up/core";
+import { getSessao, listConsolidacaoForSessao } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 
 import {
@@ -15,6 +15,11 @@ export default async function ConsolidacaoPage({
   const { sessaoId } = await params;
   const db = getDb();
   const { eventos, cadastroAlerta } = await listConsolidacaoForSessao(db, sessaoId);
+  const sessao = await getSessao(db, sessaoId);
+
+  if (!sessao) {
+    throw new Error("Sessão não encontrada");
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -25,6 +30,8 @@ export default async function ConsolidacaoPage({
             sessaoId={sessaoId}
             eventos={eventos}
             cadastroAlerta={cadastroAlerta}
+            uf={sessao.uf}
+            exercicio={sessao.exercicio}
           />
         </div>
       </Card>

@@ -66,7 +66,8 @@ describe("persistTransactions", () => {
         },
       ]);
 
-    const values = vi.fn().mockReturnValue({ returning });
+    const onConflictDoNothing = vi.fn().mockReturnValue({ returning });
+    const values = vi.fn().mockReturnValue({ onConflictDoNothing });
     const insert = vi.fn().mockReturnValue({ values });
     const db = { insert } as never;
 
@@ -85,6 +86,39 @@ describe("persistTransactions", () => {
       expect(mov.arquivoIngestaoId).toBe("arquivo-1");
       expect(mov.hashMovimento).toHaveLength(64);
     }
+    expect(insert).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles duplicate conflicts gracefully and returns only newly created records", async () => {
+    const rows = await parseOfx(FIXTURE_PATH);
+    const returning = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: "mov-1",
+          status: MOVIMENTACAO_STATUS.RASCUNHO,
+          arquivoIngestaoId: "arquivo-1",
+          hashMovimento: computeHashMovimento(PRESTADOR_SP.cnpjPrestador, 2025, rows[0]!),
+        },
+      ])
+      .mockResolvedValueOnce([]); // Mock conflict where nothing is returned
+
+    const onConflictDoNothing = vi.fn().mockReturnValue({ returning });
+    const values = vi.fn().mockReturnValue({ onConflictDoNothing });
+    const insert = vi.fn().mockReturnValue({ values });
+    const db = { insert } as never;
+
+    const created = await persistTransactions(
+      db,
+      "SP",
+      2025,
+      "arquivo-1",
+      rows,
+      PRESTADOR_SP,
+    );
+
+    expect(created).toHaveLength(1);
+    expect(created[0]!.id).toBe("mov-1");
     expect(insert).toHaveBeenCalledTimes(2);
   });
 });

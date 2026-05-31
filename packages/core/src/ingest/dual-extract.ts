@@ -1,6 +1,7 @@
 import type { ExtratoExtraction, ExtractStructuredOptions } from "../ai/openrouter";
 import {
   extractTransactionsFromImagePng,
+  extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
   parseExtratoValor,
   resolveExtratoModel,
@@ -8,6 +9,7 @@ import {
   resolveSecondaryExtratoModel,
   scoreExtratoLinhas,
 } from "../ai/openrouter";
+import { resolveModelProfile } from "../ai/model-profile";
 import { MAX_EXTRATO_TEXT_CHARS } from "../ai/openrouter";
 
 export const INGESTAO_PAGINA_STATUS = {
@@ -86,12 +88,17 @@ export function transactionConsensusKey(item: Record<string, unknown>): string |
 
 function indexByKey(
   items: Array<Record<string, unknown>>,
-): Map<string, Record<string, unknown>> {
-  const map = new Map<string, Record<string, unknown>>();
+): Map<string, Record<string, unknown>[]> {
+  const map = new Map<string, Record<string, unknown>[]>();
   for (const item of items) {
     const key = transactionConsensusKey(item);
-    if (key && !map.has(key)) {
-      map.set(key, item);
+    if (key) {
+      let list = map.get(key);
+      if (!list) {
+        list = [];
+        map.set(key, list);
+      }
+      list.push(item);
     }
   }
   return map;
@@ -104,7 +111,7 @@ export type DualDivergente = {
   origem: "primario" | "secundario";
 };
 
-/** Split primary/secondary extractions into consensus matches and divergent lines. */
+/** Split primary/secondary extractions into consensus matches and divergent lines using multi-set pairing. */
 export function partitionDualTransactions(
   primaryItems: Array<Record<string, unknown>>,
   secondaryItems: Array<Record<string, unknown>>,
@@ -114,33 +121,41 @@ export function partitionDualTransactions(
   const consenso: DualExtractCandidate[] = [];
   const divergentes: DualDivergente[] = [];
 
-  for (const [key, itemA] of mapA) {
-    const itemB = mapB.get(key);
-    if (itemB) {
+  for (const [key, listA] of mapA) {
+    const listB = mapB.get(key) ?? [];
+    const minLen = Math.min(listA.length, listB.length);
+    for (let i = 0; i < minLen; i += 1) {
       consenso.push({
-        item: mergeConsensusItem(itemA, itemB),
+        item: mergeConsensusItem(listA[i]!, listB[i]!),
         score: 100,
         consenso: true,
         modeloOrigem: "consenso",
       });
-      mapB.delete(key);
-      continue;
     }
-    divergentes.push({
-      indice: divergentes.length,
-      item: itemA,
-      snapshot: { primario: itemA },
-      origem: "primario",
-    });
+    for (let i = minLen; i < listA.length; i += 1) {
+      divergentes.push({
+        indice: divergentes.length,
+        item: listA[i]!,
+        snapshot: { primario: listA[i]! },
+        origem: "primario",
+      });
+    }
+    mapB.delete(key);
   }
 
-  for (const [, itemB] of mapB) {
-    divergentes.push({
-      indice: divergentes.length,
-      item: itemB,
-      snapshot: { secundario: itemB },
-      origem: "secundario",
-    });
+  for (const [, listB] of mapB) {
+    for (const itemB of listB) {
+      divergentes.push({
+        indice: divergentes.length,
+        item: itemB,
+        snapshot: { secundario: itemB },
+        origem: "secundario",
+      });
+    }
+  }
+
+  for (let i = 0; i < divergentes.length; i += 1) {
+    divergentes[i]!.indice = i;
   }
 
   return { consenso, divergentes };
@@ -188,13 +203,14 @@ export type DualExtractPageInput = {
   filename: string;
   page1Based: number;
   options?: ExtractStructuredOptions;
+  fullBuffer?: Buffer;
 };
 
 /** Run dual-model extraction + consensus + reviewer scoring for one page. */
 export async function dualExtractPage(
   input: DualExtractPageInput,
 ): Promise<DualExtractPageResult> {
-  const { pageBuffer, text, hasEnoughText, filename, page1Based, options } = input;
+  const { pageBuffer, text, hasEnoughText, filename, page1Based, options, fullBuffer } = input;
   const primaryModel = resolveExtratoModel(options);
   const secondaryModel = resolveSecondaryExtratoModel();
   const modo: DualExtractModo = hasEnoughText ? "texto" : "imagem";
@@ -203,28 +219,70 @@ export async function dualExtractPage(
   const extractOpts = { ...options, filename, skipCache: options?.skipCache };
 
   let primaryExtraction: ExtratoExtraction;
-  let secondaryExtraction: ExtratoExtraction;
+  let secondaryExtraction: ExtratoExtraction = { transacoes: [] };
 
-  if (modo === "texto") {
-    [primaryExtraction, secondaryExtraction] = await Promise.all([
-      extractTransactionsFromPdfText(text, { ...extractOpts, model: primaryModel }),
-      extractTransactionsFromPdfText(text, { ...extractOpts, model: secondaryModel }),
-    ]);
-  } else {
-    const png = input.pngBuffer ?? pageBuffer;
-    const imageName = filename.replace(/\.pdf$/i, `_p${page1Based}.png`);
-    [primaryExtraction, secondaryExtraction] = await Promise.all([
-      extractTransactionsFromImagePng(png, {
-        ...extractOpts,
-        model: primaryModel,
-        filename: imageName,
+  if (fullBuffer && resolveModelProfile(primaryModel).pdfBatching === "gemini_native") {
+    const fullPrimary = await extractTransactionsFromPdfFile(fullBuffer, {
+      ...extractOpts,
+      model: primaryModel,
+    });
+    primaryExtraction = {
+      transacoes: fullPrimary.transacoes.filter((tx) => {
+        const p = tx.pagina ?? tx.__batch_pagina;
+        return p == null ? page1Based === 1 : Number(p) === page1Based;
       }),
-      extractTransactionsFromImagePng(png, {
+    };
+
+    if (secondaryModel) {
+      const fullSecondary = await extractTransactionsFromPdfFile(fullBuffer, {
         ...extractOpts,
         model: secondaryModel,
-        filename: imageName,
-      }),
-    ]);
+      });
+      secondaryExtraction = {
+        transacoes: fullSecondary.transacoes.filter((tx) => {
+          const p = tx.pagina ?? tx.__batch_pagina;
+          return p == null ? page1Based === 1 : Number(p) === page1Based;
+        }),
+      };
+    }
+  } else {
+    if (modo === "texto") {
+      const tasks: [Promise<ExtratoExtraction>, Promise<ExtratoExtraction>?] = [
+        extractTransactionsFromPdfText(text, { ...extractOpts, model: primaryModel }),
+      ];
+      if (secondaryModel) {
+        tasks.push(extractTransactionsFromPdfText(text, { ...extractOpts, model: secondaryModel }));
+      }
+      const results = await Promise.all(tasks);
+      primaryExtraction = results[0]!;
+      if (secondaryModel && results[1]) {
+        secondaryExtraction = results[1];
+      }
+    } else {
+      const png = input.pngBuffer ?? pageBuffer;
+      const imageName = filename.replace(/\.pdf$/i, `_p${page1Based}.png`);
+      const tasks: [Promise<ExtratoExtraction>, Promise<ExtratoExtraction>?] = [
+        extractTransactionsFromImagePng(png, {
+          ...extractOpts,
+          model: primaryModel,
+          filename: imageName,
+        }),
+      ];
+      if (secondaryModel) {
+        tasks.push(
+          extractTransactionsFromImagePng(png, {
+            ...extractOpts,
+            model: secondaryModel,
+            filename: imageName,
+          }),
+        );
+      }
+      const results = await Promise.all(tasks);
+      primaryExtraction = results[0]!;
+      if (secondaryModel && results[1]) {
+        secondaryExtraction = results[1];
+      }
+    }
   }
 
   const primaryCount = primaryExtraction.transacoes.length;
@@ -250,7 +308,9 @@ export async function dualExtractPage(
       aceitas: [],
       pendentes: [],
       textoAmostra,
-      motivo: "Nenhuma transação extraída pelos dois modelos.",
+      motivo: secondaryModel
+        ? "Nenhuma transação extraída pelos dois modelos."
+        : "Nenhuma transação extraída pelo modelo.",
       primaryCount,
       secondaryCount,
     };
@@ -275,37 +335,27 @@ export async function dualExtractPage(
     for (let i = 0; i < divergentes.length; i += 1) {
       const div = divergentes[i]!;
       const scored = scores[i] ?? { score: 0, motivo: "Sem score do revisor" };
-      if (scored.score >= threshold) {
-        aceitas.push({
-          item: div.item,
-          score: scored.score,
-          consenso: false,
-          modeloOrigem: "revisor",
-          motivo: scored.motivo,
-        });
-      } else {
-        pendentes.push({
-          item: div.item,
-          score: scored.score,
-          motivo: scored.motivo || "SCORE_BAIXO",
-          snapshot: div.snapshot,
-        });
-      }
+      aceitas.push({
+        item: div.item,
+        score: scored.score,
+        consenso: false,
+        modeloOrigem: "revisor",
+        motivo: scored.motivo,
+      });
     }
   }
 
+  const hasLowScore = aceitas.some((a) => a.score < threshold);
   const statusPagina: IngestaoPaginaStatus =
-    pendentes.length > 0
+    hasLowScore || aceitas.length === 0
       ? INGESTAO_PAGINA_STATUS.VERIFICAR
-      : aceitas.length > 0
-        ? INGESTAO_PAGINA_STATUS.OK
-        : INGESTAO_PAGINA_STATUS.VERIFICAR;
+      : INGESTAO_PAGINA_STATUS.OK;
 
   return {
     statusPagina,
     modo,
     aceitas,
-    pendentes,
+    pendentes: [],
     textoAmostra,
     primaryCount,
     secondaryCount,

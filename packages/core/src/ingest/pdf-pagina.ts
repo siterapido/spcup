@@ -23,6 +23,7 @@ import { persistTransactions } from "./ofx";
 import { rowsFromExtratoTransactions } from "./pdf";
 import { extractPdfText } from "./pdf-text";
 import { renderPdfPageToPng } from "./pdf-render";
+import { assertSinglePdfProcessingInSessao } from "./pdf-sessao-lock";
 import { extractSinglePageBuffer, getPdfPageCount } from "./pdf-split";
 import type { IngestBufferParams } from "./pipeline";
 import type { ParsedTransactionRow, PrestadorContext } from "./types";
@@ -147,7 +148,7 @@ async function upsertIngestaoPagina(
     });
 }
 
-async function finalizeArquivoIfLastPage(
+export async function finalizeArquivoIfLastPage(
   db: Db,
   arquivoId: string,
   pagina: number,
@@ -172,11 +173,14 @@ async function finalizeArquivoIfLastPage(
   const hasNaoTransacional = paginaRows.some(
     (r) => r.status === INGESTAO_PAGINA_STATUS.NAO_TRANSACIONAL,
   );
+  const hasVerificar = paginaRows.some(
+    (r) => r.status === INGESTAO_PAGINA_STATUS.VERIFICAR,
+  );
   const allErro =
     paginaRows.length > 0 &&
     paginaRows.every((r) => r.status === INGESTAO_PAGINA_STATUS.ERRO);
 
-  if (allErro || (movTotal === 0 && !hasOk && !hasNaoTransacional)) {
+  if (allErro || (movTotal === 0 && !hasOk && !hasNaoTransacional && !hasVerificar)) {
     const detail = {
       codigo: "PDF_SEM_TEXTO_E_VISAO_FALHOU" as const,
       mensagem:
@@ -235,6 +239,14 @@ export async function processarPaginaPdfExtrato(
   const filename = arquivo.nomeArquivo;
   ingestLog("info", { fase: "inicio", arquivoId, filename, pagina });
 
+  if (arquivo.sessaoPrestacaoId) {
+    await assertSinglePdfProcessingInSessao(
+      db,
+      arquivo.sessaoPrestacaoId,
+      arquivoId,
+    );
+  }
+
   try {
     const buffer = await readArquivoIngestaoBuffer(arquivo.caminhoStorage);
     const totalPaginas = await getPdfPageCount(buffer);
@@ -280,6 +292,7 @@ export async function processarPaginaPdfExtrato(
       filename,
       page1Based: pagina,
       options: extractOpts,
+      fullBuffer: buffer,
     });
 
     await db
@@ -331,15 +344,24 @@ export async function processarPaginaPdfExtrato(
         consenso: candidate?.consenso ?? false,
         score: candidate?.score ?? 0,
         modelo_primario: primaryModel,
-        modelo_secundario: secondaryModel,
+        modelo_secundario: secondaryModel ?? "none",
         modelo_origem_linha: candidate?.modeloOrigem ?? "revisor",
+        motivo: candidate?.motivo,
+      };
+      const noteStr = candidate?.motivo ? ` [Nota: ${candidate.motivo}]` : "";
+      const batchPagina = Number(candidate?.item?.__batch_pagina ?? pagina);
+      const rowOrigem = row.origemExtracao || {
+        versao: 1 as const,
+        arquivoIngestaoId: arquivoId,
+        nomeArquivo: filename,
+        pagina: Number.isFinite(batchPagina) && batchPagina >= 1 ? batchPagina : 1,
+        indiceLinha: Number(candidate?.item?.indice_linha ?? 1),
       };
       return {
         ...row,
+        descricaoRaw: row.descricaoRaw + noteStr,
         confiancaGlobal: candidate?.score ?? 0,
-        origemExtracao: row.origemExtracao
-          ? { ...row.origemExtracao, dual: dualMeta }
-          : undefined,
+        origemExtracao: { ...rowOrigem, dual: dualMeta },
       };
     });
 

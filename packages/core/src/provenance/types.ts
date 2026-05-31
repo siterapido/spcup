@@ -16,6 +16,7 @@ export type OrigemExtracaoDualMeta = {
   modelo_primario: string;
   modelo_secundario: string;
   modelo_origem_linha: "consenso" | "primario" | "secundario" | "revisor";
+  motivo?: string;
 };
 
 export type OrigemExtracaoV1 = {

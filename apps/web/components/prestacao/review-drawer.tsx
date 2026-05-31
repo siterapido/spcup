@@ -126,6 +126,34 @@ export function ReviewDrawer({
     }
   }
 
+  async function deleteOne() {
+    if (!movimentacaoId) return;
+    if (
+      !window.confirm(
+        "Excluir esta movimentação?\n\nO registro sai da lista, mas permanece no histórico.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/movimentacoes/${movimentacaoId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) {
+        setMessage(json.error ?? "Erro ao excluir");
+        return;
+      }
+      onUpdated();
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const canDelete =
+    detalhe != null &&
+    ["RASCUNHO", "PENDENTE_REVISAO", "REJEITADO"].includes(detalhe.status);
+
   async function confirmOne() {
     if (!movimentacaoId) return;
     setBusy(true);
@@ -343,6 +371,17 @@ export function ReviewDrawer({
                 >
                   Reprocessar IA
                 </Button>
+                {canDelete && (
+                  <Button
+                    type="button"
+                    className="px-3 py-1.5 text-xs"
+                    variant="destructive"
+                    disabled={busy}
+                    onClick={() => void deleteOne()}
+                  >
+                    Excluir
+                  </Button>
+                )}
               </div>
             </div>
           )}

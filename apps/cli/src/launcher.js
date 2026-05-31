@@ -66,7 +66,7 @@ function resolveCliMain() {
   return null;
 }
 
-function loadEnvFile(filePath) {
+function applyEnvFromFile(filePath) {
   if (!existsSync(filePath)) return;
   const raw = readFileSync(filePath, "utf8");
   for (const line of raw.split("\n")) {
@@ -75,15 +75,18 @@ function loadEnvFile(filePath) {
     const eq = trimmed.indexOf("=");
     if (eq < 0) continue;
     const key = trimmed.slice(0, eq).trim();
-    if (process.env[key] == null) {
-      process.env[key] = trimmed.slice(eq + 1).trim();
-    }
+    const value = trimmed.slice(eq + 1).trim();
+    if (value === "") continue;
+    process.env[key] = value;
   }
 }
 
 function loadDefaultEnv(root) {
-  loadEnvFile(ENV_FILE);
-  if (root) loadEnvFile(path.join(root, ".env"));
+  applyEnvFromFile(ENV_FILE);
+  if (root) {
+    applyEnvFromFile(path.join(root, ".env"));
+    applyEnvFromFile(path.join(root, ".env.local"));
+  }
 }
 
 function ensureNode() {

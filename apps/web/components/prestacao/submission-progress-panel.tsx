@@ -15,7 +15,7 @@ const SUBMIT_STEP_SHORT_LABELS: Record<SubmitStepId, string> = {
   upload: "Upload",
   ingest: "Ingestão",
   consolidacao: "Extratos",
-  kanban: "Kanban",
+  kanban: "Movimentações",
 };
 
 function submitStepLabel(step: SubmitStep): string {
@@ -109,7 +109,7 @@ function PaginasVerificarBanner({
       </p>
       <p className="mt-1 text-xs text-amber-900/90">
         A extração continuou, mas algumas páginas ficaram com linhas incertas. Revise antes
-        de seguir para o kanban.
+        de seguir para a lista de movimentações.
       </p>
       <ul className="mt-2 space-y-1">
         {items.map((item) => (
@@ -135,7 +135,7 @@ function PaginasVerificarBanner({
       </ul>
       {onContinue ? (
         <Button type="button" className="mt-3 h-8 px-3 text-sm" onClick={onContinue}>
-          {continueLabel ?? "Continuar para o kanban"}
+          {continueLabel ?? "Continuar para movimentações"}
         </Button>
       ) : null}
     </div>

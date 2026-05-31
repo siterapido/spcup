@@ -18,6 +18,17 @@ const BAHIA_PDFS = [
   "EXTRATO TOTAL JANEIRO (1) (1).pdf",
 ] as const;
 
+const pdfsToRun = (): readonly string[] => {
+  const only = process.env.SPC_TEST_PDF?.trim();
+  if (!only) return BAHIA_PDFS;
+  if (!BAHIA_PDFS.includes(only as (typeof BAHIA_PDFS)[number])) {
+    throw new Error(
+      `SPC_TEST_PDF inválido: ${only}. Use: ${BAHIA_PDFS.join(" | ")}`,
+    );
+  }
+  return [only];
+};
+
 const GEMINI_MODEL = "google/gemini-3.5-flash";
 const KIMI_MODEL = "moonshotai/kimi-k2.6";
 const MISTRAL_OCR_PLUGIN = [{ id: "file-parser", pdf: { engine: "mistral-ocr" } }];
@@ -52,7 +63,7 @@ function restoreEnv(key: string, prev: string | undefined) {
   }
 }
 
-describe.runIf(runIntegration)("Gemini extrato (integration)", () => {
+describe.runIf(runIntegration).sequential("Gemini extrato (integration)", () => {
   const prevCache = process.env.OPENROUTER_CACHE;
   const prevPdfModel = process.env.OPENROUTER_PDF_MODEL;
 
@@ -67,7 +78,7 @@ describe.runIf(runIntegration)("Gemini extrato (integration)", () => {
     expect(resolveExtratoModel()).toBe(GEMINI_MODEL);
   });
 
-  it.each(BAHIA_PDFS)(
+  it.each(pdfsToRun())(
     "extracts transactions from %s without mistral-ocr",
     async (filename) => {
       process.env.OPENROUTER_CACHE = "0";
@@ -108,9 +119,9 @@ describe.runIf(runIntegration)("Gemini extrato (integration)", () => {
   );
 });
 
-describe.runIf(runIntegration && process.env.SPC_TEST_KIMI === "1")(
-  "Kimi extrato + mistral-ocr (integration)",
-  () => {
+describe
+  .runIf(runIntegration && process.env.SPC_TEST_KIMI === "1")
+  .sequential("Kimi extrato + mistral-ocr (integration)", () => {
     const prevCache = process.env.OPENROUTER_CACHE;
     const prevPdfModel = process.env.OPENROUTER_PDF_MODEL;
 
@@ -119,7 +130,7 @@ describe.runIf(runIntegration && process.env.SPC_TEST_KIMI === "1")(
       restoreEnv("OPENROUTER_PDF_MODEL", prevPdfModel);
     });
 
-    it.each(BAHIA_PDFS)(
+    it.each(pdfsToRun())(
       "extracts transactions from %s with mistral-ocr on every OpenRouter call",
       async (filename) => {
         process.env.OPENROUTER_CACHE = "0";
@@ -150,3 +161,34 @@ describe.runIf(runIntegration && process.env.SPC_TEST_KIMI === "1")(
     );
   },
 );
+
+describe.runIf(runIntegration).sequential("Reviewer scoring (integration)", () => {
+  it("scores transaction lines using reviewer model", async () => {
+    const model = process.env.OPENROUTER_MODEL_REVIEWER || "openai/gpt-5.5";
+    const sampleText = "30/01/2025 PIX RECEBIDO JOAO SILVA R$ 150,00";
+    const candidates = [
+      {
+        data: "2025-01-30",
+        valor: 150.0,
+        direcao: "ENTRADA",
+        descricao: "PIX RECEBIDO JOAO SILVA",
+        nome: "JOAO SILVA",
+      },
+      {
+        data: "2025-01-30",
+        valor: 999.0,
+        direcao: "SAIDA",
+        descricao: "PIX RECEBIDO JOAO SILVA",
+        nome: "JOAO SILVA",
+      }
+    ];
+
+    const { scoreExtratoLinhas } = await import("./openrouter");
+    const results = await scoreExtratoLinhas(sampleText, candidates, { model });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]!.score).toBeGreaterThanOrEqual(80);
+    expect(results[1]!.score).toBeLessThan(80);
+  });
+});
+

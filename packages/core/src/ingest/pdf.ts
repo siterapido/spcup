@@ -124,8 +124,22 @@ export function rowFromExtratoItem(
     throw new Error(`Direcao invalida: ${direcao}`);
   }
 
+  const nome = item.nome != null ? String(item.nome).trim() : "";
   const descricao = String(item.descricao ?? "").trim();
-  const descricaoRaw = descricao.length > 0 ? `${descricao} ${docLabel}` : docLabel;
+  let descricaoRaw = "";
+  if (descricao && nome) {
+    if (descricao.toUpperCase().includes(nome.toUpperCase())) {
+      descricaoRaw = `${descricao} ${docLabel}`;
+    } else {
+      descricaoRaw = `${descricao} ${nome} ${docLabel}`;
+    }
+  } else if (nome) {
+    descricaoRaw = `${nome} ${docLabel}`;
+  } else if (descricao) {
+    descricaoRaw = `${descricao} ${docLabel}`;
+  } else {
+    descricaoRaw = docLabel;
+  }
 
   return {
     dataMovimento: parseExtractionDate(String(item.data)),

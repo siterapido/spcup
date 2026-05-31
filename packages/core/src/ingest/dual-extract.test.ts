@@ -84,11 +84,12 @@ describe("partitionDualTransactions", () => {
     expect(divergentes.some((d) => d.origem === "secundario")).toBe(true);
   });
 
-  it("deduplicates duplicate keys within the same model", () => {
+  it("pairs multiple identical keys and marks excess as divergent", () => {
     const dup = { ...base, nome: "Dup" };
     const { consenso, divergentes } = partitionDualTransactions([dup, dup], [dup]);
     expect(consenso).toHaveLength(1);
-    expect(divergentes).toHaveLength(0);
+    expect(divergentes).toHaveLength(1);
+    expect(divergentes[0]!.origem).toBe("primario");
   });
 });
 

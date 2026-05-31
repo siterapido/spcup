@@ -4,6 +4,7 @@ export type IngestErrorCodigo =
   | "PDF_INVALIDO"
   | "PDF_MUITAS_PAGINAS"
   | "PDF_SEM_TEXTO_E_VISAO_FALHOU"
+  | "PDF_FILA_OCUPADA"
   | "STORAGE_FALHA"
   | "INGESTAO_DESCONHECIDA";
 
@@ -22,6 +23,8 @@ const MENSAGENS: Record<IngestErrorCodigo, string> = {
   PDF_MUITAS_PAGINAS: "Extrato com muitas páginas. Divida o arquivo.",
   PDF_SEM_TEXTO_E_VISAO_FALHOU:
     "Não foi possível extrair dados deste PDF (scan ou formato não suportado).",
+  PDF_FILA_OCUPADA:
+    "Outro extrato PDF está em processamento. Processe um arquivo por vez.",
   STORAGE_FALHA: "Falha ao salvar o arquivo. Tente novamente.",
   INGESTAO_DESCONHECIDA: "Erro inesperado no processamento.",
 };

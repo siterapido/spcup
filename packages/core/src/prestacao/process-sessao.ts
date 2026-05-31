@@ -74,6 +74,10 @@ export async function processSessaoPdfArquivos(
     avisos.push("Nenhum PDF pendente de processamento.");
   }
 
+  let consolidacao: ProcessSessaoResult["consolidacao"];
+  const runConsolidacao =
+    !options?.skipConsolidacao && sessao.consolidarExtratos;
+
   for (const arq of pending) {
     const paginas: ProcessarPaginaPdfResult[] = [];
     try {
@@ -95,6 +99,10 @@ export async function processSessaoPdfArquivos(
         pagina += 1;
       }
       arquivos.push({ arquivoId: arq.id, nome: arq.nomeArquivo, paginas });
+
+      if (runConsolidacao) {
+        consolidacao = await consolidateSession(db, sessaoId);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       arquivos.push({
@@ -106,11 +114,12 @@ export async function processSessaoPdfArquivos(
     }
   }
 
-  let consolidacao: ProcessSessaoResult["consolidacao"];
   if (options?.skipConsolidacao) {
     consolidacao = { skipped: true, reason: "SKIP_FLAG" };
-  } else {
+  } else if (!runConsolidacao) {
     consolidacao = await consolidateSession(db, sessaoId);
+  } else if (consolidacao == null) {
+    consolidacao = { skipped: true, reason: "NO_PDF_PROCESSED" };
   }
 
   return {

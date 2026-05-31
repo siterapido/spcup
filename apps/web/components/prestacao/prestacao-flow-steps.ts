@@ -8,6 +8,6 @@ export const WIZARD_STEPS = [
 
 export const END_TO_END_FLOW_STEPS = [
   ...WIZARD_STEPS,
-  { id: 6, label: "Kanban" },
+  { id: 6, label: "Movimentações" },
   { id: 7, label: "Export" },
 ] as const;
