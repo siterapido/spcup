@@ -11,6 +11,13 @@ export async function POST(
   const authResult = await requireSession();
   if ("error" in authResult) return authResult.error;
 
+  if (process.env.DISABLE_OPENROUTER === "true") {
+    return NextResponse.json(
+      { error: "O serviço de reprocessamento por IA (OpenRouter) está desativado nesta instância." },
+      { status: 400 },
+    );
+  }
+
   const { id } = await context.params;
   const db = getDb();
 
