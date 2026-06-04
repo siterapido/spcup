@@ -114,4 +114,21 @@ describe("extractStructuredFromPdf", () => {
 
     expect(mockFetch).not.toHaveBeenCalled();
   });
+
+  it("throws error when DISABLE_OPENROUTER is true", async () => {
+    const pdfPath = await writePdf();
+    const mockFetch = vi.fn();
+    process.env.DISABLE_OPENROUTER = "true";
+
+    try {
+      await expect(
+        extractStructuredFromPdf(pdfPath, {
+          fetch: mockFetch,
+          apiKey: "sk-or-v1-test-key",
+        })
+      ).rejects.toThrow(/OpenRouter está desativado/);
+    } finally {
+      delete process.env.DISABLE_OPENROUTER;
+    }
+  });
 });

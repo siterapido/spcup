@@ -7,7 +7,7 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_PDF_TIMEOUT_MS = 180_000;
 const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = 1000;
-const DEFAULT_MAX_TOKENS = 16384;
+const DEFAULT_MAX_TOKENS = 8192;
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,11 +33,30 @@ export function resolveMaxTokens(): number {
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_TOKENS;
 }
 
+const DEFAULT_SCORE_MAX_TOKENS = 1024;
+
+export function resolveScoreMaxTokens(): number {
+  const raw = process.env.OPENROUTER_SCORE_MAX_TOKENS;
+  if (raw == null || raw.trim() === "") {
+    return DEFAULT_SCORE_MAX_TOKENS;
+  }
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_SCORE_MAX_TOKENS;
+}
+
 export function withMaxTokens(payload: Record<string, unknown>): Record<string, unknown> {
   return {
     temperature: 0.0,
     ...payload,
     max_tokens: resolveMaxTokens(),
+  };
+}
+
+export function withScoreMaxTokens(payload: Record<string, unknown>): Record<string, unknown> {
+  return {
+    temperature: 0.0,
+    ...payload,
+    max_tokens: resolveScoreMaxTokens(),
   };
 }
 
@@ -51,6 +70,11 @@ export async function callOpenRouterJson(
   payload: Record<string, unknown>,
   options?: ExtractStructuredOptions,
 ): Promise<OpenRouterJsonResult> {
+  if (process.env.DISABLE_OPENROUTER === "true") {
+    throw new Error(
+      "OpenRouter está desativado (DISABLE_OPENROUTER=true). Ative o NotebookLM (USE_NOTEBOOKLM=true) ou habilite o OpenRouter (DISABLE_OPENROUTER=false)."
+    );
+  }
   const apiKey = resolveOpenRouterApiKey(options?.apiKey);
   const fetchFn = options?.fetch ?? fetch;
   const sleepFn = options?.sleep ?? defaultSleep;
