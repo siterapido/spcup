@@ -1,9 +1,8 @@
 import { pessoaFisica, pessoaJuridica, type Db } from "@spc-up/db";
 import type { ConsolidacaoEventDraft, MovimentacaoCandidate } from "./types";
 import { runConsolidacaoCritique } from "../ai/openrouter";
-
-const AMBIGUOUS_MIN = 0.40;
-const AMBIGUOUS_MAX = 0.85;
+import { hasPessoaVinculo } from "./auto";
+import { getConfiancaLimiarAlta, getConfiancaLimiarBaixa } from "./thresholds";
 
 type SessaoContext = { uf: string; exercicio: number };
 
@@ -14,17 +13,26 @@ export async function enrichAmbiguousWithAi(
   _movs: MovimentacaoCandidate[],
   sessaoCtx: SessaoContext,
 ): Promise<ConsolidacaoEventDraft[]> {
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (process.env.DISABLE_OPENROUTER === "true" || !process.env.OPENROUTER_API_KEY) {
     return drafts;
   }
 
-  // 1. Filter candidates eligible for AI match-review (low confidence or missing registry link)
-  const eligibleDrafts = drafts.filter(
-    (d) =>
-      d.confianca >= AMBIGUOUS_MIN &&
-      d.confianca <= AMBIGUOUS_MAX &&
-      d.linhas.length >= 1
-  );
+  const limiarAlta = getConfiancaLimiarAlta();
+  const limiarBaixa = getConfiancaLimiarBaixa();
+
+  // IA complementa regras: tudo abaixo do limiar de auto-aprovação (cruzamento PDF + cadastro + nomes).
+  const eligibleDrafts = drafts.filter((d) => {
+    if (d.linhas.length < 1) {
+      return false;
+    }
+    if (d.confianca >= limiarAlta) {
+      return false;
+    }
+    if (hasPessoaVinculo(d) && d.confianca < limiarBaixa) {
+      return false;
+    }
+    return true;
+  });
 
   if (eligibleDrafts.length === 0) {
     return drafts;
