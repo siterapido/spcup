@@ -26,7 +26,14 @@ export type ProcessSessaoResult = {
   paginasVerificar: number;
   consolidacao?:
     | { skipped: true; reason: string }
-    | { skipped: false; eventos: number };
+    | {
+        skipped: false;
+        eventos: number;
+        autoAprovados: number;
+        paraRevisar: number;
+        limiarAutoAprovacao: number;
+        errosAutoAprovacao?: string[];
+      };
   avisos: string[];
 };
 
@@ -46,11 +53,17 @@ async function listPendingPdfArquivos(db: Db, sessaoId: string) {
   return rows.filter((r) => /\.pdf$/i.test(r.nomeArquivo));
 }
 
+import { processSessaoWithNotebookLM } from "./process-sessao-notebooklm";
+
 export async function processSessaoPdfArquivos(
   db: Db,
   sessaoId: string,
   options?: { skipConsolidacao?: boolean },
 ): Promise<ProcessSessaoResult> {
+  if (process.env.USE_NOTEBOOKLM !== "false") {
+    return processSessaoWithNotebookLM(db, sessaoId, options);
+  }
+
   const sessao = await getSessao(db, sessaoId);
   if (!sessao?.diretorioEstadual) {
     throw new Error("Sessão não encontrada ou sem diretório estadual");

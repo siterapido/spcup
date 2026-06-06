@@ -140,6 +140,14 @@ export async function ingestFile(
   }
 
   try {
+    if (process.env.USE_NOTEBOOKLM !== "false") {
+      await db
+        .update(arquivoIngestao)
+        .set({ status: ARQUIVO_INGESTAO_STATUS.PENDENTE })
+        .where(eq(arquivoIngestao.id, arquivo.id));
+      return 0;
+    }
+
     const suffix = path.extname(source).toLowerCase();
     let createdCount: number;
 
@@ -285,6 +293,17 @@ export async function ingestFileBuffer(
   }
 
   try {
+    if (process.env.USE_NOTEBOOKLM !== "false") {
+      await db
+        .update(arquivoIngestao)
+        .set({ status: ARQUIVO_INGESTAO_STATUS.PENDENTE })
+        .where(eq(arquivoIngestao.id, arquivo.id));
+      return {
+        movimentacoes_criadas: 0,
+        ids: [],
+      };
+    }
+
     let matchedIds: string[];
     let linhasIgnoradasSemDoc: number | undefined;
 
