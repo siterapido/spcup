@@ -62,10 +62,14 @@ export async function POST(
       {
         error: "Nenhum arquivo foi processado com sucesso.",
         ...payload,
+        useNotebookLm: process.env.USE_NOTEBOOKLM !== "false",
       },
       { status: 422 },
     );
   }
 
-  return NextResponse.json(payload);
+  return NextResponse.json({
+    ...payload,
+    useNotebookLm: process.env.USE_NOTEBOOKLM !== "false",
+  });
 }
