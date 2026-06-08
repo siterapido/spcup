@@ -1,3 +1,5 @@
+import type { OrigemExtracaoV1, BboxNorm } from "../provenance/types";
+
 export type PlanilhaLinhaStatus =
   | "pronta"
   | "pendente"
@@ -19,7 +21,11 @@ export type PlanilhaOrigem = {
   nomeArquivo: string | null;
   pagina?: number;
   descricaoRaw: string;
+  nrExtratoBancario: string | null;
   papel?: string;
+  origemExtracao?: OrigemExtracaoV1 | null;
+  indiceLinha?: number;
+  bbox?: BboxNorm;
 };
 
 export type PlanilhaLinha = {
@@ -29,9 +35,17 @@ export type PlanilhaLinha = {
   valor: string;
   direcao: string;
   descricao: string;
+  descricaoRaw: string;
+  nrExtratoBancario: string | null;
   confianca: number;
   status: PlanilhaLinhaStatus;
   pessoa: PlanilhaPessoa | null;
+  /** Nome efetivo para exibição (persistido ou derivado) */
+  nome: string;
+  /** Valor persistido em nome_contraparte; null = só derivado */
+  nomeContraparte: string | null;
+  /** true quando nome vem só da derivação das origens */
+  nomeDerivado: boolean;
   origens: PlanilhaOrigem[];
   /** Metadados internos para deriveLinhaStatus / escrita */
   eventoStatus?: string;
@@ -44,6 +58,7 @@ export type PlanilhaResumo = {
   total: number;
   prontas: number;
   semPessoa: number;
+  semNome: number;
   baixaConfianca: number;
   mergePendente: number;
   extracaoDuvidosa: number;

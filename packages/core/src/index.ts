@@ -90,6 +90,7 @@ export {
 export {
   processSessaoPdfArquivos,
   type ProcessPdfArquivoResult,
+  type ProcessSessaoPdfOptions,
   type ProcessSessaoResult,
 } from "./prestacao/process-sessao";
 export {
@@ -108,6 +109,17 @@ export {
   type OrigemExtracaoV1,
   type OrigemRef,
 } from "./provenance/types";
+export {
+  agruparItensEmLinhas,
+  localizarLinhaPdf,
+} from "./pdf-locate/localizar-linha-pdf";
+export {
+  type LinhaPdfAgrupada,
+  type LocalizarLinhaPdfInput,
+  type LocalizarLinhaPdfResult,
+  type PdfPaginaTexto,
+  type PdfTextItem,
+} from "./pdf-locate/types";
 export { clampBbox, validateOrigemExtracao } from "./provenance/validate";
 export { origemFromExtratoItem, type AttachExtracaoCtx } from "./provenance/attach-extracao";
 export { buildOrigemAtributos, regraFromJustificativa } from "./provenance/build-origem-atributos";
@@ -252,6 +264,12 @@ export {
   type ApplyDeterministicMatchOptions,
 } from "./match/rules";
 export {
+  extractNomeContraparte,
+  deriveNomeContraparte,
+  resolveNomeEffective,
+  isNomeContraparteVazio,
+} from "./match/nome-contraparte";
+export {
   evaluateMovimentacaoWithAi,
   type AiMatchResult,
   type EvaluateAiMatchInput,
@@ -336,14 +354,52 @@ export {
   mapConsolidacaoEventoToLinha,
   mapMovimentacaoToLinha,
 } from "./planilha/list";
-export type { PlanilhaLinha, PlanilhaPayload, PlanilhaResumo } from "./planilha/types";
+export type {
+  PlanilhaLinha,
+  PlanilhaOrigem,
+  PlanilhaPayload,
+  PlanilhaResumo,
+} from "./planilha/types";
 export { isLinhaPronta, buildResumo, deriveLinhaStatus } from "./planilha/status";
 export {
   applyPlanilhaLote,
   planilhaLinhaBelongsToSessao,
   resolvePlanilhaMerge,
   updatePlanilhaLinhaPessoa,
+  updatePlanilhaLinhaNome,
   confirmarExtracaoPlanilhaLinha,
 } from "./planilha/mutations";
 export { isExtracaoBloqueando } from "./planilha/status";
+export {
+  parseMesFilter,
+  ParseMesFilterError,
+} from "./movimentacoes-aprovadas/parse-mes";
+export {
+  listMovimentacoesAprovadas,
+  listAllMovimentacoesAprovadas,
+  mapMovimentacaoToAprovadaItem,
+  maskPessoaDocumento,
+  resolvePrestadorNome,
+  APPROVED_STATUSES,
+  DEFAULT_LIMIT,
+  DEFAULT_PAGE,
+  MAX_EXPORT_ROWS,
+  MAX_LIMIT,
+} from "./movimentacoes-aprovadas/list";
+export {
+  buildMovimentacoesCsvBuffer,
+  buildMovimentacoesXlsxBuffer,
+  MOVIMENTACOES_EXPORT_COLUMNS,
+} from "./movimentacoes-aprovadas/export-list";
+export { buildEspelhoSpcaBufferForMovimentacaoIds } from "./movimentacoes-aprovadas/export-espelho";
+export type {
+  MesFilter,
+  MovimentacaoAprovadaItem,
+  MovimentacaoAprovadaStatus,
+  MovimentacoesAprovadasExportFilters,
+  MovimentacoesAprovadasFilters,
+  MovimentacoesAprovadasPayload,
+  MovimentacoesAprovadasPrestador,
+  MovimentacoesAprovadasResumo,
+} from "./movimentacoes-aprovadas/types";
 

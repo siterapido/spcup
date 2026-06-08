@@ -10,6 +10,10 @@ import type { ConsolidacaoListItem } from "../consolidacao/queries";
 import { listConsolidacaoForSessao } from "../consolidacao/queries";
 import { getSessao } from "../prestacao/sessao";
 import type { OrigemExtracaoV1 } from "../provenance/types";
+import {
+  isNomeContraparteVazio,
+  resolveNomeEffective,
+} from "../match/nome-contraparte";
 import { cleanDescricao } from "./descricao";
 import { buildResumo, deriveLinhaStatus } from "./status";
 import type {
@@ -31,6 +35,7 @@ export type ConsolidacaoEventoLinhaInput = {
   justificativa: string | null;
   pessoaFisicaId?: string | null;
   pessoaJuridicaId?: string | null;
+  nomeContraparte?: string | null;
   extracaoConfirmada?: boolean;
   pessoa: {
     nome: string;
@@ -41,6 +46,7 @@ export type ConsolidacaoEventoLinhaInput = {
     movimentacaoId: string;
     papel: string;
     descricaoRaw: string;
+    nrExtratoBancario: string | null;
     nomeArquivo: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
   }>;
@@ -52,15 +58,34 @@ export type MovimentacaoLinhaInput = {
   valor: string;
   direcao: string;
   descricaoRaw: string;
+  nrExtratoBancario: string | null;
   confiancaGlobal: number;
   pessoaFisica: { id: string; nome: string; cpf: string } | null;
   pessoaJuridica: { id: string; razaoSocial: string; cnpj: string } | null;
+  nomeContraparte?: string | null;
   nomeArquivo: string | null;
   arquivoIngestaoId?: string | null;
   origemExtracao: OrigemExtracaoV1 | null;
   statusPaginaVerificar?: boolean;
   extracaoConfirmada?: boolean;
 };
+
+function buildNomeFields(
+  persistido: string | null | undefined,
+  origens: PlanilhaOrigem[],
+): Pick<PlanilhaLinha, "nome" | "nomeContraparte" | "nomeDerivado"> {
+  const origensInput = origens.map((o) => ({
+    descricaoRaw: o.descricaoRaw,
+    papel: o.papel,
+  }));
+  const nome = resolveNomeEffective(persistido, origensInput);
+  const derivado = !persistido || isNomeContraparteVazio(persistido);
+  return {
+    nome,
+    nomeContraparte: persistido ?? null,
+    nomeDerivado: derivado && !isNomeContraparteVazio(nome),
+  };
+}
 
 function mapPessoaFromConsolidacao(
   evento: ConsolidacaoEventoLinhaInput,
@@ -100,13 +125,27 @@ function origensFromLinhas(
     nomeArquivo: l.nomeArquivo,
     pagina: l.origemExtracao?.pagina,
     descricaoRaw: l.descricaoRaw,
+    nrExtratoBancario: l.nrExtratoBancario,
     papel: l.papel,
+    origemExtracao: l.origemExtracao,
+    indiceLinha: l.origemExtracao?.indiceLinha,
+    bbox: l.origemExtracao?.bbox,
   }));
 }
 
 function descricaoFromLinhas(linhas: ConsolidacaoEventoLinhaInput["linhas"]): string {
   const primary = linhas.find((l) => l.papel === "COMPLETO") ?? linhas[0];
   return cleanDescricao(primary?.descricaoRaw ?? "");
+}
+
+function descricaoRawFromLinhas(linhas: ConsolidacaoEventoLinhaInput["linhas"]): string {
+  const primary = linhas.find((l) => l.papel === "COMPLETO") ?? linhas[0];
+  return primary?.descricaoRaw ?? "";
+}
+
+function nrExtratoBancarioFromLinhas(linhas: ConsolidacaoEventoLinhaInput["linhas"]): string | null {
+  const primary = linhas.find((l) => l.papel === "COMPLETO") ?? linhas[0];
+  return primary?.nrExtratoBancario ?? null;
 }
 
 function isExtracaoDuvidosaConsolidacao(
@@ -133,6 +172,7 @@ export function mapConsolidacaoEventoToLinha(
     evento.confianca,
   );
   const extracaoDuvidosa = extracaoDuvidosaRaw && !extracaoConfirmada;
+  const nomeFields = buildNomeFields(evento.nomeContraparte, origens);
 
   return {
     id: evento.id,
@@ -141,6 +181,8 @@ export function mapConsolidacaoEventoToLinha(
     valor: evento.valor,
     direcao: evento.direcao,
     descricao: descricaoFromLinhas(evento.linhas),
+    descricaoRaw: descricaoRawFromLinhas(evento.linhas),
+    nrExtratoBancario: nrExtratoBancarioFromLinhas(evento.linhas),
     confianca: evento.confianca,
     status: deriveLinhaStatus({
       eventoStatus: evento.status,
@@ -151,6 +193,7 @@ export function mapConsolidacaoEventoToLinha(
       extracaoConfirmada,
     }),
     pessoa,
+    ...nomeFields,
     origens,
     eventoStatus: evento.status,
     extracaoDuvidosa,
@@ -166,6 +209,21 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     extracaoConfirmada: false,
   });
   const extracaoDuvidosa = extracaoDuvidosaRaw && !extracaoConfirmada;
+  const origens: PlanilhaOrigem[] = [
+    {
+      movimentacaoId: mov.id,
+      arquivoIngestaoId:
+        mov.origemExtracao?.arquivoIngestaoId ?? mov.arquivoIngestaoId ?? undefined,
+      nomeArquivo: mov.nomeArquivo,
+      pagina: mov.origemExtracao?.pagina,
+      descricaoRaw: mov.descricaoRaw,
+      nrExtratoBancario: mov.nrExtratoBancario,
+      origemExtracao: mov.origemExtracao,
+      indiceLinha: mov.origemExtracao?.indiceLinha,
+      bbox: mov.origemExtracao?.bbox,
+    },
+  ];
+  const nomeFields = buildNomeFields(mov.nomeContraparte, origens);
 
   return {
     id: mov.id,
@@ -174,6 +232,8 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     valor: mov.valor,
     direcao: mov.direcao,
     descricao: cleanDescricao(mov.descricaoRaw),
+    descricaoRaw: mov.descricaoRaw,
+    nrExtratoBancario: mov.nrExtratoBancario,
     confianca: mov.confiancaGlobal,
     status: deriveLinhaStatus({
       origemCount: 1,
@@ -183,16 +243,8 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
       extracaoConfirmada,
     }),
     pessoa,
-    origens: [
-      {
-        movimentacaoId: mov.id,
-        arquivoIngestaoId:
-          mov.origemExtracao?.arquivoIngestaoId ?? mov.arquivoIngestaoId ?? undefined,
-        nomeArquivo: mov.nomeArquivo,
-        pagina: mov.origemExtracao?.pagina,
-        descricaoRaw: mov.descricaoRaw,
-      },
-    ],
+    ...nomeFields,
+    origens,
     extracaoDuvidosa,
     extracaoConfirmada,
   };
@@ -237,9 +289,11 @@ function dbMovToLinhaInput(
     valor: String(mov.valor),
     direcao: mov.direcao,
     descricaoRaw: mov.descricaoRaw,
+    nrExtratoBancario: mov.nrExtratoBancario,
     confiancaGlobal: mov.confiancaGlobal,
     pessoaFisica: mov.pessoaFisica,
     pessoaJuridica: mov.pessoaJuridica,
+    nomeContraparte: mov.nomeContraparte,
     nomeArquivo: mov.arquivoIngestao?.nomeArquivo ?? null,
     arquivoIngestaoId: mov.arquivoIngestaoId,
     origemExtracao: (mov.origemExtracao as OrigemExtracaoV1 | null) ?? null,

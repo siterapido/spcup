@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildResumo } from "./status";
 import { deriveLinhaStatus } from "./status";
 import { mapConsolidacaoEventoToLinha, mapMovimentacaoToLinha } from "./list";
 
@@ -47,7 +48,62 @@ describe("mapConsolidacaoEventoToLinha", () => {
     expect(linha.origens).toHaveLength(2);
     expect(linha.origens[0]?.arquivoIngestaoId).toBe("a1");
     expect(linha.origens[1]?.arquivoIngestaoId).toBe("a2");
+    expect(linha.origens[0]?.origemExtracao?.arquivoIngestaoId).toBe("a1");
+    expect(linha.origens[0]?.indiceLinha).toBe(2);
+    expect(linha.origens[1]?.origemExtracao?.arquivoIngestaoId).toBe("a2");
+    expect(linha.origens[1]?.indiceLinha).toBe(1);
     expect(linha.eventoStatus).toBe("PENDENTE");
+  });
+
+  it("deriva nome da regra D (PIX com nome + completo com doc)", () => {
+    const linha = mapConsolidacaoEventoToLinha({
+      id: "ev-nome",
+      status: "APROVADO",
+      dataMovimento: "2025-01-15",
+      valor: "50.00",
+      direcao: "SAIDA",
+      confianca: 0.9,
+      justificativa: null,
+      pessoa: null,
+      linhas: [
+        {
+          movimentacaoId: "m1",
+          papel: "PIX",
+          descricaoRaw: "GABRIEL REIS DA SILVA",
+          nomeArquivo: "pix.pdf",
+          origemExtracao: null,
+        },
+        {
+          movimentacaoId: "m2",
+          papel: "COMPLETO",
+          descricaoRaw: "GABRIEL REIS DA SILVA CPF 12345678901",
+          nomeArquivo: "total.pdf",
+          origemExtracao: null,
+        },
+      ],
+    });
+    expect(linha.nome).toBe("GABRIEL REIS DA SILVA");
+    expect(linha.nomeContraparte).toBeNull();
+    expect(linha.nomeDerivado).toBe(true);
+  });
+
+  it("usa nomeContraparte persistido quando presente", () => {
+    const linha = mapMovimentacaoToLinha({
+      id: "m-nome",
+      dataMovimento: "2025-01-01",
+      valor: "10.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX",
+      nomeContraparte: "MARIA SILVA",
+      confiancaGlobal: 0.85,
+      pessoaFisica: null,
+      pessoaJuridica: null,
+      nomeArquivo: "extrato.pdf",
+      origemExtracao: null,
+    });
+    expect(linha.nome).toBe("MARIA SILVA");
+    expect(linha.nomeContraparte).toBe("MARIA SILVA");
+    expect(linha.nomeDerivado).toBe(false);
   });
 
   it("deriveLinhaStatus: APROVADO com pessoa vira pronta", () => {
@@ -128,5 +184,36 @@ describe("mapMovimentacaoToLinha", () => {
       origemExtracao: null,
     });
     expect(linha.status).toBe("pendente");
+  });
+});
+
+describe("buildResumo semNome", () => {
+  it("conta linhas sem nome efetivo", () => {
+    const comNome = mapMovimentacaoToLinha({
+      id: "m1",
+      dataMovimento: "2025-01-01",
+      valor: "10.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "DEPOSITO MARIA SILVA",
+      confiancaGlobal: 0.85,
+      pessoaFisica: null,
+      pessoaJuridica: null,
+      nomeArquivo: "extrato.pdf",
+      origemExtracao: null,
+    });
+    const semNome = mapMovimentacaoToLinha({
+      id: "m2",
+      dataMovimento: "2025-01-02",
+      valor: "20.00",
+      direcao: "SAIDA",
+      descricaoRaw: "CRED PIX",
+      confiancaGlobal: 0.8,
+      pessoaFisica: null,
+      pessoaJuridica: null,
+      nomeArquivo: "extrato.pdf",
+      origemExtracao: null,
+    });
+    const resumo = buildResumo([comNome, semNome], false);
+    expect(resumo.semNome).toBe(1);
   });
 });

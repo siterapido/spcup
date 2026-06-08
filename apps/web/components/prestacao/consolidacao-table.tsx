@@ -3,13 +3,27 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useEffect, useRef, useMemo } from "react";
-import type { OrigemAtributosEvento } from "@spc-up/core";
+import {
+  findCnpjInDescricao,
+  findCpfInDescricao,
+  stripDocumentsFromDescricao,
+  type OrigemAtributosEvento,
+  type OrigemExtracaoV1,
+} from "@spc-up/core/browser";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { maskDocumento } from "@/lib/mask-document";
-import { PdfOrigemViewer } from "@/components/prestacao/pdf-origem-viewer";
+import { OrigensPanel } from "@/components/prestacao/origens-panel";
+import {
+  analisarConflitoConsolidacao,
+  ConflitoConsolidacaoResumo,
+} from "@/components/prestacao/conflito-consolidacao-resumo";
+import {
+  ConsolidacaoPlanilha,
+  linhasCsvPlanilha,
+} from "@/components/prestacao/consolidacao-planilha";
 
 export type ConsolidacaoEventoRow = {
   id: string;
@@ -25,6 +39,7 @@ export type ConsolidacaoEventoRow = {
     papel: string;
     descricaoRaw: string;
     nomeArquivo: string | null;
+    origemExtracao: OrigemExtracaoV1 | null;
   }>;
   hipoteses: Array<{
     id: string;
@@ -48,27 +63,13 @@ type Props = {
   exercicio?: number;
 };
 
-// Extractor of first PDF origin reference for visual inspection
-function findPdfOrigemRef(origemAtributos: OrigemAtributosEvento | null): any | null {
-  if (!origemAtributos) return null;
-  for (const [key, refs] of Object.entries(origemAtributos)) {
-    if (key === "versao" || !Array.isArray(refs)) continue;
-    for (const ref of refs) {
-      if (ref && ref.tipo === "PDF") {
-        return ref;
-      }
-    }
-  }
-  return null;
-}
-
 // Clean transaction descriptions to extract names
 function cleanTransactionName(desc: string): string {
   if (!desc) return "";
   let name = desc;
   name = name.replace(/\b(PIX|TEV|TED|DOC|COBRANCA|TRANSF|RECEBIDO|ENVIADO|PAGTO|PGTO|DEPOSITO|DEP|LIQ|LIQUIDACAO|TARIFA|TAR|DOC\s*EXTRATO|PAGAMENTO)\b/gi, "");
   name = name.replace(/[-:;*#_]/g, " ");
-  name = name.replace(/\b(CPF|CNPJ)?\s*\d+\b/gi, "");
+  name = stripDocumentsFromDescricao(name);
   name = name.replace(/\s+/g, " ").trim();
   return name;
 }
@@ -76,10 +77,10 @@ function cleanTransactionName(desc: string): string {
 // Detect CPFs or CNPJs from raw lines
 function extractDocument(ev: ConsolidacaoEventoRow) {
   for (const line of ev.linhas) {
-    const cpfMatch = line.descricaoRaw.match(/\b\d{11}\b/);
-    if (cpfMatch) return { doc: cpfMatch[0], tipo: "PF" as const };
-    const cnpjMatch = line.descricaoRaw.match(/\b\d{14}\b/);
-    if (cnpjMatch) return { doc: cnpjMatch[0], tipo: "PJ" as const };
+    const cpf = findCpfInDescricao(line.descricaoRaw);
+    if (cpf) return { doc: cpf, tipo: "PF" as const };
+    const cnpj = findCnpjInDescricao(line.descricaoRaw);
+    if (cnpj) return { doc: cnpj, tipo: "PJ" as const };
   }
   return null;
 }
@@ -97,21 +98,15 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
   const router = useRouter();
 
   // Navigation states
-  const [activeTab, setActiveTab] = useState<"conflitos" | "validados">("conflitos");
+  const [activeTab, setActiveTab] = useState<"conflitos" | "validados" | "planilha">(
+    "planilha",
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Optimistic UI list state
   const [localEventos, setLocalEventos] = useState<ConsolidacaoEventoRow[]>(eventos);
   const [transitioningIds, setTransitioningIds] = useState<Record<string, "approving" | "rejecting">>({});
   const [message, setMessage] = useState<string | null>(null);
-
-  // PDF Viewer state
-  const [activePdf, setActivePdf] = useState<{
-    arquivoIngestaoId: string;
-    nomeArquivo: string;
-    pagina: number;
-    bbox?: any;
-  } | null>(null);
 
   // New Client Modal state
   const [createModal, setCreateModal] = useState<{
@@ -323,39 +318,13 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
     }
   };
 
-  // Export to Excel CSV utility
   const handleExportCSV = () => {
-    if (validatedEvents.length === 0) return;
-    const headers = [
-      "Data Movimento",
-      "Valor",
-      "Direção",
-      "Descrição Extrato",
-      "Nome Cliente/Fornecedor",
-      "Documento Cliente/Fornecedor",
-      "Tipo",
-      "Justificativa",
-      "Status",
-    ];
-
-    const rows = validatedEvents.map((ev) => {
-      const line = ev.linhas[0] || { descricaoRaw: "" };
-      const desc = line.descricaoRaw;
-      return [
-        ev.dataMovimento,
-        ev.valor,
-        ev.direcao,
-        `"${desc.replace(/"/g, '""')}"`,
-        `"${(ev.pessoa?.nome || "").replace(/"/g, '""')}"`,
-        ev.pessoa?.documento || "",
-        ev.pessoa?.tipo || "",
-        `"${(ev.justificativa || "").replace(/"/g, '""')}"`,
-        ev.status,
-      ];
-    });
-
-    // Brazilian CSV styling: Semicolon separator and UTF-8 Byte-Order Mark
-    const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
+    if (localEventos.length === 0) return;
+    const csvRows = linhasCsvPlanilha(localEventos);
+    const escape = (cell: string) => `"${cell.replace(/"/g, '""')}"`;
+    const csvContent =
+      "\uFEFF" +
+      csvRows.map((row) => row.map((c) => (c.includes(";") || c.includes('"') ? escape(c) : c)).join(";")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -518,7 +487,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
             <p className="text-lg font-bold text-slate-800">{totalCount}</p>
           </div>
           <div className="border-x border-slate-200 md:px-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted">Conflitos</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted">Para revisar</p>
             <p className="text-lg font-bold text-amber-600">{pendingEvents.length}</p>
           </div>
           <div className="md:px-2">
@@ -559,7 +528,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
             }`}
             onClick={() => setActiveTab("conflitos")}
           >
-            Apenas Conflitos ({pendingEvents.length})
+            Para revisar ({pendingEvents.length})
           </button>
           <button
             type="button"
@@ -570,9 +539,28 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
             }`}
             onClick={() => setActiveTab("validados")}
           >
-            Validados Automatizados ({validatedEvents.length})
+            Validados ({validatedEvents.length})
+          </button>
+          <button
+            type="button"
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-all duration-150 ${
+              activeTab === "planilha"
+                ? "border-up-black text-up-black font-semibold"
+                : "border-transparent text-muted hover:text-up-black"
+            }`}
+            onClick={() => setActiveTab("planilha")}
+          >
+            Planilha ({localEventos.length})
           </button>
         </div>
+
+        {activeTab === "conflitos" && (
+          <p className="text-sm text-slate-600 pb-2 sm:pb-0 sm:max-w-lg">
+            {pendingEvents.length > 0
+              ? "O sistema já conferiu cruzamento entre extratos, CPF/CNPJ e cadastro. Aqui ficam só os casos com confiança abaixo de 85% ou ambíguos — defina o titular e confira no PDF."
+              : "Matches com confiança ≥ 85% e pessoa no cadastro foram aprovados automaticamente. Nada pendente de revisão manual."}
+          </p>
+        )}
 
         {/* Batch Confirmation Actions */}
         {activeTab === "conflitos" && pendingEvents.length > 0 && (
@@ -600,15 +588,21 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
         )}
       </div>
 
-      {/* 3. Área de Trabalho Principal (Split Workspace Layout / Card Duplo de Match) */}
       <div className="space-y-4">
-        {activeTab === "conflitos" ? (
+        {activeTab === "planilha" ? (
+          <ConsolidacaoPlanilha
+            eventos={localEventos}
+            sessaoId={sessaoId}
+            onExportarCsv={localEventos.length > 0 ? handleExportCSV : undefined}
+            onMergeResolved={() => router.refresh()}
+          />
+        ) : activeTab === "conflitos" ? (
           pendingEvents.length === 0 ? (
             <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
               <span className="text-4xl">🎉</span>
-              <h3 className="mt-3 font-semibold text-slate-800 text-lg">Sem conflitos pendentes!</h3>
+              <h3 className="mt-3 font-semibold text-slate-800 text-lg">Nada pendente de revisão</h3>
               <p className="text-sm text-muted mt-1 max-w-sm">
-                Todas as transações foram revisadas e vinculadas com sucesso. Pronto para exportação.
+                Todas as transações foram conferidas e confirmadas. Pronto para exportação.
               </p>
             </Card>
           ) : (
@@ -631,6 +625,20 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
                     bg-amber-50/10 border-amber-200 hover:border-amber-400
                   `}
                 >
+                  <div className="px-5 pt-4">
+                    <ConflitoConsolidacaoResumo
+                      analise={analisarConflitoConsolidacao(ev, localEventos)}
+                      eventoAtualId={ev.id}
+                      onIrParaEvento={(id) => {
+                        cardRefs.current[id]?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                        cardRefs.current[id]?.focus();
+                      }}
+                    />
+                  </div>
+
                   <div className="flex items-stretch divide-x divide-slate-100">
                     {/* Checkbox column */}
                     <div className="flex items-center justify-center px-4 bg-slate-50/50">
@@ -667,47 +675,46 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
                             }`}>
                               {ev.direcao === "ENTRADA" ? "+" : "-"} R$ {ev.valor}
                             </p>
-                            <p className="font-medium text-slate-900 break-words line-clamp-2" title={ev.linhas[0]?.descricaoRaw}>
-                              {ev.linhas[0]?.descricaoRaw}
-                            </p>
+                            {ev.linhas.length <= 1 ? (
+                              <p
+                                className="font-medium text-slate-900 break-words line-clamp-2"
+                                title={ev.linhas[0]?.descricaoRaw}
+                              >
+                                {ev.linhas[0]?.descricaoRaw}
+                              </p>
+                            ) : (
+                              <ul className="space-y-2 text-sm">
+                                {ev.linhas.map((linha) => (
+                                  <li
+                                    key={linha.id}
+                                    className="rounded border border-slate-200/80 bg-white/60 px-2 py-1.5"
+                                  >
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                      {linha.papel}
+                                      {linha.nomeArquivo ? ` · ${linha.nomeArquivo}` : ""}
+                                    </span>
+                                    <p className="font-medium text-slate-900 break-words line-clamp-2 mt-0.5">
+                                      {linha.descricaoRaw}
+                                    </p>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
                         </div>
 
                         {/* Metadados subtext */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-50 pt-2 text-xs text-muted">
-                          <div className="flex items-center gap-2">
-                            <span>Data: {ev.dataMovimento}</span>
-                            {/* Parse line hour or doc ID if available */}
-                            {(() => {
-                              const meta = ev.linhas[0] ? ev.linhas[0].descricaoRaw : "";
-                              const timeMatch = meta.match(/\b\d{2}:\d{2}(:\d{2})?\b/);
-                              const docMatch = meta.match(/\b(DOC|DOCUMENTO|Nº|NUM|AUTENTICACAO|AUT)\s*:?\s*(\d+)\b/i);
-                              return (
-                                <>
-                                  {timeMatch && <span>• Hora: {timeMatch[0]}</span>}
-                                  {docMatch && <span>• Doc: {docMatch[2]}</span>}
-                                </>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Trigger PDF Highlight Viewer */}
+                        <div className="flex flex-wrap items-center gap-2 border-t border-slate-50 pt-2 text-xs text-muted">
+                          <span>Data: {ev.dataMovimento}</span>
                           {(() => {
-                            const pdfRef = findPdfOrigemRef(ev.origemAtributos);
-                            if (!pdfRef) return null;
+                            const meta = ev.linhas[0] ? ev.linhas[0].descricaoRaw : "";
+                            const timeMatch = meta.match(/\b\d{2}:\d{2}(:\d{2})?\b/);
+                            const docMatch = meta.match(/\b(DOC|DOCUMENTO|Nº|NUM|AUTENTICACAO|AUT)\s*:?\s*(\d+)\b/i);
                             return (
-                              <button
-                                type="button"
-                                className="text-xs font-semibold text-up-black underline hover:text-slate-700"
-                                onClick={() => setActivePdf({
-                                  arquivoIngestaoId: pdfRef.arquivoIngestaoId,
-                                  nomeArquivo: pdfRef.nomeArquivo,
-                                  pagina: pdfRef.pagina,
-                                  bbox: pdfRef.bbox,
-                                })}
-                              >
-                                Ver no PDF
-                              </button>
+                              <>
+                                {timeMatch && <span>• Hora: {timeMatch[0]}</span>}
+                                {docMatch && <span>• Doc: {docMatch[2]}</span>}
+                              </>
                             );
                           })()}
                         </div>
@@ -716,56 +723,6 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
                       {/* Lado Direito (A Inteligência do Sistema) */}
                       <div className="flex flex-col justify-between space-y-4 md:pl-5">
                         <div className="space-y-3">
-                          
-                          {/* Similarity indicator tags */}
-                          <div className="flex flex-wrap gap-1.5">
-                            {(() => {
-                              // Duplicate check
-                              const isDuplicate = localEventos.some(
-                                (other) =>
-                                  other.id !== ev.id &&
-                                  other.valor === ev.valor &&
-                                  other.dataMovimento === ev.dataMovimento &&
-                                  other.direcao === ev.direcao
-                              );
-                              
-                              if (isDuplicate) {
-                                return (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                                    ⚠️ Duas faturas com o mesmo valor
-                                  </span>
-                                );
-                              }
-
-                              // Name divergence check
-                              if (ev.pessoa) {
-                                const cleanExtrato = cleanTransactionName(ev.linhas[0]?.descricaoRaw || "");
-                                const cleanCadastro = cleanTransactionName(ev.pessoa.nome);
-                                if (cleanExtrato && cleanCadastro && cleanExtrato !== cleanCadastro) {
-                                  return (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                                      ⚠️ Nome divergente (Gemini match)
-                                    </span>
-                                  );
-                                }
-                              }
-
-                              if (!ev.pessoa) {
-                                return (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200">
-                                    ⚠️ Sem vínculo cadastro
-                                  </span>
-                                );
-                              }
-
-                              return (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                  ✓ Sugestão do Gemini
-                                </span>
-                              );
-                            })()}
-                          </div>
-
                           {/* Smart candidate select box */}
                           <div className="space-y-1">
                             <label className="text-xs font-medium text-slate-500">
@@ -828,6 +785,14 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
 
                     </div>
                   </div>
+
+                  <div className="border-t border-slate-100 bg-slate-50/40 px-5 py-4">
+                    <OrigensPanel
+                      compact
+                      origemAtributos={ev.origemAtributos}
+                      linhas={ev.linhas}
+                    />
+                  </div>
                 </div>
               );
             })
@@ -889,6 +854,12 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
                         <p className="text-xs text-muted italic mt-1">{ev.justificativa}</p>
                       </div>
 
+                      <OrigensPanel
+                        compact
+                        origemAtributos={ev.origemAtributos}
+                        linhas={ev.linhas}
+                      />
+
                       <div className="flex justify-end">
                         <Button
                           type="button"
@@ -933,7 +904,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
           <div className="flex items-center gap-2">
             {pendingEvents.length > 0 ? (
               <span className="text-xs text-slate-500 italic">
-                Resolva os {pendingEvents.length} conflitos restantes para exportar.
+                Revise e confirme os {pendingEvents.length} itens restantes. Use a aba Planilha para visão geral.
               </span>
             ) : (
               <div className="flex items-center gap-2">
@@ -942,10 +913,19 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
                 </span>
                 <button
                   type="button"
+                  onClick={() => {
+                    setActiveTab("planilha");
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-white rounded px-4 py-2 text-sm font-semibold"
+                >
+                  Abrir planilha
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportCSV}
                   className="bg-slate-950 hover:bg-slate-800 text-white rounded px-4.5 py-2 text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm"
                 >
-                  Exportar para Excel (CSV)
+                  Exportar CSV
                 </button>
                 <button
                   type="button"
@@ -961,19 +941,7 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
         </div>
       </div>
 
-      {/* 5. PDF Visual Viewer Modal */}
-      {activePdf && (
-        <PdfOrigemViewer
-          open={!!activePdf}
-          onClose={() => setActivePdf(null)}
-          arquivoIngestaoId={activePdf.arquivoIngestaoId}
-          nomeArquivo={activePdf.nomeArquivo}
-          pagina={activePdf.pagina}
-          bbox={activePdf.bbox}
-        />
-      )}
-
-      {/* 6. Quick Register Modal */}
+      {/* 5. Quick Register Modal */}
       {createModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg border border-slate-200 shadow-xl w-full max-w-md overflow-hidden flex flex-col">

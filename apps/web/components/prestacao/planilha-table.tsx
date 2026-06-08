@@ -5,11 +5,13 @@ import { useCallback, useMemo, useState } from "react";
 import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core";
 import type { BboxNorm } from "@spc-up/core/browser";
 
+import { PlanilhaNomeCell } from "@/components/prestacao/planilha-nome-cell";
 import { PlanilhaPessoaCell } from "@/components/prestacao/planilha-pessoa-cell";
 import {
   PlanilhaFilter,
   PlanilhaToolbar,
 } from "@/components/prestacao/planilha-toolbar";
+import { PdfComparadorModal } from "@/components/prestacao/pdf-comparador-modal";
 import { PdfOrigemViewer } from "@/components/prestacao/pdf-origem-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,8 +55,16 @@ function rowKey(linha: PlanilhaLinha): string {
   return `${linha.fonte}:${linha.id}`;
 }
 
+function linhaNome(linha: PlanilhaLinha): string {
+  return linha.nome ?? "";
+}
+
 function matchesFilter(linha: PlanilhaLinha, filter: PlanilhaFilter): boolean {
   switch (filter) {
+    case "sem_nome": {
+      const nome = linhaNome(linha);
+      return !nome || nome.trim().length < 3;
+    }
     case "sem_pessoa":
       return !linha.pessoa;
     case "baixa_confianca":
@@ -102,6 +112,7 @@ export function PlanilhaView({
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchQ, setBatchQ] = useState("");
   const [batchPessoas, setBatchPessoas] = useState<PessoaItem[]>([]);
+  const [comparadorLinha, setComparadorLinha] = useState<PlanilhaLinha | null>(null);
 
   const filtered = useMemo(
     () => linhas.filter((l) => matchesFilter(l, filter)),
@@ -276,9 +287,12 @@ export function PlanilhaView({
             <tr>
               <th className="w-8 px-2 py-2" />
               <th className="px-3 py-2">Data</th>
+              <th className="px-3 py-2">Doc./Extrato</th>
               <th className="px-3 py-2">Valor</th>
               <th className="px-3 py-2">Direção</th>
               <th className="px-3 py-2">Descrição</th>
+              <th className="px-3 py-2">Descrição Original</th>
+              <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">PF/PJ</th>
               <th className="px-3 py-2">Confiança</th>
               <th className="px-3 py-2">Origens</th>
@@ -289,7 +303,7 @@ export function PlanilhaView({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-muted">
+                <td colSpan={13} className="px-4 py-8 text-center text-muted">
                   Nenhuma linha neste filtro.
                 </td>
               </tr>
@@ -308,12 +322,28 @@ export function PlanilhaView({
                       />
                     </td>
                     <td className="whitespace-nowrap px-3 py-2">{linha.dataMovimento}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{linha.nrExtratoBancario || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">R$ {linha.valor}</td>
                     <td className="px-3 py-2">{linha.direcao}</td>
                     <td className="max-w-[14rem] px-3 py-2">
                       <span className="line-clamp-2" title={linha.descricao}>
                         {linha.descricao}
                       </span>
+                    </td>
+                    <td className="max-w-[14rem] px-3 py-2">
+                      <span className="line-clamp-2 text-xs text-muted" title={linha.descricaoRaw}>
+                        {linha.descricaoRaw}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <PlanilhaNomeCell
+                        sessaoId={sessaoId}
+                        linhaId={linha.id}
+                        fonte={linha.fonte}
+                        nome={linhaNome(linha)}
+                        onUpdated={() => void refresh()}
+                        disabled={busy}
+                      />
                     </td>
                     <td className="px-3 py-2">
                       <PlanilhaPessoaCell
@@ -404,6 +434,16 @@ export function PlanilhaView({
                             </Button>
                           </>
                         )}
+                        {linha.origens.length >= 2 && (
+                          <Button
+                            type="button"
+                            className="px-2 py-1 text-xs"
+                            disabled={busy}
+                            onClick={() => setComparadorLinha(linha)}
+                          >
+                            Comparar PDFs
+                          </Button>
+                        )}
                         {linha.origens.length === 1 && (
                           <button
                             type="button"
@@ -477,6 +517,16 @@ export function PlanilhaView({
             </div>
           </div>
         </div>
+      )}
+
+      {comparadorLinha && (
+        <PdfComparadorModal
+          open
+          linha={comparadorLinha}
+          sessaoId={sessaoId}
+          onClose={() => setComparadorLinha(null)}
+          onMergeResolved={() => void refresh()}
+        />
       )}
 
       {pdfPanel && (

@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
+import { PdfOrigemPainel } from "@/components/prestacao/pdf-origem-painel";
 import { Button } from "@/components/ui/button";
 
-import type { BboxNorm } from "@spc-up/core";
+import type { BboxNorm } from "@spc-up/core/browser";
 
 type Props = {
   open: boolean;
@@ -13,6 +12,9 @@ type Props = {
   nomeArquivo: string;
   pagina: number;
   bbox?: BboxNorm;
+  /** Rótulo do dado em conferência (ex.: "Valor · extrato.pdf"). */
+  highlightLabel?: string;
+  indiceLinha?: number;
 };
 
 export function PdfOrigemViewer({
@@ -22,64 +24,9 @@ export function PdfOrigemViewer({
   nomeArquivo,
   pagina,
   bbox,
+  highlightLabel,
+  indiceLinha,
 }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    let cancelled = false;
-
-    async function render() {
-      setLoading(true);
-      setError(null);
-      try {
-        const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
-        const res = await fetch(`/api/arquivos-ingestao/${arquivoIngestaoId}/pdf`);
-        if (!res.ok) {
-          throw new Error("Não foi possível carregar o PDF");
-        }
-        const data = await res.arrayBuffer();
-        const doc = await pdfjs.getDocument({ data }).promise;
-        const page = await doc.getPage(pagina);
-        const canvas = canvasRef.current;
-        const wrap = wrapRef.current;
-        if (!canvas || !wrap || cancelled) {
-          return;
-        }
-
-        const viewport = page.getViewport({ scale: 1.5 });
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          return;
-        }
-        await page.render({ canvasContext: ctx, viewport }).promise;
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Erro ao renderizar PDF");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void render();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, arquivoIngestaoId, pagina]);
-
   if (!open) {
     return null;
   }
@@ -92,31 +39,28 @@ export function PdfOrigemViewer({
             <p className="font-medium">{nomeArquivo}</p>
             <p className="text-sm text-muted">
               Página {pagina}
-              {bbox ? ` · linha destacada` : ""}
+              {indiceLinha != null ? ` · linha ${indiceLinha}` : ""}
+              {bbox ? " · área destacada em amarelo" : " · sem caixa de destaque (reingestão pode incluir bbox)"}
             </p>
+            {highlightLabel && (
+              <p className="text-xs font-medium text-amber-900 mt-1">{highlightLabel}</p>
+            )}
           </div>
           <Button type="button" variant="outline" onClick={onClose}>
             Fechar
           </Button>
         </div>
-        {loading && <p className="text-sm text-muted">Carregando PDF…</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div ref={wrapRef} className="relative max-h-[70vh] overflow-auto p-4 bg-slate-50/50 rounded-md border border-slate-100">
-          <div className="relative mx-auto w-fit border border-slate-200 rounded-md shadow-lg overflow-hidden bg-white">
-            <canvas ref={canvasRef} className="block" />
-            {bbox && (
-              <div
-                className="pointer-events-none absolute border-2 border-amber-500 bg-amber-400/20"
-                style={{
-                  left: `${bbox.x * 100}%`,
-                  top: `${bbox.y * 100}%`,
-                  width: `${bbox.w * 100}%`,
-                  height: `${bbox.h * 100}%`,
-                }}
-              />
-            )}
-          </div>
-        </div>
+        <PdfOrigemPainel
+          arquivoIngestaoId={arquivoIngestaoId}
+          nomeArquivo={nomeArquivo}
+          paginaInicial={pagina}
+          bbox={bbox}
+          highlightMode={bbox ? "extracao" : "none"}
+          indiceLinha={indiceLinha}
+          dataMovimento=""
+          valor=""
+          descricaoRaw=""
+        />
       </div>
     </div>
   );
