@@ -513,7 +513,8 @@ export function usePrestacaoSubmit() {
 
           const fileCount = input.files.length;
           const uploadParts: UploadResponseBody[] = [];
-          const consolidarExtratos = input.consolidarExtratos ?? false;
+          const pdfCount = countPdfFiles(input.files);
+          const consolidarExtratos = pdfCount >= 2;
           let serverSupportsNotebookLm = false;
           const pdfJobs: Array<{
             nome: string;
@@ -663,7 +664,7 @@ export function usePrestacaoSubmit() {
 
             const goConsolidacao = shouldRedirectToConsolidacao(
               consolidarExtratos,
-              countPdfFiles(input.files),
+              pdfCount,
             );
 
             const isNotebookLm = serverSupportsNotebookLm;
@@ -954,7 +955,7 @@ export function usePrestacaoSubmit() {
 
           const goConsolidacao = shouldRedirectToConsolidacao(
             consolidarExtratos,
-            countPdfFiles(input.files),
+            pdfCount,
           );
 
           setIngestProgress({

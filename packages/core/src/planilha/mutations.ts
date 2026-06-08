@@ -1,5 +1,5 @@
-import { consolidacaoEvento, type Db } from "@spc-up/db";
-import { eq } from "drizzle-orm";
+import { consolidacaoEvento, movimentacao, type Db } from "@spc-up/db";
+import { and, eq, isNull } from "drizzle-orm";
 
 import {
   approveConsolidacaoEvento,
@@ -7,6 +7,30 @@ import {
 } from "../consolidacao/approve";
 import { assignPessoaToMovimentacao } from "../prestacao/movimentacao-review";
 import type { PlanilhaLinhaFonte } from "./types";
+
+export async function planilhaLinhaBelongsToSessao(
+  db: Db,
+  sessaoId: string,
+  linhaId: string,
+  fonte: PlanilhaLinhaFonte,
+): Promise<boolean> {
+  if (fonte === "movimentacao") {
+    const row = await db.query.movimentacao.findFirst({
+      where: and(eq(movimentacao.id, linhaId), isNull(movimentacao.deletedAt)),
+      columns: { sessaoPrestacaoId: true },
+    });
+    return row?.sessaoPrestacaoId === sessaoId;
+  }
+
+  const row = await db.query.consolidacaoEvento.findFirst({
+    where: and(
+      eq(consolidacaoEvento.id, linhaId),
+      isNull(consolidacaoEvento.deletedAt),
+    ),
+    columns: { sessaoPrestacaoId: true },
+  });
+  return row?.sessaoPrestacaoId === sessaoId;
+}
 
 export async function updatePlanilhaLinhaPessoa(
   db: Db,

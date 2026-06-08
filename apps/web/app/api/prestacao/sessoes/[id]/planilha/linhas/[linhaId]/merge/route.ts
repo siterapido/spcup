@@ -1,6 +1,5 @@
-import { resolvePlanilhaMerge } from "@spc-up/core";
-import { consolidacaoEvento, getDb } from "@spc-up/db";
-import { eq } from "drizzle-orm";
+import { planilhaLinhaBelongsToSessao, resolvePlanilhaMerge } from "@spc-up/core";
+import { getDb } from "@spc-up/db";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -34,18 +33,10 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const db = getDb();
-
-  if (body.fonte !== "consolidacao") {
-    const evento = await db.query.consolidacaoEvento.findFirst({
-      where: eq(consolidacaoEvento.id, linhaId),
-      columns: { id: true },
-    });
-    if (!evento) {
-      return NextResponse.json(
-        { error: "Merge válido apenas para linhas de consolidação" },
-        { status: 400 },
-      );
-    }
+  const fonte = body.fonte ?? "consolidacao";
+  const belongs = await planilhaLinhaBelongsToSessao(db, id, linhaId, fonte);
+  if (!belongs) {
+    return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
   }
 
   try {

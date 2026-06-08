@@ -1,4 +1,4 @@
-import { updatePlanilhaLinhaPessoa } from "@spc-up/core";
+import { planilhaLinhaBelongsToSessao, updatePlanilhaLinhaPessoa } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
@@ -28,8 +28,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const db = getDb();
+  const { fonte, ...pessoa } = body;
+  const belongs = await planilhaLinhaBelongsToSessao(db, id, linhaId, fonte);
+  if (!belongs) {
+    return NextResponse.json({ error: "Linha não encontrada" }, { status: 404 });
+  }
+
   try {
-    const { fonte, ...pessoa } = body;
     await updatePlanilhaLinhaPessoa(db, linhaId, fonte, pessoa);
     revalidatePath(`/prestacao/${id}/planilha`);
     return NextResponse.json({ ok: true });

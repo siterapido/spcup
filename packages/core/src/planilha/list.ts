@@ -5,6 +5,7 @@ import {
 } from "@spc-up/db";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
+import { loadCadastroMatchContext } from "../consolidacao/load";
 import type { ConsolidacaoListItem } from "../consolidacao/queries";
 import { listConsolidacaoForSessao } from "../consolidacao/queries";
 import { getSessao } from "../prestacao/sessao";
@@ -269,7 +270,12 @@ export async function listPlanilhaForSessao(
   const sessao = await getSessao(db, sessaoId);
   if (!sessao) return null;
 
-  const { eventos, cadastroAlerta } = await listConsolidacaoForSessao(db, sessaoId);
+  const { eventos, cadastroAlerta: pixCadastroAlerta } =
+    await listConsolidacaoForSessao(db, sessaoId);
+  const ctx = await loadCadastroMatchContext(db);
+  const cadastroVazio =
+    ctx.pessoaByCpf.size === 0 && ctx.pessoaByCnpj.size === 0;
+  const cadastroAlerta = cadastroVazio || pixCadastroAlerta;
   const linhas: PlanilhaLinha[] = [];
 
   if (eventos.length > 0) {

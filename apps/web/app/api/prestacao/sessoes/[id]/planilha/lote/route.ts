@@ -1,4 +1,4 @@
-import { applyPlanilhaLote } from "@spc-up/core";
+import { applyPlanilhaLote, planilhaLinhaBelongsToSessao } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
@@ -34,8 +34,15 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const db = getDb();
+  const { items, pessoaFisicaId, pessoaJuridicaId } = body;
+  for (const item of items) {
+    const belongs = await planilhaLinhaBelongsToSessao(db, id, item.id, item.fonte);
+    if (!belongs) {
+      return NextResponse.json({ error: "Linha não encontrada" }, { status: 404 });
+    }
+  }
+
   try {
-    const { items, pessoaFisicaId, pessoaJuridicaId } = body;
     await applyPlanilhaLote(db, items, { pessoaFisicaId, pessoaJuridicaId });
     revalidatePath(`/prestacao/${id}/planilha`);
     return NextResponse.json({ ok: true });

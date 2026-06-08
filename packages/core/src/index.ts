@@ -340,6 +340,7 @@ export type { PlanilhaLinha, PlanilhaPayload, PlanilhaResumo } from "./planilha/
 export { isLinhaPronta, buildResumo, deriveLinhaStatus } from "./planilha/status";
 export {
   applyPlanilhaLote,
+  planilhaLinhaBelongsToSessao,
   resolvePlanilhaMerge,
   updatePlanilhaLinhaPessoa,
 } from "./planilha/mutations";
