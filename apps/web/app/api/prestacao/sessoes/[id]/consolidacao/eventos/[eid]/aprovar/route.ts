@@ -18,6 +18,7 @@ export async function POST(_request: Request, context: RouteContext) {
     await approveConsolidacaoEvento(db, eid);
     revalidatePath(`/prestacao/${id}/consolidacao`);
     revalidatePath(`/prestacao/${id}/kanban`);
+    revalidatePath(`/prestacao/${id}/planilha`);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
