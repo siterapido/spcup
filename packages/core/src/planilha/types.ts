@@ -15,6 +15,7 @@ export type PlanilhaPessoa = {
 
 export type PlanilhaOrigem = {
   movimentacaoId: string;
+  arquivoIngestaoId?: string;
   nomeArquivo: string | null;
   pagina?: number;
   descricaoRaw: string;

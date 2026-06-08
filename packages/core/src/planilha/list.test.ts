@@ -45,6 +45,8 @@ describe("mapConsolidacaoEventoToLinha", () => {
     expect(linha.fonte).toBe("consolidacao");
     expect(linha.status).toBe("merge_pendente");
     expect(linha.origens).toHaveLength(2);
+    expect(linha.origens[0]?.arquivoIngestaoId).toBe("a1");
+    expect(linha.origens[1]?.arquivoIngestaoId).toBe("a2");
     expect(linha.eventoStatus).toBe("PENDENTE");
   });
 

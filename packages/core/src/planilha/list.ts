@@ -54,6 +54,7 @@ export type MovimentacaoLinhaInput = {
   pessoaFisica: { id: string; nome: string; cpf: string } | null;
   pessoaJuridica: { id: string; razaoSocial: string; cnpj: string } | null;
   nomeArquivo: string | null;
+  arquivoIngestaoId?: string | null;
   origemExtracao: OrigemExtracaoV1 | null;
   statusPaginaVerificar?: boolean;
 };
@@ -92,6 +93,7 @@ function origensFromLinhas(
 ): PlanilhaOrigem[] {
   return linhas.map((l) => ({
     movimentacaoId: l.movimentacaoId,
+    arquivoIngestaoId: l.origemExtracao?.arquivoIngestaoId,
     nomeArquivo: l.nomeArquivo,
     pagina: l.origemExtracao?.pagina,
     descricaoRaw: l.descricaoRaw,
@@ -167,6 +169,8 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     origens: [
       {
         movimentacaoId: mov.id,
+        arquivoIngestaoId:
+          mov.origemExtracao?.arquivoIngestaoId ?? mov.arquivoIngestaoId ?? undefined,
         nomeArquivo: mov.nomeArquivo,
         pagina: mov.origemExtracao?.pagina,
         descricaoRaw: mov.descricaoRaw,
@@ -219,6 +223,7 @@ function dbMovToLinhaInput(
     pessoaFisica: mov.pessoaFisica,
     pessoaJuridica: mov.pessoaJuridica,
     nomeArquivo: mov.arquivoIngestao?.nomeArquivo ?? null,
+    arquivoIngestaoId: mov.arquivoIngestaoId,
     origemExtracao: (mov.origemExtracao as OrigemExtracaoV1 | null) ?? null,
     statusPaginaVerificar: mov.evidencias.some((e) => e.tipo === "PAGINA_VERIFICAR"),
   };

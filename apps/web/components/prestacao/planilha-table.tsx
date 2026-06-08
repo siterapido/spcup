@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import type { PlanilhaLinha, PlanilhaPayload } from "@spc-up/core";
+import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core";
 import type { BboxNorm } from "@spc-up/core/browser";
 
 import { PlanilhaPessoaCell } from "@/components/prestacao/planilha-pessoa-cell";
@@ -151,10 +151,23 @@ export function PlanilhaView({
     }
   }
 
-  async function abrirPdf(movimentacaoId: string, nomeArquivo: string | null, papel?: string) {
+  async function abrirPdf(origem: PlanilhaOrigem) {
+    if (origem.arquivoIngestaoId && origem.pagina != null) {
+      setPdfPanel({
+        arquivoIngestaoId: origem.arquivoIngestaoId,
+        nomeArquivo: origem.nomeArquivo ?? "extrato.pdf",
+        pagina: origem.pagina,
+        highlightLabel: origem.papel
+          ? `${origem.papel} · ${origem.nomeArquivo ?? ""}`
+          : undefined,
+      });
+      setPdfOpen(true);
+      return;
+    }
+
     setBusy(true);
     try {
-      const res = await fetch(`/api/movimentacoes/${movimentacaoId}`);
+      const res = await fetch(`/api/movimentacoes/${origem.movimentacaoId}`);
       const json = await res.json();
       if (!res.ok) return;
       const item = json.item ?? json;
@@ -162,10 +175,13 @@ export function PlanilhaView({
       if (!o?.arquivoIngestaoId || !o.pagina) return;
       setPdfPanel({
         arquivoIngestaoId: o.arquivoIngestaoId,
-        nomeArquivo: nomeArquivo ?? item.nomeArquivo ?? o.nomeArquivo ?? "extrato.pdf",
+        nomeArquivo:
+          origem.nomeArquivo ?? item.nomeArquivo ?? o.nomeArquivo ?? "extrato.pdf",
         pagina: o.pagina,
         bbox: o.bbox,
-        highlightLabel: papel ? `${papel} · ${nomeArquivo ?? ""}` : undefined,
+        highlightLabel: origem.papel
+          ? `${origem.papel} · ${origem.nomeArquivo ?? ""}`
+          : undefined,
         indiceLinha: o.indiceLinha,
       });
       setPdfOpen(true);
@@ -323,9 +339,7 @@ export function PlanilhaView({
                                     type="button"
                                     className="mt-1 text-primary underline"
                                     disabled={busy}
-                                    onClick={() =>
-                                      void abrirPdf(o.movimentacaoId, o.nomeArquivo, o.papel)
-                                    }
+                                    onClick={() => void abrirPdf(o)}
                                   >
                                     Ver PDF
                                   </button>
@@ -367,13 +381,7 @@ export function PlanilhaView({
                             type="button"
                             className="text-left text-xs text-primary underline"
                             disabled={busy}
-                            onClick={() =>
-                              void abrirPdf(
-                                linha.origens[0]!.movimentacaoId,
-                                linha.origens[0]!.nomeArquivo,
-                                linha.origens[0]!.papel,
-                              )
-                            }
+                            onClick={() => void abrirPdf(linha.origens[0]!)}
                           >
                             Ver PDF
                           </button>

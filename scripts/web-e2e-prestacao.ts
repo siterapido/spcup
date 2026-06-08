@@ -22,9 +22,13 @@ const BASE = useProd
 const DOC_DIR = path.join(process.cwd(), "Documentos para teste ");
 const PDFS = ["Extrato Jan PIX (1).pdf", "EXTRATO TOTAL JANEIRO (1) (1).pdf"];
 
+function stripEnvQuotes(value: string): string {
+  return value.trim().replace(/^["']|["']$/g, "");
+}
+
 function loadAdminCreds() {
-  const email = process.env.ADMIN_EMAIL?.trim();
-  const password = process.env.ADMIN_PASSWORD?.trim();
+  const email = stripEnvQuotes(process.env.ADMIN_EMAIL ?? "");
+  const password = stripEnvQuotes(process.env.ADMIN_PASSWORD ?? "");
   if (!email || !password) {
     throw new Error("ADMIN_EMAIL e ADMIN_PASSWORD obrigatórios");
   }
@@ -87,8 +91,10 @@ async function signIn(): Promise<CookieJar> {
     headers: { cookie: jar.header()! },
   });
   jar.ingest(sessionRes.headers);
-  const session = (await sessionRes.json()) as { user?: { email?: string } };
-  if (!session.user?.email) {
+  const session = (await sessionRes.json()) as {
+    user?: { email?: string };
+  } | null;
+  if (!session?.user?.email) {
     throw new Error("Sessão Auth.js não estabelecida após login");
   }
   return jar;
@@ -191,11 +197,22 @@ async function main() {
     console.log(cr.ok ? `Consolidação: ${JSON.stringify(cj)}` : `Consolidação HTTP ${cr.status}`);
   }
 
-  const kanban = `${BASE}/prestacao/${sessaoId}/kanban`;
-  const consolidacao = `${BASE}/prestacao/${sessaoId}/consolidacao`;
+  const planilhaUrl = `${BASE}/prestacao/${sessaoId}/planilha`;
+  const planRes = await api(jar, `/api/prestacao/sessoes/${sessaoId}/planilha`);
+  const planJson = (await planRes.json()) as {
+    resumo?: { total?: number };
+    error?: string;
+  };
+  if (!planRes.ok) {
+    throw new Error(planJson.error ?? `Planilha HTTP ${planRes.status}`);
+  }
+  const total = planJson.resumo?.total ?? 0;
+  if (total <= 0) {
+    throw new Error(`Planilha vazia: resumo.total=${total}`);
+  }
+
   console.log(`\nMovimentações (esta rodada): ~${movTotal}`);
-  console.log(`Kanban: ${kanban}`);
-  if (pdfJobs.length >= 2) console.log(`Consolidação: ${consolidacao}`);
+  console.log(`Planilha: ${planilhaUrl} (${total} linhas)`);
 }
 
 main().catch((e) => {
