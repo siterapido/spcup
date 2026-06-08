@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import type { PlanilhaLinhaFonte } from "@spc-up/core/browser";
+import type {
+  NomeCadastroComparacao,
+  PlanilhaLinha,
+  PlanilhaLinhaFonte,
+} from "@spc-up/core/browser";
 import { compararNomeCadastro } from "@spc-up/core/browser";
 
 import { Input } from "@/components/ui/input";
@@ -16,9 +20,20 @@ type Props = {
   fonte: PlanilhaLinhaFonte;
   remetenteDestinatario: string | null;
   pessoaNome?: string | null;
+  cadastroLinkTier?: PlanilhaLinha["cadastroLinkTier"];
+  comparacaoNome?: PlanilhaLinha["comparacaoNome"];
   disabled?: boolean;
   onUpdated: () => void;
 };
+
+function resolveTierDot(
+  tier: PlanilhaLinha["cadastroLinkTier"],
+  comparacao: NomeCadastroComparacao,
+): string | null {
+  if (tier === "ALTA" && comparacao === "bate") return "bg-emerald-500";
+  if (tier === "MEDIA" || comparacao === "difere") return "bg-amber-500";
+  return null;
+}
 
 function isVazio(value: string): boolean {
   return !value || value.trim().length < 3;
@@ -30,6 +45,8 @@ export function PlanilhaRemetenteDestinatarioCell({
   fonte,
   remetenteDestinatario,
   pessoaNome,
+  cadastroLinkTier,
+  comparacaoNome,
   disabled,
   onUpdated,
 }: Props) {
@@ -65,9 +82,15 @@ export function PlanilhaRemetenteDestinatarioCell({
 
   const vazio = isVazio(value);
   const title = vazio ? TOOLTIP_VAZIO : value || undefined;
-  const comparacao = pessoaNome
-    ? compararNomeCadastro(value, pessoaNome)
-    : "indefinido";
+  const comparacao: NomeCadastroComparacao =
+    comparacaoNome ??
+    (pessoaNome ? compararNomeCadastro(value, pessoaNome) : "indefinido");
+  const dotClass =
+    cadastroLinkTier !== undefined
+      ? resolveTierDot(cadastroLinkTier, comparacao)
+      : comparacao === "difere"
+        ? "bg-amber-500"
+        : null;
 
   return (
     <div className="flex items-center gap-1.5">
@@ -86,13 +109,11 @@ export function PlanilhaRemetenteDestinatarioCell({
           }
         }}
       />
-      {comparacao !== "indefinido" && (
+      {dotClass && (
         <span
           aria-hidden
           title={`extraído: ${value || "—"} / cadastro: ${pessoaNome}`}
-          className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-            comparacao === "bate" ? "bg-emerald-500" : "bg-amber-500"
-          }`}
+          className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotClass}`}
         />
       )}
     </div>

@@ -7,6 +7,7 @@ import {
 } from "@spc-up/db";
 import { and, eq, isNull } from "drizzle-orm";
 
+import { structuredDocsFromOrigemExtracao } from "../match/structured-contraparte-docs";
 import type { OrigemExtracaoV1 } from "../provenance/types";
 import type { CadastroMatchContext, MovimentacaoCandidate, PessoaRef } from "./types";
 
@@ -23,6 +24,7 @@ export async function loadMovimentacaoCandidates(
       valor: movimentacao.valor,
       direcao: movimentacao.direcao,
       descricaoRaw: movimentacao.descricaoRaw,
+      remetenteDestinatario: movimentacao.remetenteDestinatario,
       origemExtracao: movimentacao.origemExtracao,
       contaBancariaId: movimentacao.contaBancariaId,
     })
@@ -35,19 +37,24 @@ export async function loadMovimentacaoCandidates(
       ),
     );
 
-  return rows.map((row) => ({
-    id: row.id,
-    arquivoIngestaoId: row.arquivoIngestaoId ?? "",
-    nomeArquivo: row.nomeArquivo,
-    dataMovimento: String(row.dataMovimento),
-    valor: String(row.valor),
-    direcao: row.direcao,
-    descricaoRaw: row.descricaoRaw,
-    cpfExtraido: null,
-    cnpjExtraido: null,
-    origemExtracao: (row.origemExtracao as OrigemExtracaoV1 | null) ?? null,
-    contaBancariaId: row.contaBancariaId,
-  }));
+  return rows.map((row) => {
+    const origemExtracao = (row.origemExtracao as OrigemExtracaoV1 | null) ?? null;
+    const docs = structuredDocsFromOrigemExtracao(origemExtracao);
+    return {
+      id: row.id,
+      arquivoIngestaoId: row.arquivoIngestaoId ?? "",
+      nomeArquivo: row.nomeArquivo,
+      dataMovimento: String(row.dataMovimento),
+      valor: String(row.valor),
+      direcao: row.direcao,
+      descricaoRaw: row.descricaoRaw,
+      remetenteDestinatario: row.remetenteDestinatario,
+      cpfExtraido: docs.cpf,
+      cnpjExtraido: docs.cnpj,
+      origemExtracao,
+      contaBancariaId: row.contaBancariaId,
+    };
+  });
 }
 
 export async function countPdfIngestoesForSessao(

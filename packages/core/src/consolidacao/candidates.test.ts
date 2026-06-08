@@ -10,7 +10,8 @@ const pixLine: MovimentacaoCandidate = {
   dataMovimento: "2025-01-15",
   valor: "100.00",
   direcao: "ENTRADA",
-  descricaoRaw: "GABRIEL REIS DA SILVA",
+  descricaoRaw: "CRED PIX",
+  remetenteDestinatario: "GABRIEL REIS DA SILVA",
   cpfExtraido: null,
   cnpjExtraido: null,
   origemExtracao: null,
@@ -23,7 +24,8 @@ const completoLine: MovimentacaoCandidate = {
   dataMovimento: "2025-01-15",
   valor: "100.00",
   direcao: "ENTRADA",
-  descricaoRaw: "GABRIEL REIS DA SILVA CPF 12345678901",
+  descricaoRaw: "CRED PIX CPF 12345678901",
+  remetenteDestinatario: "GABRIEL REIS DA SILVA",
   cpfExtraido: "12345678901",
   cnpjExtraido: null,
   origemExtracao: null,
@@ -73,7 +75,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-15",
       valor: "150.00",
       direcao: "ENTRADA",
-      descricaoRaw: "AUTO POSTO LTDA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "AUTO POSTO LTDA",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -85,7 +88,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-15",
       valor: "150.00",
       direcao: "ENTRADA",
-      descricaoRaw: "AUTO POSTO LTDA CNPJ 12345678000199",
+      descricaoRaw: "CRED PIX CNPJ 12345678000199",
+      remetenteDestinatario: "AUTO POSTO LTDA",
       cpfExtraido: null,
       cnpjExtraido: "12345678000199",
       origemExtracao: null,
@@ -131,6 +135,141 @@ describe("buildConsolidacaoCandidates", () => {
     expect(events[0]!.pessoaJuridicaId).toBe("pj-1");
   });
 
+  it("nao vincula cadastro por CPF so em descricaoRaw", () => {
+    const onlyCpfDescricao: MovimentacaoCandidate = {
+      id: "pix-cpf-desc",
+      arquivoIngestaoId: "arq-pix",
+      nomeArquivo: "Extrato Jan PIX.pdf",
+      dataMovimento: "2025-01-15",
+      valor: "60.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX CPF 12345678901",
+      remetenteDestinatario: null,
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+    };
+
+    const events = buildConsolidacaoCandidates([onlyCpfDescricao], {
+      pessoaByCpf: new Map([
+        [
+          "12345678901",
+          { kind: "PF", id: "pf-1", nome: "GABRIEL REIS DA SILVA" },
+        ],
+      ]),
+      pessoaByCnpj: new Map(),
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]!.pessoaFisicaId).toBeUndefined();
+    expect(events[0]!.confianca).toBe(0.4);
+  });
+
+  it("nao vincula cadastro por nome na descricao sem remetenteDestinatario", () => {
+    const onlyDescricao: MovimentacaoCandidate = {
+      id: "pix-desc",
+      arquivoIngestaoId: "arq-pix",
+      nomeArquivo: "Extrato Jan PIX.pdf",
+      dataMovimento: "2025-01-15",
+      valor: "70.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "GABRIELLE DIAS PIMENTEL",
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+    };
+
+    const events = buildConsolidacaoCandidates([onlyDescricao], {
+      pessoaByCpf: new Map([
+        [
+          "12345678901",
+          { kind: "PF", id: "pf-gabrielle", nome: "GABRIELLE D PIMENTEL" },
+        ],
+      ]),
+      pessoaByCnpj: new Map(),
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]!.pessoaFisicaId).toBeUndefined();
+    expect(events[0]!.confianca).toBe(0.4);
+  });
+
+  it("matches extracted remetenteDestinatario against abbreviated cadastro name", () => {
+    const pixWithExtractedName: MovimentacaoCandidate = {
+      id: "pix-rd",
+      arquivoIngestaoId: "arq-pix",
+      nomeArquivo: "Extrato Jan PIX.pdf",
+      dataMovimento: "2025-01-15",
+      valor: "80.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "GABRIELLE DIAS PIMENTEL",
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+      contaBancariaId: "c-1",
+    };
+
+    const events = buildConsolidacaoCandidates([pixWithExtractedName], {
+      pessoaByCpf: new Map([
+        [
+          "12345678901",
+          { kind: "PF", id: "pf-gabrielle", nome: "GABRIELLE D PIMENTEL" },
+        ],
+      ]),
+      pessoaByCnpj: new Map(),
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]!.confianca).toBe(0.8);
+    expect(events[0]!.pessoaFisicaId).toBe("pf-gabrielle");
+  });
+
+  it("pairs generic PIX line by extracted remetenteDestinatario and cadastro CPF", () => {
+    const pixWithExtractedName: MovimentacaoCandidate = {
+      id: "pix-rd-pair",
+      arquivoIngestaoId: "arq-pix",
+      nomeArquivo: "Extrato Jan PIX.pdf",
+      dataMovimento: "2025-01-15",
+      valor: "90.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "MATEUS BULHOES NUNES SOUTO",
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+      contaBancariaId: "c-1",
+    };
+    const completoWithCpf: MovimentacaoCandidate = {
+      id: "comp-rd-pair",
+      arquivoIngestaoId: "arq-total",
+      nomeArquivo: "EXTRATO TOTAL JANEIRO.pdf",
+      dataMovimento: "2025-01-15",
+      valor: "90.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX CPF 12345678901",
+      remetenteDestinatario: "MATEUS BULHOES NUNES SOUTO",
+      cpfExtraido: "12345678901",
+      cnpjExtraido: null,
+      origemExtracao: null,
+      contaBancariaId: "c-1",
+    };
+
+    const events = buildConsolidacaoCandidates([pixWithExtractedName, completoWithCpf], {
+      pessoaByCpf: new Map([
+        [
+          "12345678901",
+          { kind: "PF", id: "pf-mateus", nome: "MATEUS B N SOUTO" },
+        ],
+      ]),
+      pessoaByCnpj: new Map(),
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]!.confianca).toBeGreaterThanOrEqual(0.9);
+    expect(events[0]!.pessoaFisicaId).toBe("pf-mateus");
+  });
+
   it("pairs PIX and COMPLETO within the 0-to-3 days window", () => {
     const pixSat: MovimentacaoCandidate = {
       id: "pix-sat",
@@ -139,7 +278,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-15", // Saturday
       valor: "50.00",
       direcao: "ENTRADA",
-      descricaoRaw: "MARIA SILVA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "MARIA SILVA",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -152,7 +292,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-17", // Monday (2 days later)
       valor: "50.00",
       direcao: "ENTRADA",
-      descricaoRaw: "MARIA SILVA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "MARIA SILVA",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -193,7 +334,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-15",
       valor: "10.00",
       direcao: "ENTRADA",
-      descricaoRaw: "FIRST PIX",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "FIRST PERSON",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -206,7 +348,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-16",
       valor: "10.00",
       direcao: "ENTRADA",
-      descricaoRaw: "SECOND PIX",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "SECOND PERSON",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -219,7 +362,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-15",
       valor: "10.00",
       direcao: "ENTRADA",
-      descricaoRaw: "FIRST COMPLETO",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "FIRST PERSON",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -232,7 +376,8 @@ describe("buildConsolidacaoCandidates", () => {
       dataMovimento: "2025-01-16",
       valor: "10.00",
       direcao: "ENTRADA",
-      descricaoRaw: "SECOND COMPLETO",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "SECOND PERSON",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -258,6 +403,62 @@ describe("buildConsolidacaoCandidates", () => {
     expect(pair16!.linhas.map((l) => l.movimentacaoId)).toEqual(
       expect.arrayContaining(["pix-2", "comp-2"]),
     );
+  });
+
+  it("nao cria evento principal quando mesma data valor mas nomes divergem", () => {
+    const pix = { ...pixLine, remetenteDestinatario: "ANA LIMA" };
+    const comp = {
+      ...completoLine,
+      remetenteDestinatario: "CARLOS REIS",
+      cpfExtraido: null,
+    };
+    const events = buildConsolidacaoCandidates([pix, comp], {
+      pessoaByCpf: new Map(),
+      pessoaByCnpj: new Map(),
+    });
+    const paired = events.find((e) => e.linhas.length === 2);
+    expect(paired).toBeUndefined();
+    expect(events.filter((e) => e.linhas.length === 1).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("downgrades pair to hipotese when hora diverges more than 60min", () => {
+    const origemPix = {
+      versao: 1 as const,
+      arquivoIngestaoId: "arq-pix",
+      nomeArquivo: "Extrato Jan PIX.pdf",
+      pagina: 1,
+      indiceLinha: 1,
+      horaContraparte: "10:00",
+    };
+    const origemComp = {
+      versao: 1 as const,
+      arquivoIngestaoId: "arq-total",
+      nomeArquivo: "EXTRATO TOTAL JANEIRO.pdf",
+      pagina: 1,
+      indiceLinha: 1,
+      horaContraparte: "12:30",
+    };
+    const pix = { ...pixLine, origemExtracao: origemPix };
+    const comp = { ...completoLine, origemExtracao: origemComp };
+
+    const events = buildConsolidacaoCandidates([pix, comp], {
+      pessoaByCpf: new Map([
+        [
+          "12345678901",
+          { kind: "PF", id: "pf-1", nome: "GABRIEL REIS DA SILVA" },
+        ],
+      ]),
+      pessoaByCnpj: new Map(),
+    });
+
+    expect(events.filter((e) => e.linhas.length === 2)).toHaveLength(0);
+    const singles = events.filter((e) => e.linhas.length === 1);
+    expect(singles.length).toBeGreaterThanOrEqual(2);
+    const withHipotese = singles.filter((e) =>
+      e.hipoteses.some((h) => h.tipo === "PAR_PDF_FRACO"),
+    );
+    expect(withHipotese.length).toBeGreaterThanOrEqual(1);
+    expect(withHipotese[0]!.hipoteses[0]!.payload.justificativa).toContain("hora divergente");
   });
 
   it("does not pair different bank accounts", () => {

@@ -1,5 +1,6 @@
 import type { CONSOLIDACAO_LINHA_PAPEL } from "@spc-up/db";
 
+import type { CadastroLinkTier } from "../match/cadastro-link";
 import type { OrigemAtributosEvento, OrigemExtracaoV1 } from "../provenance/types";
 
 export type ConsolidacaoLinhaPapel =
@@ -13,6 +14,7 @@ export type MovimentacaoCandidate = {
   valor: string;
   direcao: string;
   descricaoRaw: string;
+  remetenteDestinatario?: string | null;
   cpfExtraido: string | null;
   cnpjExtraido: string | null;
   origemExtracao: OrigemExtracaoV1 | null;
@@ -49,6 +51,7 @@ export type ConsolidacaoEventDraft = {
   justificativa: string;
   pessoaFisicaId?: string;
   pessoaJuridicaId?: string;
+  cadastroLinkTier?: CadastroLinkTier;
   linhas: ConsolidacaoLinhaDraft[];
   hipoteses: ConsolidacaoHipoteseDraft[];
   evidencias: Array<{ tipo: string; detalhe: string; peso: number }>;

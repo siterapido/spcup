@@ -9,6 +9,9 @@ import { loadCadastroMatchContext } from "../consolidacao/load";
 import type { ConsolidacaoListItem } from "../consolidacao/queries";
 import { listConsolidacaoForSessao } from "../consolidacao/queries";
 import { getSessao } from "../prestacao/sessao";
+import { compararNomeComPessoa, type CadastroLinkTier } from "../match/cadastro-link";
+import type { NomeCadastroComparacao } from "../match/nome-cadastro";
+import { isNomeContraparteVazio } from "../match/nome-contraparte";
 import type { OrigemExtracaoV1 } from "../provenance/types";
 import { cleanDescricao } from "./descricao";
 import { buildIngestaoResumo } from "./ingestao-resumo";
@@ -26,6 +29,37 @@ export { mapConsolidacaoEventoToLinha } from "./map-consolidacao-linha";
 
 const EXTRACAO_DUVIDOSA_CONFIANCA = 0.4;
 
+function deriveCadastroLinkTier(
+  evidencias: Array<{ tipo: string }>,
+  pessoaLinked: boolean,
+  comparacaoNome: NomeCadastroComparacao,
+): CadastroLinkTier | null {
+  if (
+    evidencias.some(
+      (e) => e.tipo === "CONFLITO_DOCUMENTO" || e.tipo === "CONFLITO_NOME",
+    )
+  ) {
+    return "REJEITADO";
+  }
+  if (!pessoaLinked) {
+    if (
+      evidencias.some(
+        (e) => e.tipo === "CPF_SEM_CADASTRO" || e.tipo === "CNPJ_SEM_CADASTRO",
+      )
+    ) {
+      return "BAIXA";
+    }
+    return null;
+  }
+  if (
+    comparacaoNome === "bate" &&
+    evidencias.some((e) => e.tipo === "CPF_CADASTRO" || e.tipo === "CNPJ_CADASTRO")
+  ) {
+    return "ALTA";
+  }
+  return "MEDIA";
+}
+
 export type MovimentacaoLinhaInput = {
   id: string;
   dataMovimento: string;
@@ -34,14 +68,25 @@ export type MovimentacaoLinhaInput = {
   descricaoRaw: string;
   nrExtratoBancario: string | null;
   confiancaGlobal: number;
-  pessoaFisica: { id: string; nome: string; cpf: string } | null;
-  pessoaJuridica: { id: string; razaoSocial: string; cnpj: string } | null;
+  pessoaFisica: { id: string; nome: string; cpf: string; aliases?: string[] | null } | null;
+  pessoaJuridica: {
+    id: string;
+    razaoSocial: string;
+    cnpj: string;
+    aliases?: string[] | null;
+  } | null;
   remetenteDestinatario?: string | null;
   nomeArquivo: string | null;
   arquivoIngestaoId?: string | null;
   origemExtracao: OrigemExtracaoV1 | null;
   statusPaginaVerificar?: boolean;
   extracaoConfirmada?: boolean;
+  evidencias?: Array<{ tipo: string }>;
+};
+
+type MovimentacaoPessoaRef = {
+  nome: string;
+  aliases?: string[] | null;
 };
 
 function mapPessoaFromMovimentacao(mov: MovimentacaoLinhaInput): PlanilhaPessoa | null {
@@ -64,6 +109,22 @@ function mapPessoaFromMovimentacao(mov: MovimentacaoLinhaInput): PlanilhaPessoa 
   return null;
 }
 
+function pessoaRefFromMovimentacao(mov: MovimentacaoLinhaInput): MovimentacaoPessoaRef | null {
+  if (mov.pessoaFisica) {
+    return { nome: mov.pessoaFisica.nome, aliases: mov.pessoaFisica.aliases };
+  }
+  if (mov.pessoaJuridica) {
+    return { nome: mov.pessoaJuridica.razaoSocial, aliases: mov.pessoaJuridica.aliases };
+  }
+  return null;
+}
+
+function comparacaoNomeFromMov(mov: MovimentacaoLinhaInput): NomeCadastroComparacao | null {
+  const pessoaRef = pessoaRefFromMovimentacao(mov);
+  if (!pessoaRef || isNomeContraparteVazio(mov.remetenteDestinatario ?? null)) return null;
+  return compararNomeComPessoa(mov.remetenteDestinatario!, pessoaRef);
+}
+
 function isExtracaoDuvidosaMovimentacao(mov: MovimentacaoLinhaInput): boolean {
   if (mov.extracaoConfirmada) return false;
   if (mov.statusPaginaVerificar) return true;
@@ -72,6 +133,13 @@ function isExtracaoDuvidosaMovimentacao(mov: MovimentacaoLinhaInput): boolean {
 
 export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLinha {
   const pessoa = mapPessoaFromMovimentacao(mov);
+  const evidencias = mov.evidencias ?? [];
+  const comparacaoNome = comparacaoNomeFromMov(mov) ?? "indefinido";
+  const cadastroLinkTier = deriveCadastroLinkTier(
+    evidencias,
+    pessoa !== null,
+    comparacaoNome,
+  );
   const extracaoConfirmada = mov.extracaoConfirmada === true;
   const extracaoDuvidosaRaw = isExtracaoDuvidosaMovimentacao({
     ...mov,
@@ -114,6 +182,8 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     origens,
     extracaoDuvidosa,
     extracaoConfirmada,
+    cadastroLinkTier,
+    comparacaoNome: pessoa ? comparacaoNome : null,
   };
 }
 
@@ -166,6 +236,7 @@ function dbMovToLinhaInput(
     origemExtracao: (mov.origemExtracao as OrigemExtracaoV1 | null) ?? null,
     statusPaginaVerificar: mov.evidencias.some((e) => e.tipo === "PAGINA_VERIFICAR"),
     extracaoConfirmada: mov.evidencias.some((e) => e.tipo === "EXTRACAO_CONFIRMADA"),
+    evidencias: mov.evidencias.map((e) => ({ tipo: e.tipo })),
   };
 }
 

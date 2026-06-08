@@ -55,6 +55,39 @@ describe("mapConsolidacaoEventoToLinha", () => {
     expect(linha.eventoStatus).toBe("PENDENTE");
   });
 
+  it("usa arquivoIngestaoId da linha quando origemExtracao ausente", () => {
+    const linha = mapConsolidacaoEventoToLinha({
+      id: "ev-arq",
+      status: "PENDENTE",
+      dataMovimento: "2025-01-01",
+      valor: "20.00",
+      direcao: "ENTRADA",
+      confianca: 0.55,
+      justificativa: null,
+      pessoa: null,
+      linhas: [
+        {
+          movimentacaoId: "m1",
+          papel: "PIX",
+          descricaoRaw: "PIX RECEBIDO",
+          nomeArquivo: "Extrato Jan PIX (1).pdf",
+          arquivoIngestaoId: "arq-pix",
+          origemExtracao: null,
+        },
+        {
+          movimentacaoId: "m2",
+          papel: "COMPLETO",
+          descricaoRaw: "CRED PIX",
+          nomeArquivo: "EXTRATO TOTAL JANEIRO (1) (1).pdf",
+          arquivoIngestaoId: "arq-total",
+          origemExtracao: null,
+        },
+      ],
+    });
+    expect(linha.origens[0]?.arquivoIngestaoId).toBe("arq-pix");
+    expect(linha.origens[1]?.arquivoIngestaoId).toBe("arq-total");
+  });
+
   it("usa remetenteDestinatario persistido quando presente", () => {
     const linha = mapMovimentacaoToLinha({
       id: "m-nome",

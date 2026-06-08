@@ -15,6 +15,9 @@ export function planilhaLinhaFromEvento(evento: ConsolidacaoEventoRow): Planilha
     direcao: evento.direcao,
     confianca: evento.confianca,
     justificativa: evento.justificativa,
+    pessoaFisicaId: evento.pessoaFisicaId,
+    pessoaJuridicaId: evento.pessoaJuridicaId,
+    remetenteDestinatario: evento.remetenteDestinatario,
     pessoa: evento.pessoa,
     linhas: evento.linhas.map((l) => ({
       movimentacaoId: l.movimentacaoId,
@@ -22,6 +25,7 @@ export function planilhaLinhaFromEvento(evento: ConsolidacaoEventoRow): Planilha
       descricaoRaw: l.descricaoRaw,
       nrExtratoBancario: null,
       nomeArquivo: l.nomeArquivo,
+      arquivoIngestaoId: l.arquivoIngestaoId,
       origemExtracao: l.origemExtracao,
     })),
   });

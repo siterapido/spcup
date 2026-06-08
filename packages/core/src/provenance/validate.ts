@@ -36,5 +36,8 @@ export function validateOrigemExtracao(
     indiceLinha: raw.indiceLinha,
     bbox,
     campos: raw.campos,
+    cpfContraparte: raw.cpfContraparte ?? null,
+    cnpjContraparte: raw.cnpjContraparte ?? null,
+    horaContraparte: raw.horaContraparte ?? null,
   };
 }

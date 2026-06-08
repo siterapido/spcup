@@ -49,6 +49,8 @@ export {
   type ConsolidacaoEventoLinhaInput,
 } from "./planilha/map-consolidacao-linha";
 
+export type { CadastroLinkTier } from "./match/cadastro-link";
+
 export type {
   IngestaoResumo,
   IngestaoResumoArquivo,

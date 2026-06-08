@@ -3,8 +3,6 @@ import {
   consolidacaoLinha,
   matchEvidencia,
   movimentacao,
-  pessoaFisica,
-  pessoaJuridica,
   type Db,
 } from "@spc-up/db";
 import { and, eq, isNull } from "drizzle-orm";
@@ -15,47 +13,17 @@ import {
   approveConsolidacaoEvento,
   rejectConsolidacaoEvento,
 } from "../consolidacao/approve";
-import { loadCadastroMatchContext } from "../consolidacao/load";
+import { resolveCadastroLink } from "../match/cadastro-link";
 import { isNomeContraparteVazio } from "../match/nome-contraparte";
-import { applyDeterministicMatch, extractDocumentCandidates } from "../match/rules";
+import { structuredDocsFromOrigemExtracao } from "../match/structured-contraparte-docs";
+import { applyDeterministicMatch } from "../match/rules";
+import type { OrigemExtracaoV1 } from "../provenance/types";
 import { normalizeName } from "../normalize";
 import {
   assignPessoaToMovimentacao,
   type AssignPessoaInput,
 } from "../prestacao/movimentacao-review";
 import type { PlanilhaLinhaFonte } from "./types";
-
-async function findUniquePessoaByNome(
-  db: Db,
-  rawNome: string,
-): Promise<
-  | { kind: "PF"; id: string }
-  | { kind: "PJ"; id: string }
-  | null
-> {
-  const nome = normalizeName(rawNome);
-  if (!nome) return null;
-
-  const pfs = await db
-    .select({ id: pessoaFisica.id })
-    .from(pessoaFisica)
-    .where(eq(pessoaFisica.nome, nome))
-    .limit(2);
-  if (pfs.length === 1) {
-    return { kind: "PF", id: pfs[0]!.id };
-  }
-
-  const pjs = await db
-    .select({ id: pessoaJuridica.id })
-    .from(pessoaJuridica)
-    .where(eq(pessoaJuridica.razaoSocial, nome))
-    .limit(2);
-  if (pjs.length === 1) {
-    return { kind: "PJ", id: pjs[0]!.id };
-  }
-
-  return null;
-}
 
 async function rematchConsolidacaoEventoPorNome(
   db: Db,
@@ -72,58 +40,30 @@ async function rematchConsolidacaoEventoPorNome(
   const cpfs = new Set<string>();
   const cnpjs = new Set<string>();
   for (const linha of evento.linhas) {
-    for (const { docType, normalized } of extractDocumentCandidates(
-      linha.movimentacao.descricaoRaw,
-    )) {
-      if (docType === "CPF") cpfs.add(normalized);
-      else cnpjs.add(normalized);
-    }
+    const origem = linha.movimentacao.origemExtracao as OrigemExtracaoV1 | null;
+    const { cpf, cnpj } = structuredDocsFromOrigemExtracao(origem);
+    if (cpf) cpfs.add(cpf);
+    if (cnpj) cnpjs.add(cnpj);
   }
 
-  const ctx = await loadCadastroMatchContext(db);
-  let pessoaFisicaId: string | null = null;
-  let pessoaJuridicaId: string | null = null;
-  let justificativa: string | undefined;
+  const cpf = cpfs.size === 1 && cnpjs.size === 0 ? [...cpfs][0]! : null;
+  const cnpj = cnpjs.size === 1 && cpfs.size === 0 ? [...cnpjs][0]! : null;
 
-  if (cpfs.size === 1 && cnpjs.size === 0) {
-    const cpf = [...cpfs][0]!;
-    const pessoa = ctx.pessoaByCpf.get(cpf);
-    if (pessoa?.kind === "PF") {
-      pessoaFisicaId = pessoa.id;
-      justificativa = "CPF nas origens com cadastro";
-    }
-  } else if (cnpjs.size === 1 && cpfs.size === 0) {
-    const cnpj = [...cnpjs][0]!;
-    const pessoa = ctx.pessoaByCnpj.get(cnpj);
-    if (pessoa?.kind === "PJ") {
-      pessoaJuridicaId = pessoa.id;
-      justificativa = "CNPJ nas origens com cadastro";
-    }
-  }
+  const link = await resolveCadastroLink(db, {
+    cpf,
+    cnpj,
+    remetenteDestinatario: evento.remetenteDestinatario,
+  });
 
-  if (!pessoaFisicaId && !pessoaJuridicaId) {
-    const remetenteDestinatario = evento.remetenteDestinatario;
-    if (!isNomeContraparteVazio(remetenteDestinatario)) {
-      const byNome = await findUniquePessoaByNome(db, remetenteDestinatario!);
-      if (byNome?.kind === "PF") {
-        pessoaFisicaId = byNome.id;
-        justificativa = "Nome único no cadastro";
-      } else if (byNome?.kind === "PJ") {
-        pessoaJuridicaId = byNome.id;
-        justificativa = "Nome único no cadastro";
-      }
-    }
-  }
-
-  if (!pessoaFisicaId && !pessoaJuridicaId) return;
+  if (!link.pessoaFisicaId && !link.pessoaJuridicaId) return;
 
   await db
     .update(consolidacaoEvento)
     .set({
-      pessoaFisicaId,
-      pessoaJuridicaId,
-      confianca: 0.85,
-      justificativa,
+      pessoaFisicaId: link.pessoaFisicaId,
+      pessoaJuridicaId: link.pessoaJuridicaId,
+      confianca: link.tier === "ALTA" ? 0.9 : 0.85,
+      justificativa: link.motivo,
     })
     .where(eq(consolidacaoEvento.id, eventoId));
 }

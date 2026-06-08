@@ -149,6 +149,8 @@ export {
 } from "./prestacao/delete-movimentacao";
 export {
   SESSAO_DELETE_CODES,
+  purgeSessaoData,
+  purgeSoftDeletedSessoes,
   softDeleteSessoes,
   type SoftDeleteSessaoSkipped,
   type SoftDeleteSessoesResult,
@@ -278,6 +280,13 @@ export {
   type NomeCadastroComparacao,
 } from "./match/nome-cadastro";
 export {
+  resolveCadastroLink,
+  findPessoasByNomeFuzzy,
+  compararNomeComPessoa,
+  type CadastroLinkTier,
+  type CadastroLinkResult,
+} from "./match/cadastro-link";
+export {
   evaluateMovimentacaoWithAi,
   type AiMatchResult,
   type EvaluateAiMatchInput,
@@ -306,6 +315,7 @@ export {
 } from "./normalize";
 export {
   CADASTRO_TIPO,
+  isStubNome,
   countPessoaMovimentacoes,
   deletePessoas,
   updatePessoa,

@@ -5,10 +5,50 @@ import {
 } from "@spc-up/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
-import { hasCpfInDescricao } from "../match/rules";
+import { hasStructuredContraparteDoc } from "../match/structured-contraparte-docs";
 import type { OrigemAtributosEvento, OrigemExtracaoV1 } from "../provenance/types";
 import { countPdfIngestoesForSessao, loadCadastroMatchContext, loadMovimentacaoCandidates } from "./load";
 import { buildConsolidacaoCandidates } from "./candidates";
+
+const MATCH_EVIDENCIA_TIPOS = new Set([
+  "CPF_CADASTRO",
+  "CNPJ_CADASTRO",
+  "CPF_SEM_CADASTRO",
+  "CNPJ_SEM_CADASTRO",
+  "CONFLITO_DOCUMENTO",
+  "CONFLITO_NOME",
+  "NOME_DIVERGE_CADASTRO",
+]);
+
+function matchEvidenciasFromEvento(evento: {
+  linhas: Array<{ movimentacao: { evidencias: Array<{ tipo: string }> } }>;
+  origemAtributos: unknown;
+}): Array<{ tipo: string }> {
+  const byTipo = new Map<string, { tipo: string }>();
+  for (const linha of evento.linhas) {
+    for (const ev of linha.movimentacao.evidencias) {
+      if (MATCH_EVIDENCIA_TIPOS.has(ev.tipo)) {
+        byTipo.set(ev.tipo, { tipo: ev.tipo });
+      }
+    }
+  }
+  if (byTipo.size > 0) return [...byTipo.values()];
+
+  const origem = evento.origemAtributos as OrigemAtributosEvento | null;
+  if (!origem) return [];
+  const fromOrigem: Array<{ tipo: string }> = [];
+  for (const ref of origem.pessoa) {
+    if (ref.tipo !== "CADASTRO_UF") continue;
+    if (
+      ref.matchTipo === "CPF_CADASTRO" ||
+      ref.matchTipo === "CNPJ_CADASTRO" ||
+      ref.matchTipo === "NOME_CADASTRO"
+    ) {
+      fromOrigem.push({ tipo: ref.matchTipo });
+    }
+  }
+  return fromOrigem;
+}
 
 export type ConsolidacaoListItem = {
   id: string;
@@ -25,7 +65,9 @@ export type ConsolidacaoListItem = {
     nome: string;
     documento: string;
     tipo: "PF" | "PJ";
+    aliases?: string[] | null;
   } | null;
+  matchEvidencias: Array<{ tipo: string }>;
   linhas: Array<{
     id: string;
     movimentacaoId: string;
@@ -33,6 +75,7 @@ export type ConsolidacaoListItem = {
     descricaoRaw: string;
     nrExtratoBancario: string | null;
     nomeArquivo: string | null;
+    arquivoIngestaoId: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
   }>;
   hipoteses: Array<{
@@ -80,7 +123,7 @@ export async function listConsolidacaoForSessao(
     const ctx = await loadCadastroMatchContext(db);
     const drafts = buildConsolidacaoCandidates(movs, ctx);
     const nomeOnlyPix = movs.some(
-      (m) => /pix/i.test(m.nomeArquivo) && !hasCpfInDescricao(m.descricaoRaw),
+      (m) => /pix/i.test(m.nomeArquivo) && !hasStructuredContraparteDoc(m.origemExtracao),
     );
     const anyCadastroMatch = drafts.some((d) => d.confianca >= 0.8);
     cadastroAlerta = nomeOnlyPix && !anyCadastroMatch;
@@ -105,14 +148,17 @@ export async function listConsolidacaoForSessao(
             nome: e.pessoaFisica.nome,
             documento: e.pessoaFisica.cpf,
             tipo: "PF" as const,
+            aliases: e.pessoaFisica.aliases,
           }
         : e.pessoaJuridica
           ? {
               nome: e.pessoaJuridica.razaoSocial,
               documento: e.pessoaJuridica.cnpj,
               tipo: "PJ" as const,
+              aliases: e.pessoaJuridica.aliases,
             }
           : null,
+      matchEvidencias: matchEvidenciasFromEvento(e),
       linhas: e.linhas.map((l) => ({
         id: l.id,
         movimentacaoId: l.movimentacaoId,
@@ -120,6 +166,11 @@ export async function listConsolidacaoForSessao(
         descricaoRaw: l.movimentacao.descricaoRaw,
         nrExtratoBancario: l.movimentacao.nrExtratoBancario,
         nomeArquivo: l.arquivoIngestao?.nomeArquivo ?? null,
+        arquivoIngestaoId:
+          l.arquivoIngestaoId ??
+          l.arquivoIngestao?.id ??
+          l.movimentacao.arquivoIngestaoId ??
+          null,
         origemExtracao:
           (l.movimentacao.origemExtracao as OrigemExtracaoV1 | null) ?? null,
       })),

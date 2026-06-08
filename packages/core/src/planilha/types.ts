@@ -1,3 +1,5 @@
+import type { CadastroLinkTier } from "../match/cadastro-link";
+import type { NomeCadastroComparacao } from "../match/nome-cadastro";
 import type { OrigemExtracaoV1, BboxNorm } from "../provenance/types";
 
 export type PlanilhaLinhaStatus =
@@ -47,6 +49,8 @@ export type PlanilhaLinha = {
   extracaoDuvidosa: boolean;
   /** Operador confirmou extração (valor/data) na planilha */
   extracaoConfirmada: boolean;
+  cadastroLinkTier?: CadastroLinkTier | null;
+  comparacaoNome?: NomeCadastroComparacao | null;
 };
 
 export type PlanilhaResumo = {
@@ -59,6 +63,8 @@ export type PlanilhaResumo = {
   extracaoDuvidosa: number;
   cadastroAlerta: boolean;
   exportavel: boolean;
+  docSemCadastro: number;
+  nomeDiverge: number;
 };
 
 export type IngestaoResumoPagina = {

@@ -26,6 +26,12 @@ export type OrigemExtracaoV1 = {
   pagina: number;
   indiceLinha: number;
   bbox?: BboxNorm;
+  /** CPF da contraparte (coluna cpf/cpf_cnpj da extração), não derivado de descricaoRaw. */
+  cpfContraparte?: string | null;
+  /** CNPJ da contraparte (coluna cnpj/cpf_cnpj da extração), não derivado de descricaoRaw. */
+  cnpjContraparte?: string | null;
+  /** Hora do lançamento (HH:MM) quando coluna mapeada. */
+  horaContraparte?: string | null;
   campos?: Partial<
     Record<CampoExtrato, { pagina: number; indiceLinha: number; bbox?: BboxNorm }>
   >;

@@ -1,7 +1,8 @@
-import { extractNomeContraparte } from "../match/nome-contraparte";
-import { extractDocumentCandidates } from "../match/rules";
+import { compararNomeCadastro } from "../match/nome-cadastro";
+import type { CadastroLinkTier } from "../match/cadastro-link";
 import { normalizeName } from "../normalize";
 import { buildOrigemAtributos } from "../provenance/build-origem-atributos";
+import type { OrigemExtracaoV1 } from "../provenance/types";
 import { classifyArquivoPapel } from "./classify-arquivo";
 import type {
   CadastroMatchContext,
@@ -16,21 +17,7 @@ function extractDocsFromMov(m: MovimentacaoCandidate): {
   cpf: string | null;
   cnpj: string | null;
 } {
-  if (m.cpfExtraido) {
-    return { cpf: m.cpfExtraido, cnpj: m.cnpjExtraido };
-  }
-  const candidates = extractDocumentCandidates(m.descricaoRaw);
-  let cpf: string | null = null;
-  let cnpj: string | null = null;
-  for (const c of candidates) {
-    if (c.docType === "CPF" && !cpf) {
-      cpf = c.normalized;
-    }
-    if (c.docType === "CNPJ" && !cnpj) {
-      cnpj = c.normalized;
-    }
-  }
-  return { cpf, cnpj };
+  return { cpf: m.cpfExtraido, cnpj: m.cnpjExtraido };
 }
 
 function transactionKey(m: MovimentacaoCandidate): string {
@@ -58,6 +45,57 @@ function resolvePessoa(
     return ctx.pessoaByCnpj.get(cnpj)!;
   }
   return null;
+}
+
+function remetenteFromMov(m: MovimentacaoCandidate): string {
+  return normalizeName(m.remetenteDestinatario ?? "");
+}
+
+function nomesBatem(extraido: string, cadastro: string): boolean {
+  return compararNomeCadastro(extraido, cadastro) === "bate";
+}
+
+function pairEligible(a: MovimentacaoCandidate, b: MovimentacaoCandidate): boolean {
+  const docsA = extractDocsFromMov(a);
+  const docsB = extractDocsFromMov(b);
+  if (docsA.cpf && docsB.cpf && docsA.cpf === docsB.cpf) return true;
+  if (docsA.cnpj && docsB.cnpj && docsA.cnpj === docsB.cnpj) return true;
+  const nomeA = remetenteFromMov(a);
+  const nomeB = remetenteFromMov(b);
+  if (nomeA.length >= 3 && nomeB.length >= 3 && nomesBatem(nomeA, nomeB)) return true;
+  if ((docsA.cpf || docsA.cnpj || docsB.cpf || docsB.cnpj) && nomesBatem(nomeA, nomeB)) {
+    return true;
+  }
+  return false;
+}
+
+function hasDocOnEitherSide(a: MovimentacaoCandidate, b?: MovimentacaoCandidate): boolean {
+  const docsA = extractDocsFromMov(a);
+  if (docsA.cpf || docsA.cnpj) return true;
+  if (!b) return false;
+  const docsB = extractDocsFromMov(b);
+  return !!(docsB.cpf || docsB.cnpj);
+}
+
+function cadastroLinkTierFromScore(
+  confianca: number,
+  pessoa: PessoaRef | null,
+  hasDoc: boolean,
+): CadastroLinkTier {
+  if (confianca >= 0.9 && pessoa && hasDoc) return "ALTA";
+  if (confianca >= 0.8) return "MEDIA";
+  return "BAIXA";
+}
+
+function findUniquePessoaByNome(ctx: CadastroMatchContext, nome: string): PessoaRef | null {
+  const normalized = normalizeName(nome);
+  if (normalized.length < 3) return null;
+
+  const matches = [
+    ...[...ctx.pessoaByCpf.values()].filter((p) => nomesBatem(normalized, p.nome)),
+    ...[...ctx.pessoaByCnpj.values()].filter((p) => nomesBatem(normalized, p.nome)),
+  ];
+  return matches.length === 1 ? matches[0]! : null;
 }
 
 function scorePair(
@@ -92,15 +130,17 @@ function scorePair(
 
   const cpfCompleto = cpfB ?? cpfA;
   const cnpjCompleto = cnpjB ?? cnpjA;
-  const nomePix = extractNomeContraparte(a.descricaoRaw);
-  const nomeCompleto = extractNomeContraparte(b.descricaoRaw);
+  const nomePix = remetenteFromMov(a);
+  const nomeCompleto = remetenteFromMov(b);
   const pessoaByCpf = cpfCompleto ? resolvePessoa(cpfCompleto, null, ctx) : null;
   const pessoaByCnpj = cnpjCompleto ? resolvePessoa(null, cnpjCompleto, ctx) : null;
 
   if (
     cpfCompleto &&
     pessoaByCpf &&
-    (nomePix === normalizeName(pessoaByCpf.nome) || nomePix === nomeCompleto)
+    (nomesBatem(nomePix, pessoaByCpf.nome) ||
+      nomesBatem(nomeCompleto, pessoaByCpf.nome) ||
+      nomesBatem(nomePix, nomeCompleto))
   ) {
     return {
       confianca: 0.9,
@@ -112,7 +152,9 @@ function scorePair(
   if (
     cnpjCompleto &&
     pessoaByCnpj &&
-    (nomePix === normalizeName(pessoaByCnpj.nome) || nomePix === nomeCompleto)
+    (nomesBatem(nomePix, pessoaByCnpj.nome) ||
+      nomesBatem(nomeCompleto, pessoaByCnpj.nome) ||
+      nomesBatem(nomePix, nomeCompleto))
   ) {
     return {
       confianca: 0.9,
@@ -121,18 +163,18 @@ function scorePair(
     };
   }
 
-  if (nomePix.length >= 3 && nomePix === nomeCompleto) {
+  if (nomePix.length >= 3 && nomesBatem(nomePix, nomeCompleto)) {
     const pessoa =
       pessoaByCpf ??
       pessoaByCnpj ??
-      [...ctx.pessoaByCpf.values()].find((p) => normalizeName(p.nome) === nomePix) ??
-      [...ctx.pessoaByCnpj.values()].find((p) => normalizeName(p.nome) === nomePix) ??
+      findUniquePessoaByNome(ctx, nomePix) ??
+      findUniquePessoaByNome(ctx, nomeCompleto) ??
       null;
     return {
       confianca: pessoa ? 0.8 : 0.65,
       justificativa: pessoa
         ? "Mesma data/valor/direção e nome único no cadastro"
-        : "Mesma data/valor/direção e descrição equivalente",
+        : "Mesma data/valor/direção e remetente/destinatário equivalente",
       pessoa,
     };
   }
@@ -170,18 +212,10 @@ function scoreSingle(
       pessoa,
     };
   }
-  const nome = extractNomeContraparte(m.descricaoRaw);
-  const byNomePF = [...ctx.pessoaByCpf.values()].find(
-    (p) => normalizeName(p.nome) === nome,
-  );
-  if (byNomePF) {
-    return { confianca: 0.8, justificativa: "Nome único no cadastro", pessoa: byNomePF };
-  }
-  const byNomePJ = [...ctx.pessoaByCnpj.values()].find(
-    (p) => normalizeName(p.nome) === nome,
-  );
-  if (byNomePJ) {
-    return { confianca: 0.8, justificativa: "Nome único no cadastro", pessoa: byNomePJ };
+  const nome = remetenteFromMov(m);
+  const byNome = findUniquePessoaByNome(ctx, nome);
+  if (byNome) {
+    return { confianca: 0.8, justificativa: "Nome único no cadastro", pessoa: byNome };
   }
   return { confianca: 0.4, justificativa: "Sem vínculo cadastro", pessoa: null };
 }
@@ -194,6 +228,23 @@ type PairCandidate = {
   pessoa: PessoaRef | null;
 };
 
+type WeakPairCandidate = PairCandidate;
+
+function hipoteseFromWeakPair(
+  other: MovimentacaoCandidate,
+  justificativa: string,
+): ConsolidacaoHipoteseDraft {
+  return {
+    tipo: "PAR_PDF_FRACO",
+    confianca: 0.55,
+    payload: {
+      movimentacaoId: other.id,
+      arquivoIngestaoId: other.arquivoIngestaoId,
+      justificativa,
+    },
+  };
+}
+
 /** Build consolidation event drafts from session movimentações and cadastro context. */
 function finalizeDraft(
   draft: Omit<ConsolidacaoEventDraft, "origemAtributos">,
@@ -203,6 +254,25 @@ function finalizeDraft(
     ...draft,
     origemAtributos: buildOrigemAtributos(draft, movById),
   };
+}
+
+function horaDeltaMinutes(ha: string, hb: string): number {
+  const [ah, am] = ha.split(":").map(Number);
+  const [bh, bm] = hb.split(":").map(Number);
+  return Math.abs(ah * 60 + am - (bh * 60 + bm));
+}
+
+function horaReinforcesPair(
+  a: OrigemExtracaoV1 | null,
+  b: OrigemExtracaoV1 | null,
+): "ok" | "weak" | "skip" {
+  const ha = a?.horaContraparte;
+  const hb = b?.horaContraparte;
+  if (!ha || !hb) return "skip";
+  const delta = horaDeltaMinutes(ha, hb);
+  if (delta <= 5) return "ok";
+  if (delta > 60) return "weak";
+  return "skip";
 }
 
 function isDateWindowMatch(a: MovimentacaoCandidate, b: MovimentacaoCandidate): boolean {
@@ -237,6 +307,7 @@ export function buildConsolidacaoCandidates(
   const sortedMovs = [...movs].sort((x, y) => x.dataMovimento.localeCompare(y.dataMovimento));
 
   const pairCandidates: PairCandidate[] = [];
+  const weakPairCandidates: WeakPairCandidate[] = [];
   for (let i = 0; i < sortedMovs.length; i++) {
     for (let j = i + 1; j < sortedMovs.length; j++) {
       const a = sortedMovs[i]!;
@@ -252,6 +323,23 @@ export function buildConsolidacaoCandidates(
         continue;
       }
       const scored = scorePair(a, b, ctx);
+      const horaVerdict = horaReinforcesPair(a.origemExtracao, b.origemExtracao);
+      if (horaVerdict === "weak") {
+        weakPairCandidates.push({
+          a,
+          b,
+          ...scored,
+          justificativa: `${scored.justificativa}; hora divergente (>60min)`,
+        });
+        continue;
+      }
+      if (scored.confianca === 0.55) {
+        weakPairCandidates.push({ a, b, ...scored });
+        continue;
+      }
+      if (!pairEligible(a, b)) {
+        continue;
+      }
       pairCandidates.push({ a, b, ...scored });
     }
   }
@@ -297,6 +385,11 @@ export function buildConsolidacaoCandidates(
           direcao: pair.a.direcao,
           confianca: pair.confianca,
           justificativa: pair.justificativa,
+          cadastroLinkTier: cadastroLinkTierFromScore(
+            pair.confianca,
+            pair.pessoa,
+            hasDocOnEitherSide(pair.a, pair.b),
+          ),
           ...pessoaIds(pair.pessoa),
           linhas,
           hipoteses,
@@ -307,11 +400,24 @@ export function buildConsolidacaoCandidates(
     );
   }
 
+  const weakHipotesesByMovId = new Map<string, ConsolidacaoHipoteseDraft[]>();
+  for (const weak of weakPairCandidates) {
+    for (const [self, other] of [
+      [weak.a, weak.b] as const,
+      [weak.b, weak.a] as const,
+    ]) {
+      const list = weakHipotesesByMovId.get(self.id) ?? [];
+      list.push(hipoteseFromWeakPair(other, weak.justificativa));
+      weakHipotesesByMovId.set(self.id, list);
+    }
+  }
+
   for (const m of movs) {
     if (used.has(m.id)) {
       continue;
     }
     const single = scoreSingle(m, ctx);
+    const hipoteses = weakHipotesesByMovId.get(m.id) ?? [];
     events.push(
       finalizeDraft(
         {
@@ -320,9 +426,14 @@ export function buildConsolidacaoCandidates(
           direcao: m.direcao,
           confianca: single.confianca,
           justificativa: single.justificativa,
+          cadastroLinkTier: cadastroLinkTierFromScore(
+            single.confianca,
+            single.pessoa,
+            hasDocOnEitherSide(m),
+          ),
           ...pessoaIds(single.pessoa),
           linhas: [linhaDraft(m)],
-          hipoteses: [],
+          hipoteses,
           evidencias: single.pessoa
             ? [
                 {

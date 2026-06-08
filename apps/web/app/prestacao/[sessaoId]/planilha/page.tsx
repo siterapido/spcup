@@ -1,5 +1,6 @@
 import { listPlanilhaForSessao } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
+import { notFound } from "next/navigation";
 
 import { PlanilhaView } from "@/components/prestacao/planilha-table";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,7 @@ export default async function PlanilhaPage({
   const { sessaoId } = await params;
   const db = getDb();
   const payload = await listPlanilhaForSessao(db, sessaoId);
-  if (!payload) throw new Error("Sessão não encontrada");
+  if (!payload) notFound();
 
   return (
     <main className="mx-auto max-w-[min(96rem,100%)] px-4 py-10">

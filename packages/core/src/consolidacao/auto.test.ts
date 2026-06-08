@@ -67,6 +67,7 @@ describe("isConsolidacaoAutoAprovavel", () => {
           dataMovimento: "2025-01-01",
           confianca: 0.9,
           pessoaFisicaId: "pf",
+          cadastroLinkTier: "ALTA",
         }),
         0.85,
       ),
@@ -84,6 +85,21 @@ describe("isConsolidacaoAutoAprovavel", () => {
           dataMovimento: "2025-01-01",
           confianca: 0.7,
           pessoaFisicaId: "pf",
+        }),
+        0.85,
+      ),
+    ).toBe(false);
+  });
+
+  it("não aprova tier MEDIA mesmo com pessoa e limiar", () => {
+    expect(
+      isConsolidacaoAutoAprovavel(
+        draft({
+          valor: "1",
+          dataMovimento: "2025-01-01",
+          confianca: 0.9,
+          pessoaFisicaId: "pf",
+          cadastroLinkTier: "MEDIA",
         }),
         0.85,
       ),

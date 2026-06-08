@@ -2,7 +2,10 @@ import { type Db, movimentacao } from "@spc-up/db";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { MOVIMENTACAO_STATUS } from "../ingest/types";
-import { applyDeterministicMatch, extractDocumentCandidates } from "../match/rules";
+import { applyDeterministicMatch } from "../match/rules";
+import { isNomeContraparteVazio } from "../match/nome-contraparte";
+import { hasStructuredContraparteDoc } from "../match/structured-contraparte-docs";
+import type { OrigemExtracaoV1 } from "../provenance/types";
 import { isStubNome } from "./constants";
 
 const PENDING_STATUSES = [
@@ -27,7 +30,10 @@ export async function rematchPendingMovimentacoes(
 
   let processed = 0;
   for (const mov of rows) {
-    if (extractDocumentCandidates(mov.descricaoRaw).length === 0) {
+    const origem = mov.origemExtracao as OrigemExtracaoV1 | null;
+    const hasDoc = hasStructuredContraparteDoc(origem);
+    const hasRemetente = !isNomeContraparteVazio(mov.remetenteDestinatario);
+    if (!hasDoc && !hasRemetente) {
       continue;
     }
 

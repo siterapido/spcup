@@ -12,6 +12,7 @@ Estes scripts existem para depuração local. Usuários finais usam **web** + **
 | `scripts/limpar-transacoes.ts` | Limpar transações de teste |
 | `scripts/wipe-domain.ts` | Wipe domínio (sessões, movimentações, pessoas). Requer `ALLOW_DOMAIN_WIPE=1`. No deploy `remetente_destinatario`, rodar **antes** da migration — ver [Deploy remetente_destinatario](#deploy-remetente_destinatario) |
 | `scripts/test-remetente-match-e2e.ts` | E2E remetente/destinatário + match cadastro (PDF Caixa PIX + pessoas BA). `pnpm exec tsx scripts/test-remetente-match-e2e.ts` |
+| `scripts/rematch-desvincular-stubs.ts` | Desvincula movimentações ligadas a stub PF/PJ (`DESCONHECIDO`/`DESCONHECIDA`), zera vínculo, marca `PENDENTE_REVISAO` e roda `applyDeterministicMatch`. `pnpm exec tsx scripts/rematch-desvincular-stubs.ts` |
 
 **Env (Gemini via OpenRouter):** `OPENROUTER_API_KEY` (obrigatório); padrão `google/gemini-3.5-flash` em `OPENROUTER_PDF_MODEL`, `OPENROUTER_MODEL` e `OPENROUTER_MODEL_REVIEWER`. Ver [`.env.example`](../.env.example).
 

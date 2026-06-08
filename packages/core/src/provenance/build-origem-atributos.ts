@@ -1,5 +1,5 @@
 import type { ConsolidacaoEventDraft, MovimentacaoCandidate } from "../consolidacao/types";
-import { hasCpfInDescricao } from "../match/rules";
+import { hasStructuredContraparteDoc } from "../match/structured-contraparte-docs";
 import type { CampoExtrato, OrigemAtributosEvento, OrigemRef } from "./types";
 
 function pdfRef(
@@ -139,5 +139,5 @@ function extractCpfFromMov(m: MovimentacaoCandidate): boolean {
   if (m.cpfExtraido) {
     return true;
   }
-  return hasCpfInDescricao(m.descricaoRaw);
+  return hasStructuredContraparteDoc(m.origemExtracao);
 }

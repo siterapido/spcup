@@ -1,20 +1,15 @@
-import type { Db, Movimentacao, PessoaFisica, PessoaJuridica } from "@spc-up/db";
-import {
-  matchEvidencia,
-  movimentacao,
-  pessoaFisica,
-  pessoaJuridica,
-} from "@spc-up/db";
+import type { Db, Movimentacao } from "@spc-up/db";
+import { matchEvidencia, movimentacao } from "@spc-up/db";
 import { eq } from "drizzle-orm";
 
-import {
-  isStubNome,
-  STUB_PF_NOME,
-  STUB_PJ_RAZAO,
-} from "../cadastro/constants";
-import { DEFAULT_WEIGHTS, evaluateMovimentacao } from "../confidence";
-import { normalizeCnpj, normalizeCpf, normalizeName } from "../normalize";
+import { evaluateMovimentacao } from "../confidence";
+import { normalizeCnpj, normalizeCpf } from "../normalize";
 import { MOVIMENTACAO_STATUS } from "../ingest/types";
+import type { OrigemExtracaoV1 } from "../provenance/types";
+import {
+  type CadastroLinkTier,
+  resolveCadastroLink,
+} from "./cadastro-link";
 import {
   CNPJ_PATTERN,
   CPF_PATTERN,
@@ -23,7 +18,7 @@ import {
   hasCpfInDescricao,
   stripDocumentsFromDescricao,
 } from "./document-in-text";
-import { isNomeContraparteVazio } from "./nome-contraparte";
+import { structuredDocsFromOrigemExtracao } from "./structured-contraparte-docs";
 
 export {
   findCnpjInDescricao,
@@ -78,114 +73,6 @@ export function cleanNomeSugestao(desc: string, docString: string): string {
   return clean.length >= 3 ? clean : "";
 }
 
-async function getOrCreatePessoaFisica(
-  db: Db,
-  cpf: string,
-  nomeSugestao?: string,
-): Promise<PessoaFisica> {
-  const existing = await db
-    .select()
-    .from(pessoaFisica)
-    .where(eq(pessoaFisica.cpf, cpf))
-    .limit(1);
-  if (existing[0]) {
-    if (isStubNome("PF", existing[0].nome) && nomeSugestao && !isStubNome("PF", nomeSugestao)) {
-      const [updated] = await db
-        .update(pessoaFisica)
-        .set({ nome: nomeSugestao })
-        .where(eq(pessoaFisica.id, existing[0].id))
-        .returning();
-      if (updated) {
-        return updated;
-      }
-    }
-    return existing[0];
-  }
-
-  const nome = nomeSugestao && !isStubNome("PF", nomeSugestao) ? nomeSugestao : STUB_PF_NOME;
-  const [created] = await db
-    .insert(pessoaFisica)
-    .values({ cpf, nome })
-    .returning();
-  if (!created) {
-    throw new Error(`Failed to create pessoa_fisica for CPF ${cpf}`);
-  }
-  return created;
-}
-
-async function findUniquePessoaByNome(
-  db: Db,
-  rawNome: string,
-): Promise<
-  | { kind: "PF"; id: string; nome: string }
-  | { kind: "PJ"; id: string; nome: string }
-  | null
-> {
-  const nome = normalizeName(rawNome);
-  if (!nome) {
-    return null;
-  }
-
-  const pfs = await db
-    .select({ id: pessoaFisica.id, nome: pessoaFisica.nome })
-    .from(pessoaFisica)
-    .where(eq(pessoaFisica.nome, nome))
-    .limit(2);
-  if (pfs.length === 1) {
-    return { kind: "PF", id: pfs[0]!.id, nome: pfs[0]!.nome };
-  }
-
-  const pjs = await db
-    .select({ id: pessoaJuridica.id, nome: pessoaJuridica.razaoSocial })
-    .from(pessoaJuridica)
-    .where(eq(pessoaJuridica.razaoSocial, nome))
-    .limit(2);
-  if (pjs.length === 1) {
-    return { kind: "PJ", id: pjs[0]!.id, nome: pjs[0]!.nome };
-  }
-
-  return null;
-}
-
-async function getOrCreatePessoaJuridica(
-  db: Db,
-  cnpj: string,
-  nomeSugestao?: string,
-): Promise<PessoaJuridica> {
-  const existing = await db
-    .select()
-    .from(pessoaJuridica)
-    .where(eq(pessoaJuridica.cnpj, cnpj))
-    .limit(1);
-  if (existing[0]) {
-    if (
-      isStubNome("PJ", existing[0].razaoSocial) &&
-      nomeSugestao &&
-      !isStubNome("PJ", nomeSugestao)
-    ) {
-      const [updated] = await db
-        .update(pessoaJuridica)
-        .set({ razaoSocial: nomeSugestao })
-        .where(eq(pessoaJuridica.id, existing[0].id))
-        .returning();
-      if (updated) {
-        return updated;
-      }
-    }
-    return existing[0];
-  }
-
-  const razaoSocial = nomeSugestao && !isStubNome("PJ", nomeSugestao) ? nomeSugestao : STUB_PJ_RAZAO;
-  const [created] = await db
-    .insert(pessoaJuridica)
-    .values({ cnpj, razaoSocial })
-    .returning();
-  if (!created) {
-    throw new Error(`Failed to create pessoa_juridica for CNPJ ${cnpj}`);
-  }
-  return created;
-}
-
 type MovimentacaoForEval = {
   confianca_global: number;
   bloqueio_export: boolean;
@@ -195,17 +82,19 @@ type MovimentacaoForEval = {
   evidencias: Array<{ tipo: string; peso: number | null }>;
 };
 
-function resolveStatus(
-  mov: MovimentacaoForEval,
+function resolveStatusFromTier(
+  tier: CadastroLinkTier,
   score: number,
   confiancaLimiteAlta: number,
+  pessoaLinked: boolean,
+  bloqueioExport: boolean,
 ): string {
-  if (score < confiancaLimiteAlta) {
-    return MOVIMENTACAO_STATUS.PENDENTE_REVISAO;
-  }
-  const pessoaLinked =
-    mov.pessoa_fisica_id != null || mov.pessoa_juridica_id != null;
-  if (pessoaLinked && !mov.bloqueio_export) {
+  if (
+    tier === "ALTA" &&
+    score >= confiancaLimiteAlta &&
+    pessoaLinked &&
+    !bloqueioExport
+  ) {
     return MOVIMENTACAO_STATUS.CONFIRMADO;
   }
   return MOVIMENTACAO_STATUS.PENDENTE_REVISAO;
@@ -238,85 +127,17 @@ export async function applyDeterministicMatch(
     .delete(matchEvidencia)
     .where(eq(matchEvidencia.movimentacaoId, movimentacaoId));
 
-  const evidencias: Array<{ tipo: string; peso: number; detalhe: string }> = [];
-  const cpfs: string[] = [];
-  const cnpjs: string[] = [];
+  const origem = current.origemExtracao as OrigemExtracaoV1 | null | undefined;
+  const structured = structuredDocsFromOrigemExtracao(origem);
+  const link = await resolveCadastroLink(db, {
+    cpf: structured.cpf,
+    cnpj: structured.cnpj,
+    remetenteDestinatario: current.remetenteDestinatario,
+  });
 
-  for (const { docType, normalized } of extractDocumentCandidates(
-    current.descricaoRaw,
-  )) {
-    if (docType === "CPF") {
-      cpfs.push(normalized);
-    } else {
-      cnpjs.push(normalized);
-    }
-  }
-
-  let pessoaFisicaId: string | null = current.pessoaFisicaId;
-  let pessoaJuridicaId: string | null = current.pessoaJuridicaId;
-
-  if (cpfs.length > 1 || cnpjs.length > 1 || (cpfs.length > 0 && cnpjs.length > 0)) {
-    evidencias.push({
-      tipo: "CONFLITO_DOCUMENTO",
-      peso: 0,
-      detalhe: "Multiplos documentos encontrados na descricao",
-    });
-  } else if (cpfs.length === 1) {
-    const cpf = cpfs[0]!;
-    const docString = current.descricaoRaw.match(CPF_PATTERN)?.[0] || cpf;
-    const nomeSugestao = cleanNomeSugestao(current.descricaoRaw, docString);
-    const pessoa = await getOrCreatePessoaFisica(db, cpf, nomeSugestao);
-    pessoaFisicaId = pessoa.id;
-    pessoaJuridicaId = null;
-    const cadastroReal = !isStubNome("PF", pessoa.nome);
-    evidencias.push({
-      tipo: cadastroReal ? "CPF_CADASTRO" : "CPF_EXATO",
-      peso: DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45,
-      detalhe: cadastroReal
-        ? `CPF ${cpf} vinculado ao cadastro`
-        : `CPF ${cpf} extraido da descricao`,
-    });
-  } else if (cnpjs.length === 1) {
-    const cnpj = cnpjs[0]!;
-    const docString = current.descricaoRaw.match(CNPJ_PATTERN)?.[0] || cnpj;
-    const nomeSugestao = cleanNomeSugestao(current.descricaoRaw, docString);
-    const pessoa = await getOrCreatePessoaJuridica(db, cnpj, nomeSugestao);
-    pessoaJuridicaId = pessoa.id;
-    pessoaFisicaId = null;
-    const cadastroReal = !isStubNome("PJ", pessoa.razaoSocial);
-    evidencias.push({
-      tipo: cadastroReal ? "CNPJ_CADASTRO" : "CNPJ_EXATO",
-      peso: DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45,
-      detalhe: cadastroReal
-        ? `CNPJ ${cnpj} vinculado ao cadastro`
-        : `CNPJ ${cnpj} extraido da descricao`,
-    });
-  } else if (cpfs.length === 0 && cnpjs.length === 0) {
-    const nomeParaMatch = current.remetenteDestinatario;
-
-    if (!isNomeContraparteVazio(nomeParaMatch)) {
-      const byNome = await findUniquePessoaByNome(db, nomeParaMatch!);
-      if (byNome?.kind === "PF") {
-        pessoaFisicaId = byNome.id;
-        pessoaJuridicaId = null;
-        const cadastroReal = !isStubNome("PF", byNome.nome);
-        evidencias.push({
-          tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
-          peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
-          detalhe: `Nome vinculado ao cadastro: ${byNome.nome}`,
-        });
-      } else if (byNome?.kind === "PJ") {
-        pessoaJuridicaId = byNome.id;
-        pessoaFisicaId = null;
-        const cadastroReal = !isStubNome("PJ", byNome.nome);
-        evidencias.push({
-          tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
-          peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
-          detalhe: `Razão social vinculada ao cadastro: ${byNome.nome}`,
-        });
-      }
-    }
-  }
+  const pessoaFisicaId = link.pessoaFisicaId;
+  const pessoaJuridicaId = link.pessoaJuridicaId;
+  const evidencias = link.evidencias;
 
   if (evidencias.length > 0) {
     await db.insert(matchEvidencia).values(
@@ -339,7 +160,15 @@ export async function applyDeterministicMatch(
   };
 
   const score = evaluateMovimentacao(movEval);
-  const status = resolveStatus(movEval, score, confiancaLimiteAlta);
+  const pessoaLinked =
+    pessoaFisicaId != null || pessoaJuridicaId != null;
+  const status = resolveStatusFromTier(
+    link.tier,
+    score,
+    confiancaLimiteAlta,
+    pessoaLinked,
+    movEval.bloqueio_export,
+  );
 
   const [updated] = await db
     .update(movimentacao)

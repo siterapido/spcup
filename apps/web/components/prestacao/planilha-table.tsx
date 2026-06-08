@@ -184,14 +184,16 @@ export function PlanilhaView({
   }
 
   async function abrirPdf(origem: PlanilhaOrigem) {
-    if (origem.arquivoIngestaoId && origem.pagina != null) {
+    if (origem.arquivoIngestaoId) {
       setPdfPanel({
         arquivoIngestaoId: origem.arquivoIngestaoId,
         nomeArquivo: origem.nomeArquivo ?? "extrato.pdf",
-        pagina: origem.pagina,
+        pagina: origem.pagina ?? origem.origemExtracao?.pagina ?? 1,
+        bbox: origem.bbox ?? origem.origemExtracao?.bbox,
         highlightLabel: origem.papel
           ? `${origem.papel} · ${origem.nomeArquivo ?? ""}`
           : undefined,
+        indiceLinha: origem.indiceLinha ?? origem.origemExtracao?.indiceLinha,
       });
       setPdfOpen(true);
       return;
@@ -343,6 +345,8 @@ export function PlanilhaView({
                         fonte={linha.fonte}
                         remetenteDestinatario={linha.remetenteDestinatario}
                         pessoaNome={linha.pessoa?.nome ?? null}
+                        cadastroLinkTier={linha.cadastroLinkTier}
+                        comparacaoNome={linha.comparacaoNome}
                         onUpdated={() => void refresh()}
                         disabled={busy}
                       />

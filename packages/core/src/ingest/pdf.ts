@@ -14,8 +14,7 @@ import {
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
 import { applyDeterministicMatch } from "../match/rules";
 import { normalizeName } from "../normalize";
-import { extractDocumentCandidates } from "../match/rules";
-import { normalizeCnpj, normalizeCpf } from "../normalize";
+import { structuredDocsFromExtratoItem } from "../match/structured-contraparte-docs";
 import { toIngestError } from "./errors";
 import { ingestLog } from "./log";
 import { origemFromExtratoItem } from "../provenance/attach-extracao";
@@ -61,35 +60,13 @@ export function nrExtratoBancarioFromExtratoItem(item: Record<string, unknown>):
 }
 
 function docLabelFromExtratoItem(item: Record<string, unknown>): string | null {
-  const cpfStr = item.cpf != null ? String(item.cpf).trim() : "";
-  if (cpfStr) {
-    try {
-      return `CPF ${normalizeCpf(cpfStr)}`;
-    } catch {
-      // try CNPJ
-    }
+  const docs = structuredDocsFromExtratoItem(item);
+  if (docs.cpf) {
+    return `CPF ${docs.cpf}`;
   }
-  const cnpjStr = item.cnpj != null ? String(item.cnpj).trim() : "";
-  if (cnpjStr) {
-    try {
-      return `CNPJ ${normalizeCnpj(cnpjStr)}`;
-    } catch {
-      return null;
-    }
+  if (docs.cnpj) {
+    return `CNPJ ${docs.cnpj}`;
   }
-
-  const text = [item.descricao, item.nome]
-    .map((part) => (part == null ? "" : String(part).trim()))
-    .filter(Boolean)
-    .join(" ");
-  const candidates = extractDocumentCandidates(text);
-  if (candidates.length === 1) {
-    const doc = candidates[0]!;
-    return doc.docType === "CPF"
-      ? `CPF ${doc.normalized}`
-      : `CNPJ ${doc.normalized}`;
-  }
-
   return null;
 }
 
@@ -181,9 +158,6 @@ function withOrigem(
   item: Record<string, unknown>,
   opts: RowsFromExtratoOptions,
 ): ParsedTransactionRow {
-  if (!opts.attachOrigem) {
-    return row;
-  }
   const batchPagina = Number(item.__batch_pagina ?? 1);
   const origemExtracao = origemFromExtratoItem(item, {
     arquivoIngestaoId: opts.arquivoIngestaoId,

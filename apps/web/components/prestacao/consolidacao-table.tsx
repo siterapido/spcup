@@ -33,12 +33,16 @@ export type ConsolidacaoEventoRow = {
   direcao: string;
   confianca: number;
   justificativa: string | null;
+  pessoaFisicaId: string | null;
+  pessoaJuridicaId: string | null;
+  remetenteDestinatario: string | null;
   linhas: Array<{
     id: string;
     movimentacaoId: string;
     papel: string;
     descricaoRaw: string;
     nomeArquivo: string | null;
+    arquivoIngestaoId?: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
   }>;
   hipoteses: Array<{

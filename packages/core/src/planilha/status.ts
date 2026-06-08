@@ -90,6 +90,8 @@ export function buildResumo(
   let baixaConfianca = 0;
   let mergePendente = 0;
   let extracaoDuvidosa = 0;
+  let docSemCadastro = 0;
+  let nomeDiverge = 0;
 
   for (const l of linhas) {
     if (isLinhaPronta(l)) prontas++;
@@ -98,6 +100,8 @@ export function buildResumo(
     if (l.confianca < limiar) baixaConfianca++;
     if (l.status === "merge_pendente") mergePendente++;
     if (l.status === "extracao_duvidosa") extracaoDuvidosa++;
+    if (l.cadastroLinkTier === "BAIXA" && !l.pessoa) docSemCadastro++;
+    if (l.comparacaoNome === "difere" && l.pessoa) nomeDiverge++;
   }
 
   return {
@@ -110,5 +114,7 @@ export function buildResumo(
     extracaoDuvidosa,
     cadastroAlerta,
     exportavel: linhas.length > 0 && prontas === linhas.length,
+    docSemCadastro,
+    nomeDiverge,
   };
 }

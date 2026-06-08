@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { consolidacaoEvento, movimentacao } from "@spc-up/db";
 
-import { loadCadastroMatchContext } from "../consolidacao/load";
+import { resolveCadastroLink } from "../match/cadastro-link";
 import { applyDeterministicMatch } from "../match/rules";
 import {
   resolvePlanilhaMerge,
@@ -22,6 +22,14 @@ vi.mock("../consolidacao/load", async (importOriginal) => {
   return {
     ...actual,
     loadCadastroMatchContext: vi.fn(),
+  };
+});
+
+vi.mock("../match/cadastro-link", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../match/cadastro-link")>();
+  return {
+    ...actual,
+    resolveCadastroLink: vi.fn(),
   };
 });
 
@@ -108,9 +116,13 @@ describe("updatePlanilhaLinhaRemetenteDestinatario", () => {
   });
 
   it("consolidacao sem PF/PJ tenta rematch por nome", async () => {
-    vi.mocked(loadCadastroMatchContext).mockResolvedValue({
-      pessoaByCpf: new Map(),
-      pessoaByCnpj: new Map(),
+    vi.mocked(resolveCadastroLink).mockResolvedValue({
+      tier: "MEDIA",
+      pessoaFisicaId: "pf-maria",
+      pessoaJuridicaId: null,
+      comparacaoNome: "bate",
+      motivo: "Nome único no cadastro (sem documento)",
+      evidencias: [],
     });
 
     const updateWhere = vi.fn().mockResolvedValue(undefined);
@@ -125,27 +137,13 @@ describe("updatePlanilhaLinhaRemetenteDestinatario", () => {
         linhas: [
           {
             papel: "COMPLETO",
-            movimentacao: { descricaoRaw: "CRED PIX" },
+            movimentacao: { descricaoRaw: "CRED PIX", origemExtracao: null },
           },
         ],
       });
 
-    const pfSelectLimit = vi.fn().mockResolvedValue([{ id: "pf-maria" }]);
-    const pfSelectWhere = vi.fn().mockReturnValue({ limit: pfSelectLimit });
-    const pfSelectFrom = vi.fn().mockReturnValue({ where: pfSelectWhere });
-    const pfSelect = vi.fn().mockReturnValue({ from: pfSelectFrom });
-
-    const pjSelectLimit = vi.fn().mockResolvedValue([]);
-    const pjSelectWhere = vi.fn().mockReturnValue({ limit: pjSelectLimit });
-    const pjSelectFrom = vi.fn().mockReturnValue({ where: pjSelectWhere });
-    const pjSelect = vi.fn().mockReturnValue({ from: pjSelectFrom });
-
     const db = {
       update: updateFn,
-      select: vi
-        .fn()
-        .mockImplementationOnce(() => pfSelect())
-        .mockImplementationOnce(() => pjSelect()),
       query: {
         movimentacao: { findFirst: vi.fn() },
         consolidacaoEvento: { findFirst: eventoFindFirst },
@@ -168,7 +166,7 @@ describe("updatePlanilhaLinhaRemetenteDestinatario", () => {
       pessoaFisicaId: "pf-maria",
       pessoaJuridicaId: null,
       confianca: 0.85,
-      justificativa: "Nome único no cadastro",
+      justificativa: "Nome único no cadastro (sem documento)",
     });
   });
 

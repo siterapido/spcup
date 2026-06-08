@@ -5,7 +5,7 @@ import type { MovimentacaoCandidate } from "./types";
 
 /** Regression shapes from Documentos para teste / (Bahia jan/2025). */
 describe("consolidacao bahia fixtures", () => {
-  it("scores PIX nome-only + completo with CPF highly when cadastro matches", () => {
+  it("scores PIX with remetente + completo with CPF highly when cadastro matches", () => {
     const pix: MovimentacaoCandidate = {
       id: "1",
       arquivoIngestaoId: "a-pix",
@@ -13,7 +13,8 @@ describe("consolidacao bahia fixtures", () => {
       dataMovimento: "2025-01-15",
       valor: "100.00",
       direcao: "ENTRADA",
-      descricaoRaw: "GABRIEL REIS DA SILVA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "GABRIEL REIS DA SILVA",
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
@@ -25,7 +26,8 @@ describe("consolidacao bahia fixtures", () => {
       dataMovimento: "2025-01-15",
       valor: "100.00",
       direcao: "ENTRADA",
-      descricaoRaw: "GABRIEL REIS DA SILVA CPF 12345678901",
+      descricaoRaw: "CRED PIX CPF 12345678901",
+      remetenteDestinatario: "GABRIEL REIS DA SILVA",
       cpfExtraido: "12345678901",
       cnpjExtraido: null,
       origemExtracao: null,

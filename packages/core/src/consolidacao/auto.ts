@@ -51,7 +51,11 @@ export function isConsolidacaoAutoAprovavel(
   draft: ConsolidacaoEventDraft,
   limiarAlta = getConfiancaLimiarAlta(),
 ): boolean {
-  return hasPessoaVinculo(draft) && draft.confianca >= limiarAlta;
+  return (
+    hasPessoaVinculo(draft) &&
+    draft.confianca >= limiarAlta &&
+    draft.cadastroLinkTier === "ALTA"
+  );
 }
 
 export async function autoAprovarConsolidacaoEventos(

@@ -1,4 +1,7 @@
 import type { OrigemExtracaoV1 } from "../provenance/types";
+import { compararNomeComPessoa, type CadastroLinkTier } from "../match/cadastro-link";
+import type { NomeCadastroComparacao } from "../match/nome-cadastro";
+import { isNomeContraparteVazio } from "../match/nome-contraparte";
 import { cleanDescricao } from "./descricao";
 import { deriveLinhaStatus } from "./status";
 import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPessoa } from "./types";
@@ -17,10 +20,12 @@ export type ConsolidacaoEventoLinhaInput = {
   pessoaJuridicaId?: string | null;
   remetenteDestinatario?: string | null;
   extracaoConfirmada?: boolean;
+  matchEvidencias?: Array<{ tipo: string }>;
   pessoa: {
     nome: string;
     documento: string;
     tipo: "PF" | "PJ";
+    aliases?: string[] | null;
   } | null;
   linhas: Array<{
     movimentacaoId: string;
@@ -28,6 +33,7 @@ export type ConsolidacaoEventoLinhaInput = {
     descricaoRaw: string;
     nrExtratoBancario: string | null;
     nomeArquivo: string | null;
+    arquivoIngestaoId?: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
   }>;
 };
@@ -46,7 +52,8 @@ function origensFromLinhas(
 ): PlanilhaOrigem[] {
   return linhas.map((l) => ({
     movimentacaoId: l.movimentacaoId,
-    arquivoIngestaoId: l.origemExtracao?.arquivoIngestaoId,
+    arquivoIngestaoId:
+      l.origemExtracao?.arquivoIngestaoId ?? l.arquivoIngestaoId ?? undefined,
     nomeArquivo: l.nomeArquivo,
     pagina: l.origemExtracao?.pagina,
     descricaoRaw: l.descricaoRaw,
@@ -75,6 +82,37 @@ function nrExtratoBancarioFromLinhas(
   return primary?.nrExtratoBancario ?? null;
 }
 
+function deriveCadastroLinkTier(
+  evidencias: Array<{ tipo: string }>,
+  pessoaLinked: boolean,
+  comparacaoNome: NomeCadastroComparacao,
+): CadastroLinkTier | null {
+  if (
+    evidencias.some(
+      (e) => e.tipo === "CONFLITO_DOCUMENTO" || e.tipo === "CONFLITO_NOME",
+    )
+  ) {
+    return "REJEITADO";
+  }
+  if (!pessoaLinked) {
+    if (
+      evidencias.some(
+        (e) => e.tipo === "CPF_SEM_CADASTRO" || e.tipo === "CNPJ_SEM_CADASTRO",
+      )
+    ) {
+      return "BAIXA";
+    }
+    return null;
+  }
+  if (
+    comparacaoNome === "bate" &&
+    evidencias.some((e) => e.tipo === "CPF_CADASTRO" || e.tipo === "CNPJ_CADASTRO")
+  ) {
+    return "ALTA";
+  }
+  return "MEDIA";
+}
+
 function isExtracaoDuvidosaConsolidacao(
   linhas: ConsolidacaoEventoLinhaInput["linhas"],
   confianca: number,
@@ -93,6 +131,20 @@ export function mapConsolidacaoEventoToLinha(
     evento.confianca,
   );
   const extracaoDuvidosa = extracaoDuvidosaRaw && !extracaoConfirmada;
+  const evidencias = evento.matchEvidencias ?? [];
+  const comparacaoNome: NomeCadastroComparacao | null = pessoa
+    ? isNomeContraparteVazio(evento.remetenteDestinatario)
+      ? "indefinido"
+      : compararNomeComPessoa(evento.remetenteDestinatario!, pessoa)
+    : null;
+  const cadastroLinkTier =
+    evidencias.length > 0
+      ? deriveCadastroLinkTier(
+          evidencias,
+          pessoa !== null,
+          comparacaoNome ?? "indefinido",
+        )
+      : null;
   return {
     id: evento.id,
     fonte: "consolidacao",
@@ -117,5 +169,7 @@ export function mapConsolidacaoEventoToLinha(
     eventoStatus: evento.status,
     extracaoDuvidosa,
     extracaoConfirmada,
+    cadastroLinkTier,
+    comparacaoNome,
   };
 }
