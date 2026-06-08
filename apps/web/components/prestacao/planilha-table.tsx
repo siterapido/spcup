@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core";
+import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core/browser";
 import type { BboxNorm } from "@spc-up/core/browser";
 
 import { PlanilhaNomeCell } from "@/components/prestacao/planilha-nome-cell";
@@ -61,6 +61,8 @@ function linhaNome(linha: PlanilhaLinha): string {
 
 function matchesFilter(linha: PlanilhaLinha, filter: PlanilhaFilter): boolean {
   switch (filter) {
+    case "prontas":
+      return linha.status === "pronta";
     case "sem_nome": {
       const nome = linhaNome(linha);
       return !nome || nome.trim().length < 3;
@@ -103,6 +105,7 @@ export function PlanilhaView({
 }) {
   const [linhas, setLinhas] = useState(initial.linhas);
   const [resumo, setResumo] = useState(initial.resumo);
+  const [ingestaoResumo, setIngestaoResumo] = useState(initial.ingestaoResumo);
   const [filter, setFilter] = useState<PlanilhaFilter>("todos");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -125,6 +128,7 @@ export function PlanilhaView({
     const json = (await res.json()) as PlanilhaPayload;
     setLinhas(json.linhas);
     setResumo(json.resumo);
+    setIngestaoResumo(json.ingestaoResumo);
   }, [sessaoId]);
 
   function toggleSelect(key: string) {
@@ -255,6 +259,7 @@ export function PlanilhaView({
       <PlanilhaToolbar
         resumo={resumo}
         sessaoId={sessaoId}
+        ingestaoResumo={ingestaoResumo}
         activeFilter={filter}
         onFilterChange={setFilter}
         onExportBlockedClick={scrollToPendencias}
@@ -291,7 +296,6 @@ export function PlanilhaView({
               <th className="px-3 py-2">Valor</th>
               <th className="px-3 py-2">Direção</th>
               <th className="px-3 py-2">Descrição</th>
-              <th className="px-3 py-2">Descrição Original</th>
               <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">PF/PJ</th>
               <th className="px-3 py-2">Confiança</th>
@@ -303,8 +307,10 @@ export function PlanilhaView({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-4 py-8 text-center text-muted">
-                  Nenhuma linha neste filtro.
+                <td colSpan={12} className="px-4 py-8 text-center text-muted">
+                  {filter === "prontas"
+                    ? "Nenhuma linha pronta ainda. Resolva pendências (nome/PF-PJ/confiança) para liberar a exportação."
+                    : "Nenhuma linha neste filtro."}
                 </td>
               </tr>
             ) : (
@@ -330,17 +336,13 @@ export function PlanilhaView({
                         {linha.descricao}
                       </span>
                     </td>
-                    <td className="max-w-[14rem] px-3 py-2">
-                      <span className="line-clamp-2 text-xs text-muted" title={linha.descricaoRaw}>
-                        {linha.descricaoRaw}
-                      </span>
-                    </td>
                     <td className="px-3 py-2">
                       <PlanilhaNomeCell
                         sessaoId={sessaoId}
                         linhaId={linha.id}
                         fonte={linha.fonte}
                         nome={linhaNome(linha)}
+                        nomeDerivado={linha.nomeDerivado}
                         onUpdated={() => void refresh()}
                         disabled={busy}
                       />
