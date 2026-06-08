@@ -1,4 +1,4 @@
-import type { PlanilhaOrigem } from "@spc-up/core";
+import type { PlanilhaOrigem } from "@spc-up/core/browser";
 
 export function selecionarOrigensPixCompleto(origens: PlanilhaOrigem[]): {
   pix: PlanilhaOrigem | null;

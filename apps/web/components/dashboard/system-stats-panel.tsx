@@ -1,6 +1,6 @@
 import { Card, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
-import type { ConfiancaFaixas, SystemStats } from "@spc-up/core";
+import type { ConfiancaFaixas, SystemStats } from "@spc-up/core/browser";
 
 function StatusTable({ title, rows }: { title: string; rows: Record<string, number> }) {
   const entries = Object.entries(rows).sort(([a], [b]) => a.localeCompare(b));

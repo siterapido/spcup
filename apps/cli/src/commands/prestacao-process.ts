@@ -41,7 +41,7 @@ export async function runPrestacaoProcess(opts: {
 
   if (result.consolidacao?.skipped === false) {
     console.log(
-      `\nConsolidação: executada — ${result.consolidacao.eventos} evento(s) gerados (aprovar em /prestacao/${result.sessaoId}/consolidacao)`,
+      `\nConsolidação: ${result.consolidacao.eventos} evento(s) — ${result.consolidacao.autoAprovados} aprovado(s) automaticamente, ${result.consolidacao.paraRevisar} para revisar em /prestacao/${result.sessaoId}/consolidacao`,
     );
   } else if (result.consolidacao?.skipped) {
     console.log(`\nConsolidação: ignorada (${result.consolidacao.reason})`);

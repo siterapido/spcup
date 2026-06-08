@@ -185,23 +185,26 @@ export async function applyAiMatchToMovimentacao(
   let aiResult: AiMatchResult | null = null;
   let iaIndisponivel = false;
 
-  try {
-    const candidatos = await loadCadastroCandidates(db, current.descricaoRaw, null, null);
-    aiResult = await evaluateMovimentacaoWithAi(
-      {
-        valor: current.valor,
-        dataMovimento: String(current.dataMovimento),
-        direcao: current.direcao,
-        descricaoRaw: current.descricaoRaw,
-        uf: current.uf,
-        exercicio: current.exercicio,
-        tipoPrestador: current.tipoPrestador,
-        candidatos,
-      },
-      options,
-    );
-  } catch {
-    iaIndisponivel = true;
+  const candidatos = await loadCadastroCandidates(db, current.descricaoRaw, null, null);
+
+  if (candidatos.length > 0) {
+    try {
+      aiResult = await evaluateMovimentacaoWithAi(
+        {
+          valor: current.valor,
+          dataMovimento: String(current.dataMovimento),
+          direcao: current.direcao,
+          descricaoRaw: current.descricaoRaw,
+          uf: current.uf,
+          exercicio: current.exercicio,
+          tipoPrestador: current.tipoPrestador,
+          candidatos,
+        },
+        options,
+      );
+    } catch {
+      iaIndisponivel = true;
+    }
   }
 
   await db
@@ -210,7 +213,9 @@ export async function applyAiMatchToMovimentacao(
 
   const evidencias = iaIndisponivel
     ? [{ tipo: "IA_INDISPONIVEL", peso: 0, detalhe: "OpenRouter indisponível" }]
-    : buildEvidenciasFromAi(aiResult!);
+    : aiResult
+      ? buildEvidenciasFromAi(aiResult)
+      : [];
 
   let pessoaFisicaId: string | null = current.pessoaFisicaId;
   let pessoaJuridicaId: string | null = current.pessoaJuridicaId;
@@ -270,9 +275,8 @@ export async function applyAiMatchToMovimentacao(
     );
   }
 
-  const confiancaGlobal = iaIndisponivel
-    ? current.confiancaGlobal
-    : (aiResult?.confianca ?? 0);
+  const confiancaGlobal =
+    iaIndisponivel || !aiResult ? current.confiancaGlobal : (aiResult.confianca ?? 0);
 
   const movEval = {
     confianca_global: confiancaGlobal,
@@ -284,9 +288,10 @@ export async function applyAiMatchToMovimentacao(
   };
   evaluateMovimentacao(movEval);
 
-  const status = iaIndisponivel
-    ? MOVIMENTACAO_STATUS.RASCUNHO
-    : MOVIMENTACAO_STATUS.PENDENTE_REVISAO;
+  const status =
+    iaIndisponivel || !aiResult
+      ? MOVIMENTACAO_STATUS.RASCUNHO
+      : MOVIMENTACAO_STATUS.PENDENTE_REVISAO;
 
   const [updated] = await db
     .update(movimentacao)

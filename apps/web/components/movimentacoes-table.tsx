@@ -2,76 +2,147 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { MovimentacoesExportMenu } from "@/components/movimentacoes-export-menu";
+import { ReviewDrawer } from "@/components/prestacao/review-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
+import {
+  getDefaultMes,
+  getDefaultUf,
+  setDefaultUf,
+} from "@/lib/movimentacoes-filters";
+import { maskCnpj, maskCpf } from "@/lib/mask-document";
 
-interface MovItem {
+interface MovimentacaoAprovadaItem {
   id: string;
+  uf: string;
+  exercicio: number;
   data_movimento: string;
-  direcao: string;
   valor: string;
+  direcao: string;
   descricao_raw: string;
   cred_dev: string | null;
-  status: string;
+  status: "CONFIRMADO" | "EXPORTADO";
   confianca_global: number;
   pessoa_nome: string | null;
+  pessoa_documento: string | null;
+  cnpj_prestador: string;
+  prestador_nome: string | null;
+  sessao_prestacao_id: string | null;
+  nome_arquivo: string | null;
+}
+
+interface MovimentacoesListResponse {
+  uf: string;
+  mes: string;
+  exercicio: number;
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+  resumo: { confirmadas: number; exportadas: number };
+  prestadores: Array<{ cnpj: string; nome: string | null }>;
+  items: MovimentacaoAprovadaItem[];
+}
+
+function maskPessoaDocumento(doc: string | null): string {
+  if (!doc) return "—";
+  const digits = doc.replace(/\D/g, "");
+  return digits.length === 11 ? maskCpf(digits) : maskCnpj(digits);
+}
+
+function formatPessoa(m: MovimentacaoAprovadaItem): string {
+  const nome = m.pessoa_nome?.trim();
+  const doc = maskPessoaDocumento(m.pessoa_documento);
+  if (nome) return `${nome} (${doc})`;
+  return doc;
+}
+
+function formatPrestador(m: MovimentacaoAprovadaItem): string {
+  if (m.prestador_nome?.trim()) return m.prestador_nome;
+  const digits = m.cnpj_prestador.replace(/\D/g, "");
+  return digits.length === 14 ? maskCnpj(digits) : m.cnpj_prestador;
+}
+
+function statusTone(status: MovimentacaoAprovadaItem["status"]): "success" | "neutral" {
+  return status === "CONFIRMADO" ? "success" : "neutral";
 }
 
 export function MovimentacoesTable({
   initialUf,
-  initialExercicio,
+  initialMes,
 }: {
-  initialUf: string;
-  initialExercicio: number;
-}) {
-  const [uf, setUf] = useState(initialUf);
-  const [exercicio, setExercicio] = useState(String(initialExercicio));
-  const [items, setItems] = useState<MovItem[]>([]);
-  const [exportavel, setExportavel] = useState(false);
+  initialUf?: string;
+  initialMes?: string;
+} = {}) {
+  const [uf, setUf] = useState(initialUf ?? "SP");
+  const [mes, setMes] = useState(initialMes ?? getDefaultMes);
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<MovimentacaoAprovadaItem[]>([]);
+  const [exercicio, setExercicio] = useState(() =>
+    Number.parseInt(getDefaultMes().slice(0, 4), 10),
+  );
+  const [prestadores, setPrestadores] = useState<
+    MovimentacoesListResponse["prestadores"]
+  >([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setMessage(null);
-    try {
-      const params = new URLSearchParams({
-        uf: uf.toUpperCase(),
-        exercicio,
-      });
-      const res = await fetch(`/api/movimentacoes?${params}`);
-      const json = await res.json();
-      if (!res.ok) {
-        setMessage(json.error ?? "Erro ao carregar");
-        return;
-      }
-      setItems(json.items ?? []);
-      setExportavel(!!json.exportavel);
-    } catch {
-      setMessage("Erro de rede.");
-    } finally {
-      setLoading(false);
-    }
-  }, [uf, exercicio]);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const [drawerSessaoId, setDrawerSessaoId] = useState<string | null>(null);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!initialUf) setUf(getDefaultUf());
+  }, [initialUf]);
 
-  async function confirmOne(id: string) {
-    const res = await fetch("/api/movimentacoes/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [id] }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? "Falha ao confirmar");
-      return;
-    }
-    await load();
+  const load = useCallback(
+    async (targetPage: number) => {
+      setLoading(true);
+      setMessage(null);
+      try {
+        const params = new URLSearchParams({
+          uf: uf.toUpperCase(),
+          mes,
+          page: String(targetPage),
+          limit: "50",
+        });
+        const res = await fetch(`/api/movimentacoes?${params}`);
+        const json = (await res.json()) as MovimentacoesListResponse & { error?: string };
+        if (!res.ok) {
+          setMessage(json.error ?? "Erro ao carregar");
+          return;
+        }
+        setItems(json.items ?? []);
+        setExercicio(json.exercicio ?? Number.parseInt(mes.slice(0, 4), 10));
+        setPrestadores(json.prestadores ?? []);
+        setTotal(json.total ?? 0);
+        setTotalPages(json.total_pages ?? 0);
+        setPage(json.page ?? targetPage);
+      } catch {
+        setMessage("Erro de rede.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [uf, mes],
+  );
+
+  useEffect(() => {
+    void load(page);
+  }, [load, page]);
+
+  function handleAtualizar() {
+    setDefaultUf(uf);
+    setPage(1);
+    void load(1);
+  }
+
+  function openDrawer(item: MovimentacaoAprovadaItem) {
+    setDrawerId(item.id);
+    setDrawerSessaoId(item.sessao_prestacao_id);
   }
 
   return (
@@ -87,20 +158,23 @@ export function MovimentacoesTable({
           />
         </label>
         <label className="text-sm">
-          Exercício
+          Mês/ano
           <Input
-            type="number"
-            value={exercicio}
-            onChange={(e) => setExercicio(e.target.value)}
-            className="mt-1 w-28"
+            type="month"
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            className="mt-1 w-40"
           />
         </label>
-        <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
+        <Button type="button" variant="outline" onClick={handleAtualizar} disabled={loading}>
           Atualizar
         </Button>
-        <Badge tone={exportavel ? "success" : "danger"}>
-          Exportação {exportavel ? "liberada" : "bloqueada"}
-        </Badge>
+        <MovimentacoesExportMenu
+          uf={uf}
+          mes={mes}
+          prestadores={prestadores}
+          exercicio={exercicio}
+        />
       </div>
 
       {message ? <p className="text-sm text-red-600">{message}</p> : null}
@@ -110,53 +184,85 @@ export function MovimentacoesTable({
           <thead>
             <tr>
               <Th>Data</Th>
-              <Th>Direção</Th>
               <Th>Valor</Th>
+              <Th>Direção</Th>
+              <Th>PF/PJ</Th>
+              <Th>Prestador</Th>
               <Th>Descrição</Th>
-              <Th>Cred dev</Th>
-              <Th>Pessoa</Th>
-              <Th>Score</Th>
+              <Th>UF</Th>
               <Th>Status</Th>
-              <Th />
             </tr>
           </thead>
           <tbody>
             {items.map((m) => (
               <tr
                 key={m.id}
-                className={m.confianca_global < 0.85 ? "bg-amber-50" : undefined}
+                className="cursor-pointer hover:bg-surface-muted/50"
+                onClick={() => openDrawer(m)}
               >
                 <Td>{m.data_movimento}</Td>
+                <Td>R$ {m.valor}</Td>
                 <Td>{m.direcao}</Td>
-                <Td>{m.valor}</Td>
-                <Td className="max-w-xs truncate" title={m.descricao_raw}>
+                <Td className="max-w-[12rem] truncate" title={formatPessoa(m)}>
+                  {formatPessoa(m)}
+                </Td>
+                <Td className="max-w-[10rem] truncate" title={formatPrestador(m)}>
+                  {formatPrestador(m)}
+                </Td>
+                <Td className="max-w-xs line-clamp-2" title={m.descricao_raw}>
                   {m.descricao_raw}
                 </Td>
-                <Td className="max-w-[8rem] truncate" title={m.cred_dev ?? undefined}>
-                  {m.cred_dev ?? "—"}
-                </Td>
-                <Td>{m.pessoa_nome ?? "—"}</Td>
-                <Td>{m.confianca_global.toFixed(2)}</Td>
-                <Td>{m.status}</Td>
+                <Td>{m.uf}</Td>
                 <Td>
-                  {m.status !== "CONFIRMADO" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void confirmOne(m.id)}
-                    >
-                      Confirmar
-                    </Button>
-                  ) : null}
+                  <Badge tone={statusTone(m.status)}>{m.status}</Badge>
                 </Td>
               </tr>
             ))}
           </tbody>
         </Table>
         {!items.length && !loading ? (
-          <p className="p-4 text-sm text-muted">Nenhuma movimentação encontrada.</p>
+          <p className="p-4 text-sm text-muted">Nenhuma movimentação aprovada neste período.</p>
         ) : null}
       </div>
+
+      {totalPages > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loading || page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-muted">
+            Página {page} de {totalPages} ({total} total)
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loading || page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
+      ) : null}
+
+      <ReviewDrawer
+        movimentacaoId={drawerId}
+        sessaoId={drawerSessaoId ?? undefined}
+        open={drawerId != null}
+        onClose={() => {
+          setDrawerId(null);
+          setDrawerSessaoId(null);
+        }}
+        onUpdated={() => {}}
+        readOnly
+        planilhaHref={
+          drawerSessaoId ? `/prestacao/${drawerSessaoId}/planilha` : undefined
+        }
+      />
     </div>
   );
 }

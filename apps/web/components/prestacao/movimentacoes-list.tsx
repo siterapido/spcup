@@ -1,6 +1,6 @@
 "use client";
 
-import type { OrigemEnriquecimentoV1, OrigemExtracaoV1 } from "@spc-up/core";
+import type { OrigemEnriquecimentoV1, OrigemExtracaoV1 } from "@spc-up/core/browser";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ReviewDrawer } from "@/components/prestacao/review-drawer";

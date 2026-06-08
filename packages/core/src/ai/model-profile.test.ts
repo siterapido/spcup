@@ -12,8 +12,8 @@ describe("resolveModelProfile", () => {
   it("exposes Gemini defaults", () => {
     expect(DEFAULT_EXTRATO_MODEL).toBe("google/gemini-3.5-flash");
     expect(DEFAULT_MATCH_MODEL).toBe("google/gemini-3.5-flash");
-    expect(DEFAULT_SECONDARY_EXTRATO_MODEL).toBe("google/gemini-2.5-pro");
-    expect(DEFAULT_REVIEWER_EXTRATO_MODEL).toBe("google/gemini-2.5-pro");
+    expect(DEFAULT_SECONDARY_EXTRATO_MODEL).toBeNull();
+    expect(DEFAULT_REVIEWER_EXTRATO_MODEL).toBe("google/gemini-3.5-flash");
   });
 
   it("returns kimi profile", () => {

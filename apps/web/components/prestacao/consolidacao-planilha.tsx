@@ -8,7 +8,7 @@ import { PdfOrigemViewer } from "@/components/prestacao/pdf-origem-viewer";
 import { maskDocumento } from "@/lib/mask-document";
 import { planilhaLinhaFromEvento } from "@/lib/planilha-linha-from-evento";
 
-import type { PlanilhaLinha } from "@spc-up/core";
+import type { PlanilhaLinha } from "@spc-up/core/browser";
 
 import { findCnpjInDescricao, findCpfInDescricao, type BboxNorm } from "@spc-up/core/browser";
 

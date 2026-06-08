@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { PessoasBulkEditPanel } from "@/components/pessoas-bulk-edit-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ export function PessoasTable() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [bulkEditing, setBulkEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -46,6 +48,7 @@ export function PessoasTable() {
       }
       setItems(json.items ?? []);
       setSelected(new Set());
+      setBulkEditing(false);
     } catch {
       setMessage("Erro de rede.");
     } finally {
@@ -58,6 +61,10 @@ export function PessoasTable() {
   }, [load]);
 
   const visibleKeys = useMemo(() => items.map((item) => pessoaKey(item)), [items]);
+  const selectedItems = useMemo(
+    () => items.filter((item) => selected.has(pessoaKey(item))),
+    [items, selected],
+  );
   const allVisibleSelected =
     visibleKeys.length > 0 && visibleKeys.every((key) => selected.has(key));
   const someVisibleSelected =
@@ -88,25 +95,20 @@ export function PessoasTable() {
     });
   }
 
-  async function deleteSelected() {
-    const keys = [...selected];
-    if (keys.length === 0) return;
-
-    const toDelete = keys
-      .map((key) => {
-        const item = items.find((row) => pessoaKey(row) === key);
-        if (!item) return null;
-        return { id: item.id, tipo: item.tipo };
-      })
-      .filter((item): item is { id: string; tipo: PessoaItem["tipo"] } => item !== null);
-
+  async function deleteItems(toDelete: Array<{ id: string; tipo: PessoaItem["tipo"] }>) {
     if (toDelete.length === 0) return;
 
     const label =
       toDelete.length === 1
         ? "Excluir 1 cadastro selecionado?"
         : `Excluir ${toDelete.length} cadastros selecionados?`;
-    if (!window.confirm(`${label}\n\nEsta ação não pode ser desfeita.`)) return;
+    if (
+      !window.confirm(
+        `${label}\n\nO cadastro some das listas, mas o histórico de movimentações permanece.`,
+      )
+    ) {
+      return;
+    }
 
     setDeleting(true);
     setMessage(null);
@@ -124,18 +126,44 @@ export function PessoasTable() {
 
       const skipped = (json.skipped ?? []) as Array<{ reason: string }>;
       const deleted = json.deleted ?? 0;
-      let msg = `${deleted} excluída(s).`;
-      if (skipped.length > 0) {
-        msg += ` ${skipped.length} não excluída(s) (vínculos ou não encontradas).`;
+      if (deleted === 0 && skipped.length > 0) {
+        const reasons = [...new Set(skipped.map((item) => item.reason))];
+        setMessage(
+          reasons.length === 1
+            ? `Nenhuma excluída: ${reasons[0]}.`
+            : `Nenhuma excluída. Motivos: ${reasons.join("; ")}.`,
+        );
+      } else {
+        let msg = `${deleted} excluída(s).`;
+        if (skipped.length > 0) {
+          msg += ` ${skipped.length} não excluída(s).`;
+        }
+        setMessage(msg);
       }
-      setMessage(msg);
       setSelected(new Set());
+      setBulkEditing(false);
       await load();
     } catch {
       setMessage("Erro de rede.");
     } finally {
       setDeleting(false);
     }
+  }
+
+  function deleteSelected() {
+    const keys = [...selected];
+    const toDelete = keys
+      .map((key) => {
+        const item = items.find((row) => pessoaKey(row) === key);
+        if (!item) return null;
+        return { id: item.id, tipo: item.tipo };
+      })
+      .filter((item): item is { id: string; tipo: PessoaItem["tipo"] } => item !== null);
+    void deleteItems(toDelete);
+  }
+
+  function deleteOne(item: PessoaItem) {
+    void deleteItems([{ id: item.id, tipo: item.tipo }]);
   }
 
   return (
@@ -167,9 +195,17 @@ export function PessoasTable() {
         </Button>
         <Button
           type="button"
+          variant="outline"
+          disabled={selected.size === 0 || deleting || loading || bulkEditing}
+          onClick={() => setBulkEditing(true)}
+        >
+          Editar selecionados ({selected.size})
+        </Button>
+        <Button
+          type="button"
           variant="destructive"
           disabled={selected.size === 0 || deleting || loading}
-          onClick={() => void deleteSelected()}
+          onClick={() => deleteSelected()}
         >
           {deleting ? "Excluindo…" : `Excluir selecionados (${selected.size})`}
         </Button>
@@ -179,6 +215,23 @@ export function PessoasTable() {
         <p className={`text-sm ${message.includes("Erro") ? "text-red-600" : "text-muted"}`}>
           {message}
         </p>
+      ) : null}
+
+      {bulkEditing ? (
+        <PessoasBulkEditPanel
+          items={selectedItems.map((item) => ({
+            id: item.id,
+            tipo: item.tipo,
+            documento_mascarado: item.documento_mascarado,
+            nome: item.nome,
+          }))}
+          onCancel={() => setBulkEditing(false)}
+          onSaved={(msg) => {
+            setMessage(msg);
+            setBulkEditing(false);
+            void load();
+          }}
+        />
       ) : null}
 
       <Table>
@@ -228,12 +281,28 @@ export function PessoasTable() {
                 <Td>{item.estado ?? "—"}</Td>
                 <Td>{item.movimentacoes_count}</Td>
                 <Td>
-                  <Link
-                    href={`/pessoas/${item.id}?tipo=${item.tipo.toLowerCase()}`}
-                    className="text-sm underline"
-                  >
-                    Perfil
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Link
+                      href={`/pessoas/${item.id}?tipo=${item.tipo.toLowerCase()}`}
+                      className="underline"
+                    >
+                      Perfil
+                    </Link>
+                    <Link
+                      href={`/pessoas/${item.id}/editar?tipo=${item.tipo.toLowerCase()}`}
+                      className="underline"
+                    >
+                      Editar
+                    </Link>
+                    <button
+                      type="button"
+                      className="text-red-700 underline disabled:opacity-50"
+                      disabled={deleting || loading}
+                      onClick={() => deleteOne(item)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </Td>
               </tr>
             );

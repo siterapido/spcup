@@ -6,6 +6,7 @@ import {
   processarPaginaPdfExtrato,
   type ProcessarPaginaPdfResult,
 } from "../ingest/pdf-pagina";
+import type { ExtratoColumnMap } from "../ingest/extrato-column-map";
 import { ARQUIVO_INGESTAO_STATUS, type PrestadorContext } from "../ingest/types";
 import { getSessao, prestadorFromSessao } from "./sessao";
 
@@ -55,15 +56,44 @@ async function listPendingPdfArquivos(db: Db, sessaoId: string) {
 
 import { processSessaoWithNotebookLM } from "./process-sessao-notebooklm";
 
+export type ProcessSessaoPdfOptions = {
+  skipConsolidacao?: boolean;
+  extratoColumnMaps?: Record<string, ExtratoColumnMap>;
+};
+
 export async function processSessaoPdfArquivos(
   db: Db,
   sessaoId: string,
-  options?: { skipConsolidacao?: boolean },
+  options?: ProcessSessaoPdfOptions,
 ): Promise<ProcessSessaoResult> {
   if (process.env.USE_NOTEBOOKLM !== "false") {
-    return processSessaoWithNotebookLM(db, sessaoId, options);
+    try {
+      return await processSessaoWithNotebookLM(db, sessaoId, options);
+    } catch (error) {
+      console.warn("NotebookLM process failed. Falling back to OpenRouter:", error);
+      const originalDisableOr = process.env.DISABLE_OPENROUTER;
+      try {
+        process.env.DISABLE_OPENROUTER = "false";
+        const result = await runTraditionalPipeline(db, sessaoId, options);
+        result.avisos = result.avisos ?? [];
+        result.avisos.push(
+          `NotebookLM falhou. Ativado fallback para OpenRouter. Erro original: ${error instanceof Error ? error.message : String(error)}`
+        );
+        return result;
+      } finally {
+        process.env.DISABLE_OPENROUTER = originalDisableOr;
+      }
+    }
   }
 
+  return runTraditionalPipeline(db, sessaoId, options);
+}
+
+async function runTraditionalPipeline(
+  db: Db,
+  sessaoId: string,
+  options?: ProcessSessaoPdfOptions,
+): Promise<ProcessSessaoResult> {
   const sessao = await getSessao(db, sessaoId);
   if (!sessao?.diretorioEstadual) {
     throw new Error("Sessão não encontrada ou sem diretório estadual");

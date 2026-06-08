@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { selecionarOrigensPixCompleto } from "@/lib/pdf-comparador-origens";
 
-import type { PlanilhaLinha, PlanilhaOrigem } from "@spc-up/core";
+import type { PlanilhaLinha, PlanilhaOrigem } from "@spc-up/core/browser";
 
 function confiancaTone(v: number): "success" | "warn" | "danger" {
   if (v >= 0.85) return "success";

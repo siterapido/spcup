@@ -81,6 +81,7 @@ export type SubmissionProgressPanelProps = {
   onReviewPagina?: (item: PaginaVerificarItem) => void;
   onContinueAfterVerificar?: () => void;
   continueLabel?: string;
+  onCancel?: () => void;
 };
 
 function PaginasVerificarBanner({
@@ -266,6 +267,7 @@ export function SubmissionProgressPanel({
   onReviewPagina,
   onContinueAfterVerificar,
   continueLabel,
+  onCancel,
 }: SubmissionProgressPanelProps) {
   const clamped = Math.min(100, Math.max(0, progress));
   const hasErrors = fileErrors.length > 0 || errorLogs.length > 0;
@@ -282,7 +284,19 @@ export function SubmissionProgressPanel({
       <div className="mb-3">
         <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted">
           <span>Progresso</span>
-          <span className="tabular-nums font-medium text-up-black">{clamped}%</span>
+          <div className="flex items-center gap-2">
+            {onCancel ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={onCancel}
+              >
+                Cancelar
+              </Button>
+            ) : null}
+            <span className="tabular-nums font-medium text-up-black">{clamped}%</span>
+          </div>
         </div>
         <div
           role="progressbar"

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, Td, Th } from "@/components/ui/table";
 
 interface PerfilProps {
@@ -12,6 +14,8 @@ interface PerfilProps {
 }
 
 export function PessoaPerfil({ id, tipo }: PerfilProps) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
   const [perfil, setPerfil] = useState<{
     nome: string;
     documento_mascarado: string;
@@ -65,6 +69,44 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
     void load();
   }, [load]);
 
+  async function excluir() {
+    if (
+      !window.confirm(
+        "Excluir este cadastro?\n\nO cadastro some das listas, mas o histórico de movimentações permanece.",
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/pessoas", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ id, tipo: tipo.toUpperCase() }],
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setMessage(json.error ?? "Erro ao excluir");
+        return;
+      }
+      const skipped = (json.skipped ?? []) as Array<{ reason: string }>;
+      if (skipped.length > 0) {
+        setMessage(skipped[0]?.reason ?? "Não foi possível excluir");
+        return;
+      }
+      router.push("/pessoas");
+      router.refresh();
+    } catch {
+      setMessage("Erro de rede.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (message) {
     return <p className="text-sm text-red-600">{message}</p>;
   }
@@ -89,6 +131,21 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
             {Object.keys(resumo.byExercicio).length} exercício(s)
           </p>
         ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href={`/pessoas/${id}/editar?tipo=${tipo}`}>
+            <Button type="button" variant="outline">
+              Editar
+            </Button>
+          </Link>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={deleting}
+            onClick={() => void excluir()}
+          >
+            {deleting ? "Excluindo…" : "Excluir"}
+          </Button>
+        </div>
       </div>
 
       <Table>
@@ -114,7 +171,7 @@ export function PessoaPerfil({ id, tipo }: PerfilProps) {
               <Td>{mov.status}</Td>
               <Td>
                 <Link
-                  href={`/movimentacoes?uf=${mov.uf}&exercicio=${mov.exercicio}`}
+                  href={`/movimentacoes?uf=${mov.uf}&mes=${String(mov.data_movimento).slice(0, 7)}`}
                   className="text-sm underline"
                 >
                   Ver lote

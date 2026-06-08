@@ -7,6 +7,10 @@ import {
 } from "@spc-up/db";
 import { and, eq } from "drizzle-orm";
 
+import {
+  deriveNomeContraparte,
+  isNomeContraparteVazio,
+} from "../match/nome-contraparte";
 import type { ConsolidacaoEventDraft } from "./types";
 
 export async function deletePendingConsolidacaoEvents(
@@ -43,6 +47,15 @@ export async function persistConsolidacaoDrafts(
         pessoaJuridicaId: draft.pessoaJuridicaId,
         justificativa: draft.justificativa,
         origemAtributos: draft.origemAtributos,
+        nomeContraparte: (() => {
+          const nome = deriveNomeContraparte(
+            draft.linhas.map((l) => ({
+              descricaoRaw: l.descricaoRaw,
+              papel: l.papel,
+            })),
+          );
+          return isNomeContraparteVazio(nome) ? null : nome;
+        })(),
       })
       .returning({ id: consolidacaoEvento.id });
     if (!evento) {

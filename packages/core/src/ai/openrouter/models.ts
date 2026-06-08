@@ -1,10 +1,21 @@
 import type { ExtractStructuredOptions } from "../openrouter-types";
 import {
   DEFAULT_EXTRATO_MODEL,
+  DEFAULT_MATCH_MODEL,
   DEFAULT_REVIEWER_EXTRATO_MODEL,
   DEFAULT_SECONDARY_EXTRATO_MODEL,
   warnNonGeminiExtratoModel,
 } from "../model-profile";
+
+/** Match movimentação ↔ cadastro (`OPENROUTER_MODEL`). */
+export function resolveMatchModel(modelOverride?: string): string {
+  const fromEnv = process.env.OPENROUTER_MODEL?.trim();
+  const model = modelOverride ?? fromEnv ?? DEFAULT_MATCH_MODEL;
+  if (!modelOverride && fromEnv) {
+    warnNonGeminiExtratoModel("OPENROUTER_MODEL", fromEnv);
+  }
+  return model;
+}
 
 export function resolveExtratoModel(options?: ExtractStructuredOptions): string {
   const fromPrimary = process.env.OPENROUTER_MODEL_PRIMARY?.trim();
@@ -30,10 +41,12 @@ export function resolveSecondaryExtratoModel(): string | null {
     warnNonGeminiExtratoModel("OPENROUTER_MODEL_SECONDARY", val);
     return val;
   }
-  warnNonGeminiExtratoModel(
-    "OPENROUTER_MODEL_SECONDARY",
-    DEFAULT_SECONDARY_EXTRATO_MODEL,
-  );
+  if (DEFAULT_SECONDARY_EXTRATO_MODEL) {
+    warnNonGeminiExtratoModel(
+      "OPENROUTER_MODEL_SECONDARY",
+      DEFAULT_SECONDARY_EXTRATO_MODEL,
+    );
+  }
   return DEFAULT_SECONDARY_EXTRATO_MODEL;
 }
 

@@ -18,9 +18,11 @@ export {
 } from "./openrouter/parse-response";
 export {
   resolveExtratoModel,
+  resolveMatchModel,
   resolveSecondaryExtratoModel,
   resolveReviewerExtratoModel,
 } from "./openrouter/models";
+export { GEMINI_FLASH_MODEL } from "./model-profile";
 export { MAX_EXTRATO_TEXT_CHARS } from "./openrouter/schemas";
 export {
   extractStructuredFromPdf,

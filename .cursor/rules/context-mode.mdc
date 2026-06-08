@@ -1,17 +1,6 @@
 ---
-description: Use context-mode for read-heavy commands on SPC UP (tests, git log, logs)
-globs:
-alwaysApply: true
+description: "[legado] Usar regra global token-efficiency.mdc"
+alwaysApply: false
 ---
 
-# Context-mode neste repositório
-
-Para **análise** (não edição) de saídas grandes, prefira as ferramentas context-mode (`ctx_execute`, `ctx_execute_file`) em vez de Bash:
-
-- `pytest`, `alembic`, `docker compose logs`
-- `git log`, `git diff`
-- Leitura de XML exportado, CSV de pendências, logs de ingestão
-
-Bash direto apenas para: mutações de arquivo, `git add/commit/push`, `cd`, `pip install`, `docker compose up`.
-
-Ao implementar tarefas do plano em `docs/superpowers/plans/`, siga a spec em `docs/superpowers/specs/2026-05-25-spc-up-prestacao-contas-design.md`.
+Context-mode: `~/.cursor/rules/token-efficiency.mdc`. Comandos repo (`pytest`, `git diff`, logs Docker, etc.) → `ctx_*` MCP conforme regra global.

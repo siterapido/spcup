@@ -1,6 +1,9 @@
 import type { ConsolidacaoEventoRow } from "@/components/prestacao/consolidacao-table";
 
-import { mapConsolidacaoEventoToLinha, type PlanilhaLinha } from "@spc-up/core";
+import {
+  mapConsolidacaoEventoToLinha,
+  type PlanilhaLinha,
+} from "@spc-up/core/browser";
 
 /** Adapter mínimo: evento da sanfona → linha para PdfComparadorModal. */
 export function planilhaLinhaFromEvento(evento: ConsolidacaoEventoRow): PlanilhaLinha {

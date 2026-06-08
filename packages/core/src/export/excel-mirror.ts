@@ -1,8 +1,12 @@
-import ExcelJS from "exceljs";
 import { and, eq } from "drizzle-orm";
 
 import { movimentacao, movimentacaoSpca, type Db } from "@spc-up/db";
 
+import {
+  appendExcelMirrorRows,
+  createExcelMirrorWorkbook,
+  writeExcelMirrorWorkbook,
+} from "./excel-mirror-worksheet";
 import { scopePrestadorExercicio } from "./scope";
 
 /** Build Excel workbook mirroring SPCA fields for audit (confirmed/exported rows). */
@@ -25,70 +29,7 @@ export async function buildExcelMirrorBuffer(
       ),
     );
 
-  const workbook = new ExcelJS.Workbook();
-  const origem = workbook.addWorksheet("Origem");
-  origem.addRow([
-    "data",
-    "valor",
-    "direcao",
-    "descricao",
-    "cred_dev",
-    "fonte_recurso",
-    "natureza_recurso",
-    "tipo_origem_recurso",
-    "classificacao_receita",
-  ]);
-
-  const aplicacao = workbook.addWorksheet("Aplicacao");
-  aplicacao.addRow([
-    "data",
-    "valor",
-    "direcao",
-    "descricao",
-    "cred_dev",
-    "cd_descricao_gasto",
-    "tipo_documento",
-    "nr_documento",
-  ]);
-
-  const doacao = workbook.addWorksheet("Doacao");
-  doacao.addRow(["data", "valor", "descricao", "nr_recibo_doacao"]);
-
-  for (const { mov, spca } of rows) {
-    if (mov.direcao === "ENTRADA") {
-      origem.addRow([
-        mov.dataMovimento,
-        mov.valor,
-        mov.direcao,
-        mov.descricaoRaw,
-        mov.credDev ?? "",
-        spca?.fonteRecurso ?? "",
-        spca?.naturezaRecurso ?? "",
-        spca?.tipoOrigemRecurso ?? "",
-        spca?.classificacaoReceita ?? "",
-      ]);
-      if (spca?.nrReciboDoacao) {
-        doacao.addRow([
-          mov.dataMovimento,
-          mov.valor,
-          mov.descricaoRaw,
-          spca.nrReciboDoacao,
-        ]);
-      }
-    } else {
-      aplicacao.addRow([
-        mov.dataMovimento,
-        mov.valor,
-        mov.direcao,
-        mov.descricaoRaw,
-        mov.credDev ?? "",
-        spca?.cdDescricaoGasto ?? "",
-        spca?.tipoDocumento ?? "",
-        spca?.nrDocumento ?? "",
-      ]);
-    }
-  }
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(buffer);
+  const { workbook, sheets } = createExcelMirrorWorkbook();
+  appendExcelMirrorRows(sheets, rows);
+  return writeExcelMirrorWorkbook(workbook);
 }

@@ -24,9 +24,25 @@ function cpfCheckDigits(cpf: string): boolean {
   return true;
 }
 
+function cpfDigitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+/** Strip mask; require 11 digits. No check-digit validation (cadastro import). */
+export function normalizeCpfDigitsOnly(value: string): string {
+  const cpf = cpfDigitsOnly(value);
+  if (cpf.length !== 11) {
+    throw new Error("CPF inválido: deve conter 11 dígitos");
+  }
+  if (cpf === cpf[0]!.repeat(11)) {
+    throw new Error("CPF inválido: sequência repetida");
+  }
+  return cpf;
+}
+
 /** Strip mask, validate check digits, return 11 digits or throw. */
 export function normalizeCpf(value: string): string {
-  const cpf = value.replace(/\D/g, "");
+  const cpf = cpfDigitsOnly(value);
   if (cpf.length !== 11) {
     throw new Error("CPF inválido: deve conter 11 dígitos");
   }

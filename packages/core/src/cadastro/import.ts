@@ -16,6 +16,7 @@ export async function importCadastroBatch(
     ignorados: 0,
     conflitos: 0,
     erros: [],
+    inseridosList: [],
   };
 
   for (const row of rows) {
@@ -28,6 +29,12 @@ export async function importCadastroBatch(
       switch (upsert.action) {
         case "inserted":
           result.inseridos += 1;
+          result.inseridosList?.push({
+            linha: row.linha,
+            tipo: row.tipo,
+            documento: row.documento,
+            nome: row.nome,
+          });
           break;
         case "updated":
           result.atualizados += 1;
@@ -43,7 +50,12 @@ export async function importCadastroBatch(
       }
     } catch (error) {
       const motivo = error instanceof Error ? error.message : String(error);
-      result.erros.push({ linha: row.linha, motivo });
+      result.erros.push({
+        linha: row.linha,
+        motivo,
+        nome: row.nome,
+        documento: row.documento,
+      });
     }
   }
 

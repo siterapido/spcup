@@ -2,6 +2,7 @@ import {
   deletePessoas,
   rematchPendingMovimentacoes,
   searchPessoas,
+  updatePessoas,
   upsertPessoa,
 } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
@@ -34,6 +35,59 @@ export async function GET(request: Request) {
     })),
     total: rows.length,
   });
+}
+
+export async function PATCH(request: Request) {
+  const authResult = await requireSession();
+  if ("error" in authResult) return authResult.error;
+
+  let body: {
+    items?: Array<{
+      id?: string;
+      tipo?: string;
+      nome?: string;
+      tituloEleitor?: string | null;
+      aliases?: string[] | null;
+    }>;
+  };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return NextResponse.json({ error: "Corpo JSON inválido" }, { status: 400 });
+  }
+
+  const items = (body.items ?? [])
+    .map((item) => {
+      const tipo = parsePessoaTipoParam(item.tipo);
+      const id = item.id?.trim();
+      if (!tipo || !id) return null;
+      return {
+        id,
+        tipo,
+        ...(item.nome !== undefined ? { nome: item.nome } : {}),
+        ...(item.tituloEleitor !== undefined ? { tituloEleitor: item.tituloEleitor } : {}),
+        ...(item.aliases !== undefined ? { aliases: item.aliases } : {}),
+      };
+    })
+    .filter(
+      (
+        item,
+      ): item is {
+        id: string;
+        tipo: NonNullable<ReturnType<typeof parsePessoaTipoParam>>;
+        nome?: string;
+        tituloEleitor?: string | null;
+        aliases?: string[] | null;
+      } => item !== null,
+    );
+
+  if (items.length === 0) {
+    return NextResponse.json({ error: "Nenhuma pessoa válida para editar" }, { status: 400 });
+  }
+
+  const db = getDb();
+  const result = await updatePessoas(db, items);
+  return NextResponse.json(result);
 }
 
 export async function DELETE(request: Request) {

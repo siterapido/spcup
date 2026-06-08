@@ -1,9 +1,12 @@
-export const DEFAULT_EXTRATO_MODEL = "google/gemini-3.5-flash";
-export const DEFAULT_MATCH_MODEL = "google/gemini-3.5-flash";
-/** Second pass in dual-extract (consensus) via OpenRouter. */
-export const DEFAULT_SECONDARY_EXTRATO_MODEL = "google/gemini-2.5-pro";
+/** OpenRouter slug for all default Gemini calls (extrato, match, revisor). */
+export const GEMINI_FLASH_MODEL = "google/gemini-3.5-flash";
+
+export const DEFAULT_EXTRATO_MODEL = GEMINI_FLASH_MODEL;
+export const DEFAULT_MATCH_MODEL = GEMINI_FLASH_MODEL;
+/** Second pass in dual-extract (consensus). Null = disabled until OPENROUTER_MODEL_SECONDARY is set. */
+export const DEFAULT_SECONDARY_EXTRATO_MODEL: string | null = null;
 /** Scores divergent extrato lines via OpenRouter. */
-export const DEFAULT_REVIEWER_EXTRATO_MODEL = "google/gemini-2.5-pro";
+export const DEFAULT_REVIEWER_EXTRATO_MODEL = GEMINI_FLASH_MODEL;
 
 const geminiWarned = new Set<string>();
 

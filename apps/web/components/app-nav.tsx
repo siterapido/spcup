@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const links = [
   { href: "/", label: "Dashboard", isActive: (path: string) => path === "/" },
@@ -31,6 +31,33 @@ export function AppNav() {
   const prestacaoActive = pathname.startsWith("/prestacao");
   const adminActive = pathname.startsWith("/admin");
   const [conflitosPendentes, setConflitosPendentes] = useState(0);
+  const prestacaoDetailsRef = useRef<HTMLDetailsElement>(null);
+  const adminDetailsRef = useRef<HTMLDetailsElement>(null);
+
+  const closeNavDropdowns = () => {
+    prestacaoDetailsRef.current?.removeAttribute("open");
+    adminDetailsRef.current?.removeAttribute("open");
+  };
+
+  useEffect(() => {
+    closeNavDropdowns();
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        prestacaoDetailsRef.current?.contains(target) ||
+        adminDetailsRef.current?.contains(target)
+      ) {
+        return;
+      }
+      closeNavDropdowns();
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     void fetch("/api/pessoas/conflitos/count")
@@ -57,7 +84,15 @@ export function AppNav() {
         );
       })}
 
-      <details className="relative">
+      <details
+        ref={prestacaoDetailsRef}
+        className="relative"
+        onToggle={(event) => {
+          if ((event.currentTarget as HTMLDetailsElement).open) {
+            adminDetailsRef.current?.removeAttribute("open");
+          }
+        }}
+      >
         <summary
           className={`cursor-pointer list-none rounded-sm px-2 py-1 text-sm marker:content-none ${navLinkClass(prestacaoActive)}`}
         >
@@ -67,19 +102,29 @@ export function AppNav() {
           <Link
             href="/prestacao"
             className="block px-3 py-2 text-sm hover:bg-slate-50"
+            onClick={closeNavDropdowns}
           >
             Prestações realizadas
           </Link>
           <Link
             href="/prestacao/nova"
             className="block px-3 py-2 text-sm hover:bg-slate-50"
+            onClick={closeNavDropdowns}
           >
             Nova prestação
           </Link>
         </div>
       </details>
 
-      <details className="relative">
+      <details
+        ref={adminDetailsRef}
+        className="relative"
+        onToggle={(event) => {
+          if ((event.currentTarget as HTMLDetailsElement).open) {
+            prestacaoDetailsRef.current?.removeAttribute("open");
+          }
+        }}
+      >
         <summary
           className={`cursor-pointer list-none rounded-sm px-2 py-1 text-sm marker:content-none ${navLinkClass(adminActive)}`}
         >
@@ -89,12 +134,14 @@ export function AppNav() {
           <Link
             href="/admin/diretorios-estaduais"
             className="block px-3 py-2 text-sm hover:bg-slate-50"
+            onClick={closeNavDropdowns}
           >
             Diretórios estaduais
           </Link>
           <Link
             href="/admin/diretorios-municipais"
             className="block px-3 py-2 text-sm hover:bg-slate-50"
+            onClick={closeNavDropdowns}
           >
             Diretórios municipais
           </Link>

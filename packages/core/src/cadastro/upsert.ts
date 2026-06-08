@@ -6,7 +6,12 @@ import {
 } from "@spc-up/db";
 import { eq } from "drizzle-orm";
 
-import { normalizeCnpj, normalizeCpf, normalizeName } from "../normalize";
+import {
+  normalizeCnpj,
+  normalizeCpf,
+  normalizeCpfDigitsOnly,
+  normalizeName,
+} from "../normalize";
 import {
   type CadastroTipo,
   isStubNome,
@@ -50,11 +55,31 @@ export async function upsertPessoa(
   const uf = ctx.uf?.toUpperCase() ?? SEM_CONTEXTO_UF;
   const exercicio = ctx.exercicio ?? SEM_CONTEXTO_EXERCICIO;
   const documento =
-    row.tipo === "PF" ? normalizeCpf(row.documento) : normalizeCnpj(row.documento);
+    row.tipo === "PF"
+      ? ctx.origem === "IMPORT"
+        ? normalizeCpfDigitsOnly(row.documento)
+        : normalizeCpf(row.documento)
+      : normalizeCnpj(row.documento);
   const nome = normalizeName(row.nome);
 
   if (row.tipo === "PF") {
     const existing = await findPessoaFisica(db, documento);
+    if (existing?.deletedAt != null) {
+      const [restored] = await db
+        .update(pessoaFisica)
+        .set({
+          nome,
+          deletedAt: null,
+          updatedAt: new Date(),
+          tituloEleitor: row.tituloEleitor?.trim() || null,
+        })
+        .where(eq(pessoaFisica.id, existing.id))
+        .returning();
+      if (!restored) {
+        throw new Error(`Failed to restore pessoa_fisica ${existing.id}`);
+      }
+      return { action: "updated", pessoaFisicaId: restored.id };
+    }
     if (!existing) {
       const [created] = await db
         .insert(pessoaFisica)
@@ -114,6 +139,21 @@ export async function upsertPessoa(
   }
 
   const existing = await findPessoaJuridica(db, documento);
+  if (existing?.deletedAt != null) {
+    const [restored] = await db
+      .update(pessoaJuridica)
+      .set({
+        razaoSocial: nome,
+        deletedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(pessoaJuridica.id, existing.id))
+      .returning();
+    if (!restored) {
+      throw new Error(`Failed to restore pessoa_juridica ${existing.id}`);
+    }
+    return { action: "updated", pessoaJuridicaId: restored.id };
+  }
   if (!existing) {
     const [created] = await db
       .insert(pessoaJuridica)

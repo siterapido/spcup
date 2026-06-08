@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -86,6 +86,7 @@ export const pessoaFisica = pgTable("pessoa_fisica", {
   aliases: text("aliases").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const pessoaJuridica = pgTable("pessoa_juridica", {
@@ -95,6 +96,7 @@ export const pessoaJuridica = pgTable("pessoa_juridica", {
   aliases: text("aliases").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const CADASTRO_CONFLITO_STATUS = {
@@ -154,6 +156,7 @@ export const arquivoIngestao = pgTable("arquivo_ingestao", {
   caminhoStorage: varchar("caminho_storage", { length: 1024 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("PENDENTE"),
   erroMensagem: text("erro_mensagem"),
+  metadados: jsonb("metadados"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -223,6 +226,7 @@ export const movimentacao = pgTable(
     valor: numeric("valor", { precision: 15, scale: 2 }).notNull(),
     dataMovimento: date("data_movimento").notNull(),
     descricaoRaw: text("descricao_raw").notNull(),
+    nomeContraparte: varchar("nome_contraparte", { length: 255 }),
     /** Código coluna Cred/Dev do extrato (ex. CRED TEV, PIX). */
     credDev: varchar("cred_dev", { length: 128 }),
     nrExtratoBancario: varchar("nr_extrato_bancario", { length: 64 }),
@@ -246,11 +250,13 @@ export const movimentacao = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex("uq_mov_prestador_exercicio_hash").on(
-      table.cnpjPrestador,
-      table.exercicio,
-      table.hashMovimento,
-    ),
+    uniqueIndex("uq_mov_prestador_exercicio_hash")
+      .on(
+        table.cnpjPrestador,
+        table.exercicio,
+        table.hashMovimento,
+      )
+      .where(sql`deleted_at IS NULL`),
     index("ix_movimentacao_exercicio").on(table.exercicio),
     index("ix_movimentacao_uf").on(table.uf),
     index("ix_movimentacao_sessao").on(table.sessaoPrestacaoId),
@@ -276,6 +282,7 @@ export const consolidacaoEvento = pgTable(
     valor: numeric("valor", { precision: 15, scale: 2 }).notNull(),
     direcao: varchar("direcao", { length: 10 }).notNull(),
     confianca: real("confianca").notNull(),
+    nomeContraparte: varchar("nome_contraparte", { length: 255 }),
     pessoaFisicaId: uuid("pessoa_fisica_id").references(() => pessoaFisica.id),
     pessoaJuridicaId: uuid("pessoa_juridica_id").references(() => pessoaJuridica.id),
     movimentacaoCanonicaId: uuid("movimentacao_canonica_id").references(() => movimentacao.id),

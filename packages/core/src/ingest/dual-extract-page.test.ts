@@ -9,8 +9,8 @@ vi.mock("../ai/openrouter", () => {
     scoreExtratoLinhas: vi.fn(),
     resolveExtratoModel: vi.fn().mockReturnValue("google/gemini-3.5-flash"),
     resolveSecondaryExtratoModel: vi.fn().mockReturnValue(null),
-    resolveReviewerExtratoModel: vi.fn().mockReturnValue("google/gemini-2.5-pro"),
-    resolveScoreThreshold: () => 80,
+    resolveReviewerExtratoModel: vi.fn().mockReturnValue("google/gemini-3.5-flash"),
+    MAX_EXTRATO_TEXT_CHARS: 24_000,
     parseExtratoValor: (val: any) => Number(val),
   };
 });
@@ -44,7 +44,7 @@ describe("dualExtractPage", () => {
     vi.clearAllMocks();
   });
 
-  it("performs single model extraction and reviewer scoring when secondaryModel is null", async () => {
+  it("performs single model extraction without reviewer when secondaryModel is null", async () => {
     vi.mocked(resolveSecondaryExtratoModel).mockReturnValue(null);
 
     vi.mocked(extractTransactionsFromPdfText).mockResolvedValue({
@@ -65,10 +65,6 @@ describe("dualExtractPage", () => {
       ],
     });
 
-    vi.mocked(scoreExtratoLinhas).mockResolvedValue([
-      { score: 95, motivo: "Valid transaction" },
-    ]);
-
     const result = await dualExtractPage({
       pageBuffer: Buffer.from("dummy page"),
       text: "Transferencia Recebida",
@@ -78,32 +74,17 @@ describe("dualExtractPage", () => {
     });
 
     expect(extractTransactionsFromPdfText).toHaveBeenCalledTimes(1);
-    expect(scoreExtratoLinhas).toHaveBeenCalledTimes(1);
+    expect(scoreExtratoLinhas).not.toHaveBeenCalled();
     expect(result.statusPagina).toBe("OK");
     expect(result.aceitas).toHaveLength(1);
-    expect(result.aceitas[0]?.score).toBe(95);
-    expect(result.aceitas[0]?.modeloOrigem).toBe("revisor");
+    expect(result.aceitas[0]?.score).toBe(100);
+    expect(result.aceitas[0]?.modeloOrigem).toBe("primario");
   });
 
-  it("performs whole-PDF extraction when fullBuffer is provided and gemini_native batching is used", async () => {
+  it("uses text extraction when fullBuffer is provided but page has enough text", async () => {
     vi.mocked(resolveSecondaryExtratoModel).mockReturnValue(null);
-
-    // Mock full PDF returns transactions for page 1 and page 2
-    vi.mocked(extractTransactionsFromPdfFile).mockResolvedValue({
+    vi.mocked(extractTransactionsFromPdfText).mockResolvedValue({
       transacoes: [
-        {
-          data: "2025-01-15",
-          valor: 100.0,
-          direcao: "ENTRADA",
-          descricao: "TX Page 1",
-          cred_dev: "TED",
-          cpf: "12345678909",
-          cnpj: null,
-          nome: "Joao Silva",
-          pagina: 1,
-          indice_linha: 1,
-          bbox: { x: 0, y: 0, w: 1, h: 0.1 },
-        },
         {
           data: "2025-01-16",
           valor: 200.0,
@@ -120,11 +101,6 @@ describe("dualExtractPage", () => {
       ],
     });
 
-    vi.mocked(scoreExtratoLinhas).mockResolvedValue([
-      { score: 90, motivo: "Valid" },
-    ]);
-
-    // Process page 2
     const result = await dualExtractPage({
       pageBuffer: Buffer.from("dummy page 2"),
       text: "TX Page 2",
@@ -134,12 +110,48 @@ describe("dualExtractPage", () => {
       fullBuffer: Buffer.from("dummy full PDF"),
     });
 
-    expect(extractTransactionsFromPdfFile).toHaveBeenCalledTimes(1);
-    expect(extractTransactionsFromPdfText).not.toHaveBeenCalled();
-    expect(scoreExtratoLinhas).toHaveBeenCalledTimes(1);
-
-    // Should only contain page 2 transaction
+    expect(extractTransactionsFromPdfText).toHaveBeenCalledTimes(1);
+    expect(extractTransactionsFromPdfFile).not.toHaveBeenCalled();
     expect(result.aceitas).toHaveLength(1);
     expect(result.aceitas[0]?.item.descricao).toBe("TX Page 2");
+  });
+
+  it("uses single-page PNG extraction for scan pages instead of whole PDF", async () => {
+    vi.mocked(resolveSecondaryExtratoModel).mockReturnValue(null);
+
+    vi.mocked(extractTransactionsFromImagePng).mockResolvedValue({
+      transacoes: [
+        {
+          data: "2025-01-16",
+          valor: 200.0,
+          direcao: "SAIDA",
+          descricao: "TX Page 2",
+          cred_dev: "TED",
+          cpf: null,
+          cnpj: "12345678000199",
+          nome: "Empresa Ltda",
+          pagina: 2,
+          indice_linha: 1,
+          bbox: { x: 0, y: 0, w: 1, h: 0.1 },
+        },
+      ],
+    });
+
+    const result = await dualExtractPage({
+      pageBuffer: Buffer.from("dummy page 2"),
+      pngBuffer: Buffer.from("png-bytes"),
+      text: "",
+      hasEnoughText: false,
+      filename: "extrato.pdf",
+      page1Based: 2,
+      fullBuffer: Buffer.from("dummy full PDF"),
+    });
+
+    expect(extractTransactionsFromImagePng).toHaveBeenCalledTimes(1);
+    expect(extractTransactionsFromPdfFile).not.toHaveBeenCalled();
+    expect(scoreExtratoLinhas).not.toHaveBeenCalled();
+    expect(result.aceitas).toHaveLength(1);
+    expect(result.aceitas[0]?.item.descricao).toBe("TX Page 2");
+    expect(result.aceitas[0]?.modeloOrigem).toBe("primario");
   });
 });

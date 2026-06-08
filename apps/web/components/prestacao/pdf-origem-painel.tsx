@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { usePdfTextLayer } from "@/hooks/use-pdf-text-layer";
 import { loadPdfJs } from "@/lib/pdfjs-browser";
 
-import { localizarLinhaPdf } from "@spc-up/core";
-import type { BboxNorm } from "@spc-up/core/browser";
+import { localizarLinhaPdf, type BboxNorm } from "@spc-up/core/browser";
 
 export type HighlightMode = "extracao" | "estimada" | "none";
 

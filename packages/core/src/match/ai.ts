@@ -1,5 +1,5 @@
-import { DEFAULT_MATCH_MODEL } from "../ai/model-profile";
-import { openRouterChatCompletion } from "../ai/openrouter/client";
+import { resolveMatchModel } from "../ai/openrouter/models";
+import { openRouterChatCompletion, withMaxTokens } from "../ai/openrouter/client";
 import type { ExtractStructuredOptions } from "../ai/openrouter-types";
 
 export const AI_MATCH_SCHEMA = {
@@ -120,9 +120,9 @@ export async function evaluateMovimentacaoWithAi(
   input: EvaluateAiMatchInput,
   options?: EvaluateAiMatchOptions,
 ): Promise<AiMatchResult> {
-  const model = options?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MATCH_MODEL;
+  const model = resolveMatchModel(options?.model);
   const userPayload = JSON.stringify(input, null, 2);
-  const payload = {
+  const payload = withMaxTokens({
     model,
     messages: [
       {
@@ -146,7 +146,7 @@ export async function evaluateMovimentacaoWithAi(
         schema: AI_MATCH_SCHEMA,
       },
     },
-  };
+  });
 
   const orOptions: ExtractStructuredOptions = {
     fetch: options?.fetch,

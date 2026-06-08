@@ -1,6 +1,8 @@
 import type { Db } from "@spc-up/db";
 
+import { buildOrigemAtributos } from "../provenance/build-origem-atributos";
 import { getSessao } from "../prestacao/sessao";
+import { autoAprovarConsolidacaoEventos, applyMesmoValorRevisaoHumanaCap } from "./auto";
 import { buildConsolidacaoCandidates } from "./candidates";
 import { enrichAmbiguousWithAi } from "./ai";
 import {
@@ -9,10 +11,18 @@ import {
   loadMovimentacaoCandidates,
 } from "./load";
 import { deletePendingConsolidacaoEvents, persistConsolidacaoDrafts } from "./persist";
+import { getConfiancaLimiarAlta } from "./thresholds";
 
 export type ConsolidateSessionResult =
   | { skipped: true; reason: string }
-  | { skipped: false; eventos: number };
+  | {
+      skipped: false;
+      eventos: number;
+      autoAprovados: number;
+      paraRevisar: number;
+      limiarAutoAprovacao: number;
+      errosAutoAprovacao?: string[];
+    };
 
 /** Rebuild pending consolidation events for a session (idempotent for PENDENTE). */
 export async function consolidateSession(
@@ -37,6 +47,7 @@ export async function consolidateSession(
     return { skipped: true, reason: "NO_MOVIMENTACOES" };
   }
 
+  const movById = new Map(movs.map((m) => [m.id, m]));
   const ctx = await loadCadastroMatchContext(db);
   let drafts = buildConsolidacaoCandidates(movs, ctx);
 
@@ -47,8 +58,27 @@ export async function consolidateSession(
     });
   }
 
+  applyMesmoValorRevisaoHumanaCap(drafts);
+  for (const draft of drafts) {
+    draft.origemAtributos = buildOrigemAtributos(draft, movById);
+  }
+
   await deletePendingConsolidacaoEvents(db, sessaoId);
   const ids = await persistConsolidacaoDrafts(db, sessaoId, drafts);
 
-  return { skipped: false, eventos: ids.length };
+  const { aprovados: autoAprovados, erros } = await autoAprovarConsolidacaoEventos(
+    db,
+    ids,
+    drafts,
+  );
+
+  const limiarAutoAprovacao = getConfiancaLimiarAlta();
+  return {
+    skipped: false,
+    eventos: ids.length,
+    autoAprovados,
+    paraRevisar: ids.length - autoAprovados,
+    limiarAutoAprovacao,
+    ...(erros.length > 0 ? { errosAutoAprovacao: erros } : {}),
+  };
 }

@@ -54,6 +54,7 @@ import {
   credDevFromExtratoItem,
   ingestPdf,
   ingestPdfExtrato,
+  nrExtratoBancarioFromExtratoItem,
   rowFromExtraction,
   rowsFromExtratoTransactions,
 } from "./pdf";
@@ -83,6 +84,16 @@ describe("credDevFromExtratoItem", () => {
   });
 });
 
+describe("nrExtratoBancarioFromExtratoItem", () => {
+  it("reads bank document number from documento column", () => {
+    expect(nrExtratoBancarioFromExtratoItem({ documento: "1234567" })).toBe("1234567");
+  });
+
+  it("ignores empty documento", () => {
+    expect(nrExtratoBancarioFromExtratoItem({ documento: "" })).toBeNull();
+  });
+});
+
 describe("rowsFromExtratoTransactions", () => {
   it("maps cred_dev on persisted row", () => {
     const { rows } = rowsFromExtratoTransactions({
@@ -97,6 +108,22 @@ describe("rowsFromExtratoTransactions", () => {
       ],
     });
     expect(rows[0]!.credDev).toBe("PIX");
+  });
+
+  it("maps documento column to nrExtratoBancario", () => {
+    const { rows } = rowsFromExtratoTransactions({
+      transacoes: [
+        {
+          data: "2025-06-01",
+          valor: 10,
+          direcao: "ENTRADA",
+          descricao: "PIX",
+          documento: "90887766",
+          nome: "Maria",
+        },
+      ],
+    });
+    expect(rows[0]!.nrExtratoBancario).toBe("90887766");
   });
 
   it("keeps rows with valid CPF; nome-only lines become rows for match por nome", () => {

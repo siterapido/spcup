@@ -21,9 +21,10 @@ describe("resolveSecondaryExtratoModel", () => {
     }
   });
 
-  it("defaults to Gemini pro when unset", () => {
+  it("defaults to disabled when unset (save tokens; set env to enable dual-extract)", () => {
     delete process.env.OPENROUTER_MODEL_SECONDARY;
-    expect(resolveSecondaryExtratoModel()).toBe(DEFAULT_SECONDARY_EXTRATO_MODEL);
+    expect(resolveSecondaryExtratoModel()).toBeNull();
+    expect(DEFAULT_SECONDARY_EXTRATO_MODEL).toBeNull();
   });
 
   it("returns null when none", () => {
@@ -49,11 +50,11 @@ describe("resolveReviewerExtratoModel", () => {
     }
   });
 
-  it("defaults to Gemini pro, not OpenAI", () => {
+  it("defaults to Gemini flash when unset", () => {
     delete process.env.OPENROUTER_MODEL_REVIEWER;
     delete process.env.OPENROUTER_MODEL_SECONDARY;
     expect(resolveReviewerExtratoModel()).toBe(DEFAULT_REVIEWER_EXTRATO_MODEL);
-    expect(resolveReviewerExtratoModel()).toMatch(/gemini/i);
+    expect(resolveReviewerExtratoModel()).toBe("google/gemini-3.5-flash");
   });
 
   it("uses OPENROUTER_MODEL_REVIEWER when set", () => {

@@ -12,6 +12,10 @@ import {
   type ExtractStructuredOptions,
 } from "../ai/openrouter";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
+import {
+  extractNomeContraparte,
+  isNomeContraparteVazio,
+} from "../match/nome-contraparte";
 import { applyDeterministicMatch } from "../match/rules";
 import { extractDocumentCandidates } from "../match/rules";
 import { normalizeCnpj, normalizeCpf } from "../normalize";
@@ -27,6 +31,11 @@ import {
   type ParsedTransactionRow,
   type PrestadorContext,
 } from "./types";
+
+function nomeContraparteFromDescricao(descricaoRaw: string): string | undefined {
+  const nome = extractNomeContraparte(descricaoRaw);
+  return isNomeContraparteVazio(nome) ? undefined : nome;
+}
 
 function parseExtractionDate(value: string): Date {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
@@ -48,6 +57,15 @@ export interface IngestPdfExtratoResult {
 export function credDevFromExtratoItem(item: Record<string, unknown>): string | null {
   const raw = String(item.cred_dev ?? item.credDev ?? "").trim();
   return raw.length > 0 ? raw : null;
+}
+
+/** Número de documento/lançamento do extrato (coluna Documento da Caixa etc.), não CPF/CNPJ. */
+export function nrExtratoBancarioFromExtratoItem(item: Record<string, unknown>): string | null {
+  const raw = String(item.documento ?? item.nr_documento ?? item.nrDocumento ?? "").trim();
+  if (!raw || /^null$/i.test(raw)) {
+    return null;
+  }
+  return raw.slice(0, 64);
 }
 
 function docLabelFromExtratoItem(item: Record<string, unknown>): string | null {
@@ -99,13 +117,15 @@ function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransact
     return null;
   }
 
+  const descricaoRaw = nome;
   return {
     dataMovimento: parseExtractionDate(String(item.data)),
     valor: Math.abs(valorNum).toFixed(2),
-    descricaoRaw: nome,
+    descricaoRaw,
     direcao,
     credDev: credDevFromExtratoItem(item),
-    nrExtratoBancario: null,
+    nrExtratoBancario: nrExtratoBancarioFromExtratoItem(item),
+    nomeContraparte: nomeContraparteFromDescricao(descricaoRaw),
   };
 }
 
@@ -147,7 +167,8 @@ export function rowFromExtratoItem(
     descricaoRaw,
     direcao,
     credDev: credDevFromExtratoItem(item),
-    nrExtratoBancario: null,
+    nrExtratoBancario: nrExtratoBancarioFromExtratoItem(item),
+    nomeContraparte: nomeContraparteFromDescricao(descricaoRaw),
   };
 }
 
@@ -322,13 +343,15 @@ export function rowFromExtraction(
     throw new Error(`Direcao invalida: ${direcao}`);
   }
 
+  const descricaoRaw = `${nome} CPF ${cpf}`;
   return {
     dataMovimento: parseExtractionDate(String(extracted.data)),
     valor: Math.abs(valorNum).toFixed(2),
-    descricaoRaw: `${nome} CPF ${cpf}`,
+    descricaoRaw,
     direcao,
     credDev: null,
     nrExtratoBancario: null,
+    nomeContraparte: nomeContraparteFromDescricao(descricaoRaw),
   };
 }
 

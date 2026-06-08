@@ -4,8 +4,10 @@ import {
   ignorarPaginaPdfExtrato,
   ingestLog,
   loadPaginaPdfComoPng,
+  parseExtratoColumnMap,
   prestadorFromSessao,
   processarPaginaPdfExtrato,
+  type ExtratoColumnMap,
   type ProcessarPaginaPdfModo,
 } from "@spc-up/core";
 import { arquivoIngestao, getDb } from "@spc-up/db";
@@ -63,12 +65,21 @@ async function resolvePaginaContext(params: PaginaParams) {
   } as const;
 }
 
-async function parseForceFlag(request: Request): Promise<boolean> {
+async function parseProcessarBody(request: Request): Promise<{
+  force: boolean;
+  extratoColumnMap?: ExtratoColumnMap;
+}> {
   try {
-    const body = (await request.json()) as { force?: unknown };
-    return body?.force === true;
+    const body = (await request.json()) as {
+      force?: unknown;
+      extratoColumnMap?: unknown;
+    };
+    return {
+      force: body?.force === true,
+      extratoColumnMap: parseExtratoColumnMap(body?.extratoColumnMap) ?? undefined,
+    };
   } catch {
-    return false;
+    return { force: false };
   }
 }
 
@@ -80,7 +91,7 @@ export async function handleProcessarPaginaPdf(
   const ctx = await resolvePaginaContext(params);
   if ("error" in ctx) return ctx.error;
 
-  const force = await parseForceFlag(request);
+  const { force, extratoColumnMap } = await parseProcessarBody(request);
 
   try {
     const result = await processarPaginaPdfExtrato(
@@ -93,7 +104,7 @@ export async function handleProcessarPaginaPdf(
         sessaoPrestacaoId: ctx.sessaoId,
         diretorioMunicipalId: ctx.prestador.diretorioMunicipalId,
       },
-      { force, modo },
+      { force, modo, extratoColumnMap },
     );
     return NextResponse.json(result);
   } catch (error) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { PlanilhaLinhaFonte, PlanilhaPessoa } from "@spc-up/core";
+import type { PlanilhaLinhaFonte, PlanilhaPessoa } from "@spc-up/core/browser";
 
 import { Input } from "@/components/ui/input";
 import { maskDocumento } from "@/lib/mask-document";

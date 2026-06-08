@@ -76,7 +76,7 @@ pnpm test
 
 echo ""
 echo "==> Iniciando Next.js (pnpm dev)"
-echo "    App: http://localhost:3000"
+echo "    App: http://localhost:3002"
 echo "    Login: ADMIN_EMAIL do .env"
 echo "    Ctrl+C para parar"
 echo ""

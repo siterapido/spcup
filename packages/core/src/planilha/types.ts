@@ -66,8 +66,38 @@ export type PlanilhaResumo = {
   exportavel: boolean;
 };
 
+export type IngestaoResumoPagina = {
+  pagina: number;
+  status: string;
+  aceitas: number;
+  incertas: number;
+  motivo?: string | null;
+};
+
+export type IngestaoResumoArquivo = {
+  id: string;
+  nomeArquivo: string;
+  status: string;
+  movimentacoesExtraidas: number;
+  linhasIgnoradasSemDoc: number;
+  paginasVerificar: number;
+  linhasPlanilha: number;
+  paginas: IngestaoResumoPagina[];
+  motor?: string | null;
+  avisosBalance?: string[];
+  transacoesExtraidasMetadados?: number | null;
+};
+
+export type IngestaoResumo = {
+  movimentacoesBrutas: number;
+  linhasPlanilha: number;
+  mergesPendentes: number;
+  arquivos: IngestaoResumoArquivo[];
+};
+
 export type PlanilhaPayload = {
   sessao: { id: string; uf: string; exercicio: number };
   linhas: PlanilhaLinha[];
   resumo: PlanilhaResumo;
+  ingestaoResumo: IngestaoResumo;
 };

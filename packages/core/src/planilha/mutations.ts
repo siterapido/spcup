@@ -3,6 +3,8 @@ import {
   consolidacaoLinha,
   matchEvidencia,
   movimentacao,
+  pessoaFisica,
+  pessoaJuridica,
   type Db,
 } from "@spc-up/db";
 import { and, eq, isNull } from "drizzle-orm";
@@ -13,8 +15,163 @@ import {
   approveConsolidacaoEvento,
   rejectConsolidacaoEvento,
 } from "../consolidacao/approve";
+import { loadCadastroMatchContext } from "../consolidacao/load";
+import {
+  isNomeContraparteVazio,
+  resolveNomeEffective,
+} from "../match/nome-contraparte";
+import { applyDeterministicMatch, extractDocumentCandidates } from "../match/rules";
+import { normalizeName } from "../normalize";
 import { assignPessoaToMovimentacao } from "../prestacao/movimentacao-review";
 import type { PlanilhaLinhaFonte } from "./types";
+
+async function findUniquePessoaByNome(
+  db: Db,
+  rawNome: string,
+): Promise<
+  | { kind: "PF"; id: string }
+  | { kind: "PJ"; id: string }
+  | null
+> {
+  const nome = normalizeName(rawNome);
+  if (!nome) return null;
+
+  const pfs = await db
+    .select({ id: pessoaFisica.id })
+    .from(pessoaFisica)
+    .where(eq(pessoaFisica.nome, nome))
+    .limit(2);
+  if (pfs.length === 1) {
+    return { kind: "PF", id: pfs[0]!.id };
+  }
+
+  const pjs = await db
+    .select({ id: pessoaJuridica.id })
+    .from(pessoaJuridica)
+    .where(eq(pessoaJuridica.razaoSocial, nome))
+    .limit(2);
+  if (pjs.length === 1) {
+    return { kind: "PJ", id: pjs[0]!.id };
+  }
+
+  return null;
+}
+
+async function rematchConsolidacaoEventoPorNome(
+  db: Db,
+  eventoId: string,
+): Promise<void> {
+  const evento = await db.query.consolidacaoEvento.findFirst({
+    where: eq(consolidacaoEvento.id, eventoId),
+    with: {
+      linhas: { with: { movimentacao: true } },
+    },
+  });
+  if (!evento) return;
+
+  const cpfs = new Set<string>();
+  const cnpjs = new Set<string>();
+  for (const linha of evento.linhas) {
+    for (const { docType, normalized } of extractDocumentCandidates(
+      linha.movimentacao.descricaoRaw,
+    )) {
+      if (docType === "CPF") cpfs.add(normalized);
+      else cnpjs.add(normalized);
+    }
+  }
+
+  const ctx = await loadCadastroMatchContext(db);
+  let pessoaFisicaId: string | null = null;
+  let pessoaJuridicaId: string | null = null;
+  let justificativa: string | undefined;
+
+  if (cpfs.size === 1 && cnpjs.size === 0) {
+    const cpf = [...cpfs][0]!;
+    const pessoa = ctx.pessoaByCpf.get(cpf);
+    if (pessoa?.kind === "PF") {
+      pessoaFisicaId = pessoa.id;
+      justificativa = "CPF nas origens com cadastro";
+    }
+  } else if (cnpjs.size === 1 && cpfs.size === 0) {
+    const cnpj = [...cnpjs][0]!;
+    const pessoa = ctx.pessoaByCnpj.get(cnpj);
+    if (pessoa?.kind === "PJ") {
+      pessoaJuridicaId = pessoa.id;
+      justificativa = "CNPJ nas origens com cadastro";
+    }
+  }
+
+  if (!pessoaFisicaId && !pessoaJuridicaId) {
+    const origens = evento.linhas.map((l) => ({
+      descricaoRaw: l.movimentacao.descricaoRaw,
+      papel: l.papel,
+    }));
+    const nomeEffective = resolveNomeEffective(evento.nomeContraparte, origens);
+    if (!isNomeContraparteVazio(nomeEffective)) {
+      const byNome = await findUniquePessoaByNome(db, nomeEffective);
+      if (byNome?.kind === "PF") {
+        pessoaFisicaId = byNome.id;
+        justificativa = "Nome único no cadastro";
+      } else if (byNome?.kind === "PJ") {
+        pessoaJuridicaId = byNome.id;
+        justificativa = "Nome único no cadastro";
+      }
+    }
+  }
+
+  if (!pessoaFisicaId && !pessoaJuridicaId) return;
+
+  await db
+    .update(consolidacaoEvento)
+    .set({
+      pessoaFisicaId,
+      pessoaJuridicaId,
+      confianca: 0.85,
+      justificativa,
+    })
+    .where(eq(consolidacaoEvento.id, eventoId));
+}
+
+export async function updatePlanilhaLinhaNome(
+  db: Db,
+  linhaId: string,
+  fonte: PlanilhaLinhaFonte,
+  nomeContraparte: string | null,
+): Promise<void> {
+  const normalized =
+    nomeContraparte && !isNomeContraparteVazio(nomeContraparte)
+      ? normalizeName(nomeContraparte)
+      : null;
+
+  if (fonte === "movimentacao") {
+    await db
+      .update(movimentacao)
+      .set({ nomeContraparte: normalized })
+      .where(eq(movimentacao.id, linhaId));
+
+    const mov = await db.query.movimentacao.findFirst({
+      where: eq(movimentacao.id, linhaId),
+      columns: { pessoaFisicaId: true, pessoaJuridicaId: true },
+    });
+    if (!mov?.pessoaFisicaId && !mov?.pessoaJuridicaId) {
+      await applyDeterministicMatch(db, linhaId);
+    }
+    return;
+  }
+
+  await db
+    .update(consolidacaoEvento)
+    .set({ nomeContraparte: normalized })
+    .where(eq(consolidacaoEvento.id, linhaId));
+
+  const evento = await db.query.consolidacaoEvento.findFirst({
+    where: eq(consolidacaoEvento.id, linhaId),
+    columns: { pessoaFisicaId: true, pessoaJuridicaId: true },
+  });
+  if (!evento?.pessoaFisicaId && !evento?.pessoaJuridicaId) {
+    await rematchConsolidacaoEventoPorNome(db, linhaId);
+  }
+}
 
 export async function planilhaLinhaBelongsToSessao(
   db: Db,

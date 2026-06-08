@@ -1,3 +1,4 @@
+import { extractNomeContraparte } from "../match/nome-contraparte";
 import { extractDocumentCandidates } from "../match/rules";
 import { normalizeName } from "../normalize";
 import { buildOrigemAtributos } from "../provenance/build-origem-atributos";
@@ -30,14 +31,6 @@ function extractDocsFromMov(m: MovimentacaoCandidate): {
     }
   }
   return { cpf, cnpj };
-}
-
-function nomeFromDescricao(descricaoRaw: string): string {
-  const withoutDoc = descricaoRaw
-    .replace(/\bCPF\s+\d{11}\b/gi, "")
-    .replace(/\bCNPJ\s+\d{14}\b/gi, "")
-    .trim();
-  return normalizeName(withoutDoc);
 }
 
 function transactionKey(m: MovimentacaoCandidate): string {
@@ -99,8 +92,8 @@ function scorePair(
 
   const cpfCompleto = cpfB ?? cpfA;
   const cnpjCompleto = cnpjB ?? cnpjA;
-  const nomePix = nomeFromDescricao(a.descricaoRaw);
-  const nomeCompleto = nomeFromDescricao(b.descricaoRaw);
+  const nomePix = extractNomeContraparte(a.descricaoRaw);
+  const nomeCompleto = extractNomeContraparte(b.descricaoRaw);
   const pessoaByCpf = cpfCompleto ? resolvePessoa(cpfCompleto, null, ctx) : null;
   const pessoaByCnpj = cnpjCompleto ? resolvePessoa(null, cnpjCompleto, ctx) : null;
 
@@ -177,7 +170,7 @@ function scoreSingle(
       pessoa,
     };
   }
-  const nome = nomeFromDescricao(m.descricaoRaw);
+  const nome = extractNomeContraparte(m.descricaoRaw);
   const byNomePF = [...ctx.pessoaByCpf.values()].find(
     (p) => normalizeName(p.nome) === nome,
   );

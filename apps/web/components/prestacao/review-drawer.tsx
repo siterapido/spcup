@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import type { OrigemEnriquecimentoV1, OrigemExtracaoV1 } from "@spc-up/core";
+import type { OrigemEnriquecimentoV1, OrigemExtracaoV1 } from "@spc-up/core/browser";
 
 import { OrigensPanel } from "@/components/prestacao/origens-panel";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 
 interface Detalhe {
   id: string;
@@ -50,12 +50,16 @@ export function ReviewDrawer({
   open,
   onClose,
   onUpdated,
+  readOnly = false,
+  planilhaHref,
 }: {
   movimentacaoId: string | null;
-  sessaoId: string;
+  sessaoId?: string;
   open: boolean;
   onClose: () => void;
   onUpdated: () => void;
+  readOnly?: boolean;
+  planilhaHref?: string;
 }) {
   const [detalhe, setDetalhe] = useState<Detalhe | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,7 +68,7 @@ export function ReviewDrawer({
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const retorno = `/prestacao/${sessaoId}/kanban`;
+  const retorno = `/prestacao/${sessaoId ?? ""}/kanban`;
 
   const load = useCallback(async () => {
     if (!movimentacaoId) return;
@@ -92,7 +96,7 @@ export function ReviewDrawer({
   }, [open, movimentacaoId, load]);
 
   useEffect(() => {
-    if (!open || pessoaQ.trim().length < 2) {
+    if (readOnly || !open || pessoaQ.trim().length < 2) {
       setPessoas([]);
       return;
     }
@@ -103,7 +107,7 @@ export function ReviewDrawer({
         .catch(() => setPessoas([]));
     }, 300);
     return () => clearTimeout(t);
-  }, [pessoaQ, open]);
+  }, [pessoaQ, open, readOnly]);
 
   async function patchStatus(status: string) {
     if (!movimentacaoId) return;
@@ -220,6 +224,11 @@ export function ReviewDrawer({
 
   if (!open) return null;
 
+  const planilhaLinkSessaoId = sessaoId ?? detalhe?.sessaoPrestacaoId;
+  const planilhaLink =
+    planilhaHref ??
+    (planilhaLinkSessaoId ? `/prestacao/${planilhaLinkSessaoId}/planilha` : null);
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <button
@@ -230,7 +239,7 @@ export function ReviewDrawer({
       />
       <aside className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-border-default bg-white shadow-lg">
         <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
-          <h2 className="text-sm font-semibold">Revisão</h2>
+          <h2 className="text-sm font-semibold">{readOnly ? "Detalhe" : "Revisão"}</h2>
           <button type="button" className="text-sm underline" onClick={onClose}>
             Fechar
           </button>
@@ -296,96 +305,110 @@ export function ReviewDrawer({
                 ) : (
                   <p className="mt-1 text-muted">Sem vínculo</p>
                 )}
-                <input
-                  type="search"
-                  placeholder="Buscar por nome ou documento…"
-                  className="mt-2 w-full rounded-md border border-border-default px-3 py-2 text-sm"
-                  value={pessoaQ}
-                  onChange={(e) => setPessoaQ(e.target.value)}
-                />
-                {pessoas.length > 0 && (
-                  <ul className="mt-2 max-h-40 overflow-y-auto rounded-md border border-border-default">
-                    {pessoas.map((p) => (
-                      <li key={p.id}>
+                {!readOnly && (
+                  <>
+                    <input
+                      type="search"
+                      placeholder="Buscar por nome ou documento…"
+                      className="mt-2 w-full rounded-md border border-border-default px-3 py-2 text-sm"
+                      value={pessoaQ}
+                      onChange={(e) => setPessoaQ(e.target.value)}
+                    />
+                    {pessoas.length > 0 && (
+                      <ul className="mt-2 max-h-40 overflow-y-auto rounded-md border border-border-default">
+                        {pessoas.map((p) => (
+                          <li key={p.id}>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-xs hover:bg-slate-50"
+                              disabled={busy}
+                              onClick={() =>
+                                void assignPessoa(
+                                  p.tipo === "PF"
+                                    ? { pessoaFisicaId: p.id }
+                                    : { pessoaJuridicaId: p.id },
+                                )
+                              }
+                            >
+                              {p.nome} · {p.documento_mascarado} ({p.tipo})
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Link
+                        href={`/pessoas/nova?retorno=${encodeURIComponent(retorno)}`}
+                        className="text-xs underline"
+                      >
+                        Cadastrar nova pessoa
+                      </Link>
+                      {(detalhe.pessoaFisicaId || detalhe.pessoaJuridicaId) && (
                         <button
                           type="button"
-                          className="w-full px-3 py-2 text-left text-xs hover:bg-slate-50"
+                          className="text-xs underline text-muted"
                           disabled={busy}
-                          onClick={() =>
-                            void assignPessoa(
-                              p.tipo === "PF"
-                                ? { pessoaFisicaId: p.id }
-                                : { pessoaJuridicaId: p.id },
-                            )
-                          }
+                          onClick={() => void assignPessoa({ limparPessoa: true })}
                         >
-                          {p.nome} · {p.documento_mascarado} ({p.tipo})
+                          Limpar vínculo
                         </button>
-                      </li>
-                    ))}
-                  </ul>
+                      )}
+                    </div>
+                  </>
                 )}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Link
-                    href={`/pessoas/nova?retorno=${encodeURIComponent(retorno)}`}
-                    className="text-xs underline"
-                  >
-                    Cadastrar nova pessoa
-                  </Link>
-                  {(detalhe.pessoaFisicaId || detalhe.pessoaJuridicaId) && (
-                    <button
-                      type="button"
-                      className="text-xs underline text-muted"
-                      disabled={busy}
-                      onClick={() => void assignPessoa({ limparPessoa: true })}
-                    >
-                      Limpar vínculo
-                    </button>
-                  )}
-                </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {detalhe.status === "PENDENTE_REVISAO" && (
-                  <Button type="button" className="px-3 py-1.5 text-xs" disabled={busy} onClick={() => void confirmOne()}>
-                    Confirmar
-                  </Button>
-                )}
-                {detalhe.status !== "REJEITADO" && (
+              {!readOnly && (
+                <div className="flex flex-wrap gap-2">
+                  {detalhe.status === "PENDENTE_REVISAO" && (
+                    <Button type="button" className="px-3 py-1.5 text-xs" disabled={busy} onClick={() => void confirmOne()}>
+                      Confirmar
+                    </Button>
+                  )}
+                  {detalhe.status !== "REJEITADO" && (
+                    <Button
+                      type="button"
+                      className="px-3 py-1.5 text-xs"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void patchStatus("REJEITADO")}
+                    >
+                      Rejeitar
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     className="px-3 py-1.5 text-xs"
                     variant="outline"
                     disabled={busy}
-                    onClick={() => void patchStatus("REJEITADO")}
+                    onClick={() => void reprocessarIa()}
                   >
-                    Rejeitar
+                    Reprocessar IA
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  className="px-3 py-1.5 text-xs"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void reprocessarIa()}
-                >
-                  Reprocessar IA
-                </Button>
-                {canDelete && (
-                  <Button
-                    type="button"
-                    className="px-3 py-1.5 text-xs"
-                    variant="destructive"
-                    disabled={busy}
-                    onClick={() => void deleteOne()}
-                  >
-                    Excluir
-                  </Button>
-                )}
-              </div>
+                  {canDelete && (
+                    <Button
+                      type="button"
+                      className="px-3 py-1.5 text-xs"
+                      variant="destructive"
+                      disabled={busy}
+                      onClick={() => void deleteOne()}
+                    >
+                      Excluir
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {readOnly && planilhaLink && (
+          <div className="border-t border-border-default px-4 py-3">
+            <Link href={planilhaLink} className={buttonClassName("default", "w-full")}>
+              Abrir na planilha
+            </Link>
+          </div>
+        )}
       </aside>
     </div>
   );

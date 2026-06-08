@@ -19,12 +19,13 @@ export interface ImportCadastroResult {
   atualizados: number;
   ignorados: number;
   conflitos: number;
-  erros: Array<{ linha: number; motivo: string }>;
+  erros: Array<{ linha: number; motivo: string; nome?: string; documento?: string }>;
+  inseridosList?: Array<{ linha: number; tipo: CadastroTipo; documento: string; nome: string }>;
 }
 
 export interface ParseCadastroResult {
   ok: CadastroRow[];
-  erros: Array<{ linha: number; motivo: string }>;
+  erros: Array<{ linha: number; motivo: string; nome?: string; documento?: string }>;
 }
 
 export interface CadastroColumnMap {

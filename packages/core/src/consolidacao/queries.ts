@@ -20,6 +20,7 @@ export type ConsolidacaoListItem = {
   justificativa: string | null;
   pessoaFisicaId: string | null;
   pessoaJuridicaId: string | null;
+  nomeContraparte: string | null;
   pessoa: {
     nome: string;
     documento: string;
@@ -30,6 +31,7 @@ export type ConsolidacaoListItem = {
     movimentacaoId: string;
     papel: string;
     descricaoRaw: string;
+    nrExtratoBancario: string | null;
     nomeArquivo: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
   }>;
@@ -97,6 +99,7 @@ export async function listConsolidacaoForSessao(
       justificativa: e.justificativa,
       pessoaFisicaId: e.pessoaFisicaId,
       pessoaJuridicaId: e.pessoaJuridicaId,
+      nomeContraparte: e.nomeContraparte,
       pessoa: e.pessoaFisica
         ? {
             nome: e.pessoaFisica.nome,
@@ -115,6 +118,7 @@ export async function listConsolidacaoForSessao(
         movimentacaoId: l.movimentacaoId,
         papel: l.papel,
         descricaoRaw: l.movimentacao.descricaoRaw,
+        nrExtratoBancario: l.movimentacao.nrExtratoBancario,
         nomeArquivo: l.arquivoIngestao?.nomeArquivo ?? null,
         origemExtracao:
           (l.movimentacao.origemExtracao as OrigemExtracaoV1 | null) ?? null,

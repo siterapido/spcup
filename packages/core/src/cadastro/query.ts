@@ -1,5 +1,5 @@
 import { type Db, movimentacao, pessoaFisica, pessoaJuridica } from "@spc-up/db";
-import { desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 
 import type { CadastroTipo } from "./constants";
 
@@ -42,7 +42,7 @@ export async function searchPessoas(
         )`,
       })
       .from(pessoaFisica)
-      .where(pfWhere)
+      .where(pfWhere ? and(pfWhere, isNull(pessoaFisica.deletedAt)) : isNull(pessoaFisica.deletedAt))
       .limit(limit);
 
     for (const row of pfs) {
@@ -73,7 +73,7 @@ export async function searchPessoas(
         )`,
       })
       .from(pessoaJuridica)
-      .where(pjWhere)
+      .where(pjWhere ? and(pjWhere, isNull(pessoaJuridica.deletedAt)) : isNull(pessoaJuridica.deletedAt))
       .limit(limit);
 
     for (const row of pjs) {
@@ -89,7 +89,7 @@ export async function getPessoa(db: Db, id: string, tipo: CadastroTipo) {
     const rows = await db
       .select()
       .from(pessoaFisica)
-      .where(eq(pessoaFisica.id, id))
+      .where(and(eq(pessoaFisica.id, id), isNull(pessoaFisica.deletedAt)))
       .limit(1);
     const pf = rows[0];
     if (!pf) return null;
@@ -107,7 +107,7 @@ export async function getPessoa(db: Db, id: string, tipo: CadastroTipo) {
   const rows = await db
     .select()
     .from(pessoaJuridica)
-    .where(eq(pessoaJuridica.id, id))
+    .where(and(eq(pessoaJuridica.id, id), isNull(pessoaJuridica.deletedAt)))
     .limit(1);
   const pj = rows[0];
   if (!pj) return null;

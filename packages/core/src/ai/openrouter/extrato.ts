@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { DEFAULT_MATCH_MODEL, resolveModelProfile } from "../model-profile";
+import { resolveModelProfile } from "../model-profile";
 import {
   readExtratoPdfCache,
   readExtratoTextCache,
@@ -16,8 +16,12 @@ import {
   shouldBatchPdfVision,
   splitPdfIntoBatches,
 } from "../../ingest/pdf-split";
-import { callOpenRouterJson, resolvePdfTimeoutMs, withMaxTokens } from "./client";
-import { resolveExtratoModel, resolveReviewerExtratoModel } from "./models";
+import { callOpenRouterJson, resolvePdfTimeoutMs, withMaxTokens, withScoreMaxTokens } from "./client";
+import {
+  resolveExtratoModel,
+  resolveMatchModel,
+  resolveReviewerExtratoModel,
+} from "./models";
 import {
   buildExtratoFilePayload,
   buildExtratoImagePayload,
@@ -106,7 +110,7 @@ function normalizeExtratoItem(item: Record<string, unknown>): Record<string, unk
     out.cred_dev = credDev;
   }
 
-  const docRaw = String(out.cpf_cnpj ?? out.documento ?? "").replace(/\D/g, "");
+  const docRaw = String(out.cpf_cnpj ?? "").replace(/\D/g, "");
   if (!out.cpf && docRaw.length === 11) {
     out.cpf = docRaw;
   } else if (!out.cnpj && docRaw.length === 14) {
@@ -140,7 +144,7 @@ export async function extractStructuredFromPdf(
   pathOrBuffer: string | Buffer,
   options?: ExtractStructuredOptions,
 ): Promise<Record<string, unknown>> {
-  const model = options?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MATCH_MODEL;
+  const model = resolveExtratoModel(options);
   const { buffer, filename } = await resolvePdfInput(pathOrBuffer, options?.filename);
   const payload = buildPayload(buffer, filename, model);
   const { parsed } = await callOpenRouterJson(payload, options);
@@ -160,7 +164,7 @@ export async function extractTransactionsFromPdfText(
     }
   }
 
-  const payload = buildExtratoTextPayload(normalized, model);
+  const payload = buildExtratoTextPayload(normalized, model, options);
   const { parsed } = await callOpenRouterJson(payload, options);
   const extraction = normalizeExtratoResponse(parsed);
   await writeExtratoTextCache(normalized, model, extraction);
@@ -183,6 +187,7 @@ export async function extractTransactionsFromImagePng(
     pngBuffer,
     options?.filename ?? "page.png",
     model,
+    options,
   );
   const { parsed } = await callOpenRouterJson(payload, {
     ...options,
@@ -209,7 +214,7 @@ export async function scoreExtratoLinhas(
     0,
   );
 
-  const payload = withMaxTokens({
+  const payload = withScoreMaxTokens({
     model,
     messages: [
       {
@@ -223,7 +228,7 @@ export async function scoreExtratoLinhas(
         role: "user",
         content:
           "Page text sample:\n---\n" +
-          pageText.slice(0, 8000) +
+          pageText.slice(0, 1500) +
           "\n---\n\nCandidate rows:\n" +
           linesJson,
       },
@@ -278,7 +283,7 @@ async function extractTransactionsFromSinglePdfBuffer(
     }
   }
 
-  const payload = buildExtratoFilePayload(buffer, filename, model);
+  const payload = buildExtratoFilePayload(buffer, filename, model, options);
   const { parsed, fileOcrText } = await callOpenRouterJson(payload, {
     ...options,
     timeoutMs: options?.timeoutMs ?? resolvePdfTimeoutMs(),

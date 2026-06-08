@@ -77,8 +77,12 @@ export function PrestacaoWizard() {
   const columnMapState = useExtratoColumnMap(files);
 
   useEffect(() => {
-    setShowColumnMap(false);
-  }, [files]);
+    if (hasPdf) {
+      setShowColumnMap(true);
+    } else {
+      setShowColumnMap(false);
+    }
+  }, [hasPdf]);
 
   const showSubmitProgress = phase !== "idle";
 
@@ -226,7 +230,8 @@ export function PrestacaoWizard() {
     files.length > 0 &&
     !isProcessing &&
     (tipo === "ESTADUAL" || (municipais.length > 0 && Boolean(municipalId))) &&
-    !loadingMunicipais;
+    !loadingMunicipais &&
+    (!hasPdf || columnMapState.allMapped);
 
   const continueLabel = "Continuar para planilha";
 
@@ -397,7 +402,7 @@ export function PrestacaoWizard() {
         {showColumnMap && hasPdf ? (
           <div className="space-y-4 rounded-md border border-border-default p-4">
             {columnMapState.pdfFiles.length > 1 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {columnMapState.pdfFiles.map((pdf, index) => {
                   const key = clientFileKey(pdf);
                   const isActive = columnMapState.activeKey === key;
@@ -413,6 +418,23 @@ export function PrestacaoWizard() {
                     </Button>
                   );
                 })}
+                {columnMapState.activeMapPerPdfValid &&
+                columnMapState.pdfFiles.length > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!columnMapState.canCopyMapToOtherPdfs}
+                    title={
+                      columnMapState.canCopyMapToOtherPdfs
+                        ? undefined
+                        : "Layouts com número de colunas diferente — mapeie cada extrato separadamente"
+                    }
+                    onClick={() => columnMapState.copyMapToOtherPdfs()}
+                  >
+                    Usar mesmo layout nos outros
+                  </Button>
+                ) : null}
               </div>
             ) : null}
 
@@ -424,12 +446,16 @@ export function PrestacaoWizard() {
                 customCampos={columnMapState.customCampos}
                 customLabels={columnMapState.customLabels}
                 inferirDirecao={columnMapState.inferirDirecao}
+                colunaDirecaoDetectada={columnMapState.colunaDirecaoDetectada}
                 onInferirDirecaoChange={columnMapState.setInferirDirecao}
+                onDirecaoDetectadaChange={columnMapState.setDirecaoDetectada}
                 onSelectCampo={columnMapState.setSelectedCampo}
                 onAssign={columnMapState.assignColumn}
                 onAssignMultiple={columnMapState.assignMultipleColumns}
                 onClearColumn={columnMapState.clearColumn}
                 onAddCustomField={columnMapState.addCustomField}
+                sessionCoverage={columnMapState.sessionCoverageForActive}
+                onColumnCountChange={columnMapState.setColumnCountForActiveFile}
               />
             ) : null}
 

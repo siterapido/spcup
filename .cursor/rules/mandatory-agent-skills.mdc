@@ -1,0 +1,6 @@
+---
+description: "[legado] Usar regra global token-efficiency.mdc"
+alwaysApply: false
+---
+
+Skills obrigatórias (context-mode + caveman): `~/.cursor/rules/token-efficiency.mdc` (`alwaysApply: true`).

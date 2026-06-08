@@ -676,9 +676,30 @@ export function usePrestacaoSubmit() {
               );
               setProgress(50);
 
+              const extratoColumnMapsByArquivoId: Record<string, ExtratoColumnMap> =
+                {};
+              if (input.extratoColumnMaps) {
+                for (const job of pdfJobs) {
+                  const map = input.extratoColumnMaps[job.clientFileKey];
+                  if (map) {
+                    extratoColumnMapsByArquivoId[job.arquivoId] = map;
+                  }
+                }
+              }
+              const hasExtratoColumnMaps =
+                Object.keys(extratoColumnMapsByArquivoId).length > 0;
+
               const response = await fetch(`/api/prestacao/sessoes/${sessaoId}/processar`, {
                 method: "POST",
                 signal: submitSignal,
+                ...(hasExtratoColumnMaps
+                  ? {
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        extratoColumnMaps: extratoColumnMapsByArquivoId,
+                      }),
+                    }
+                  : {}),
               });
 
               assertNotCancelled(cancelRequestedRef.current);

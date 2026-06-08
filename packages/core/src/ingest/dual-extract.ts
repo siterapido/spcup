@@ -1,7 +1,6 @@
 import type { ExtratoExtraction, ExtractStructuredOptions } from "../ai/openrouter";
 import {
   extractTransactionsFromImagePng,
-  extractTransactionsFromPdfFile,
   extractTransactionsFromPdfText,
   parseExtratoValor,
   resolveExtratoModel,
@@ -9,7 +8,6 @@ import {
   resolveSecondaryExtratoModel,
   scoreExtratoLinhas,
 } from "../ai/openrouter";
-import { resolveModelProfile } from "../ai/model-profile";
 import { MAX_EXTRATO_TEXT_CHARS } from "../ai/openrouter";
 
 export const INGESTAO_PAGINA_STATUS = {
@@ -210,7 +208,7 @@ export type DualExtractPageInput = {
 export async function dualExtractPage(
   input: DualExtractPageInput,
 ): Promise<DualExtractPageResult> {
-  const { pageBuffer, text, hasEnoughText, filename, page1Based, options, fullBuffer } = input;
+  const { pageBuffer, text, hasEnoughText, filename, page1Based, options } = input;
   const primaryModel = resolveExtratoModel(options);
   const secondaryModel = resolveSecondaryExtratoModel();
   const modo: DualExtractModo = hasEnoughText ? "texto" : "imagem";
@@ -221,67 +219,43 @@ export async function dualExtractPage(
   let primaryExtraction: ExtratoExtraction;
   let secondaryExtraction: ExtratoExtraction = { transacoes: [] };
 
-  if (fullBuffer && resolveModelProfile(primaryModel).pdfBatching === "gemini_native") {
-    const fullPrimary = await extractTransactionsFromPdfFile(fullBuffer, {
-      ...extractOpts,
-      model: primaryModel,
-    });
-    primaryExtraction = {
-      transacoes: fullPrimary.transacoes.filter((tx) => {
-        const p = tx.pagina ?? tx.__batch_pagina;
-        return p == null ? page1Based === 1 : Number(p) === page1Based;
-      }),
-    };
-
+  // Page-by-page ingest uses text or single-page PNG — not whole-PDF vision (that path
+  // re-sends the full file on every page and multiplies Gemini tokens without cache).
+  if (modo === "texto") {
+    const tasks: [Promise<ExtratoExtraction>, Promise<ExtratoExtraction>?] = [
+      extractTransactionsFromPdfText(text, { ...extractOpts, model: primaryModel }),
+    ];
     if (secondaryModel) {
-      const fullSecondary = await extractTransactionsFromPdfFile(fullBuffer, {
-        ...extractOpts,
-        model: secondaryModel,
-      });
-      secondaryExtraction = {
-        transacoes: fullSecondary.transacoes.filter((tx) => {
-          const p = tx.pagina ?? tx.__batch_pagina;
-          return p == null ? page1Based === 1 : Number(p) === page1Based;
-        }),
-      };
+      tasks.push(extractTransactionsFromPdfText(text, { ...extractOpts, model: secondaryModel }));
+    }
+    const results = await Promise.all(tasks);
+    primaryExtraction = results[0]!;
+    if (secondaryModel && results[1]) {
+      secondaryExtraction = results[1];
     }
   } else {
-    if (modo === "texto") {
-      const tasks: [Promise<ExtratoExtraction>, Promise<ExtratoExtraction>?] = [
-        extractTransactionsFromPdfText(text, { ...extractOpts, model: primaryModel }),
-      ];
-      if (secondaryModel) {
-        tasks.push(extractTransactionsFromPdfText(text, { ...extractOpts, model: secondaryModel }));
-      }
-      const results = await Promise.all(tasks);
-      primaryExtraction = results[0]!;
-      if (secondaryModel && results[1]) {
-        secondaryExtraction = results[1];
-      }
-    } else {
-      const png = input.pngBuffer ?? pageBuffer;
-      const imageName = filename.replace(/\.pdf$/i, `_p${page1Based}.png`);
-      const tasks: [Promise<ExtratoExtraction>, Promise<ExtratoExtraction>?] = [
+    const png = input.pngBuffer ?? pageBuffer;
+    const imageName = filename.replace(/\.pdf$/i, `_p${page1Based}.png`);
+    const tasks: [Promise<ExtratoExtraction>, Promise<ExtratoExtraction>?] = [
+      extractTransactionsFromImagePng(png, {
+        ...extractOpts,
+        model: primaryModel,
+        filename: imageName,
+      }),
+    ];
+    if (secondaryModel) {
+      tasks.push(
         extractTransactionsFromImagePng(png, {
           ...extractOpts,
-          model: primaryModel,
+          model: secondaryModel,
           filename: imageName,
         }),
-      ];
-      if (secondaryModel) {
-        tasks.push(
-          extractTransactionsFromImagePng(png, {
-            ...extractOpts,
-            model: secondaryModel,
-            filename: imageName,
-          }),
-        );
-      }
-      const results = await Promise.all(tasks);
-      primaryExtraction = results[0]!;
-      if (secondaryModel && results[1]) {
-        secondaryExtraction = results[1];
-      }
+      );
+    }
+    const results = await Promise.all(tasks);
+    primaryExtraction = results[0]!;
+    if (secondaryModel && results[1]) {
+      secondaryExtraction = results[1];
     }
   }
 
@@ -316,32 +290,44 @@ export async function dualExtractPage(
     };
   }
 
-  const { consenso: aceitasConsenso, divergentes } = partitionDualTransactions(
-    primaryExtraction.transacoes,
-    secondaryExtraction.transacoes,
-  );
-  const aceitas: DualExtractCandidate[] = [...aceitasConsenso];
-
+  const aceitas: DualExtractCandidate[] = [];
   const threshold = resolveScoreThreshold();
   const pendentes: DualExtractPageResult["pendentes"] = [];
 
-  if (divergentes.length > 0) {
-    const scores = await scoreExtratoLinhas(
-      textoAmostra || text.slice(0, MAX_EXTRATO_TEXT_CHARS),
-      divergentes.map((d) => d.item),
-      { model: resolveReviewerExtratoModel(), ...options },
-    );
-
-    for (let i = 0; i < divergentes.length; i += 1) {
-      const div = divergentes[i]!;
-      const scored = scores[i] ?? { score: 0, motivo: "Sem score do revisor" };
+  if (!secondaryModel) {
+    for (const item of primaryExtraction.transacoes) {
       aceitas.push({
-        item: div.item,
-        score: scored.score,
+        item,
+        score: 100,
         consenso: false,
-        modeloOrigem: "revisor",
-        motivo: scored.motivo,
+        modeloOrigem: "primario",
       });
+    }
+  } else {
+    const { consenso: aceitasConsenso, divergentes } = partitionDualTransactions(
+      primaryExtraction.transacoes,
+      secondaryExtraction.transacoes,
+    );
+    aceitas.push(...aceitasConsenso);
+
+    if (divergentes.length > 0) {
+      const scores = await scoreExtratoLinhas(
+        textoAmostra || text.slice(0, MAX_EXTRATO_TEXT_CHARS),
+        divergentes.map((d) => d.item),
+        { model: resolveReviewerExtratoModel(), ...options },
+      );
+
+      for (let i = 0; i < divergentes.length; i += 1) {
+        const div = divergentes[i]!;
+        const scored = scores[i] ?? { score: 0, motivo: "Sem score do revisor" };
+        aceitas.push({
+          item: div.item,
+          score: scored.score,
+          consenso: false,
+          modeloOrigem: "revisor",
+          motivo: scored.motivo,
+        });
+      }
     }
   }
 

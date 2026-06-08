@@ -40,3 +40,11 @@ export {
   type DeletePessoasSkipped,
   type PessoaRef,
 } from "./delete";
+export {
+  updatePessoa,
+  updatePessoas,
+  type UpdatePessoaFields,
+  type UpdatePessoaItem,
+  type UpdatePessoasResult,
+  type UpdatePessoasSkipped,
+} from "./update";

@@ -1,4 +1,5 @@
 import type { ConsolidacaoEventDraft, MovimentacaoCandidate } from "../consolidacao/types";
+import { hasCpfInDescricao } from "../match/rules";
 import type { CampoExtrato, OrigemAtributosEvento, OrigemRef } from "./types";
 
 function pdfRef(
@@ -9,14 +10,16 @@ function pdfRef(
   if (!o) {
     return null;
   }
+  const campoOrig =
+    campo !== "linha_inteira" ? o.campos?.[campo] : undefined;
   return {
     tipo: "PDF",
     movimentacaoId: m.id,
     arquivoIngestaoId: o.arquivoIngestaoId,
     nomeArquivo: o.nomeArquivo,
-    pagina: o.pagina,
-    indiceLinha: o.indiceLinha,
-    bbox: o.bbox,
+    pagina: campoOrig?.pagina ?? o.pagina,
+    indiceLinha: campoOrig?.indiceLinha ?? o.indiceLinha,
+    bbox: campoOrig?.bbox ?? o.bbox,
     campo,
   };
 }
@@ -136,5 +139,5 @@ function extractCpfFromMov(m: MovimentacaoCandidate): boolean {
   if (m.cpfExtraido) {
     return true;
   }
-  return /\b\d{11}\b/.test(m.descricaoRaw);
+  return hasCpfInDescricao(m.descricaoRaw);
 }

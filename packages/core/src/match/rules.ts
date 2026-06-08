@@ -15,13 +15,24 @@ import {
 import { DEFAULT_WEIGHTS, evaluateMovimentacao } from "../confidence";
 import { normalizeCnpj, normalizeCpf, normalizeName } from "../normalize";
 import { MOVIMENTACAO_STATUS } from "../ingest/types";
+import {
+  CNPJ_PATTERN,
+  CPF_PATTERN,
+  findCnpjInDescricao,
+  findCpfInDescricao,
+  hasCpfInDescricao,
+  stripDocumentsFromDescricao,
+} from "./document-in-text";
+import { extractNomeContraparte, isNomeContraparteVazio } from "./nome-contraparte";
+
+export {
+  findCnpjInDescricao,
+  findCpfInDescricao,
+  hasCpfInDescricao,
+  stripDocumentsFromDescricao,
+};
 
 const DEFAULT_CONFIANCA_LIMITE_ALTA = 0.85;
-
-const CPF_PATTERN =
-  /\b(?:\d{3}\.?\d{3}\.?\d{3}-?\d{2}|\d{11})\b/g;
-const CNPJ_PATTERN =
-  /\b(?:\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|[A-Za-z0-9]{2}\.?[A-Za-z0-9]{3}\.?[A-Za-z0-9]{3}\/?[A-Za-z0-9]{4}-?\d{2})\b/g;
 
 type DocType = "CPF" | "CNPJ";
 
@@ -281,25 +292,32 @@ export async function applyDeterministicMatch(
         : `CNPJ ${cnpj} extraido da descricao`,
     });
   } else if (cpfs.length === 0 && cnpjs.length === 0) {
-    const byNome = await findUniquePessoaByNome(db, current.descricaoRaw);
-    if (byNome?.kind === "PF") {
-      pessoaFisicaId = byNome.id;
-      pessoaJuridicaId = null;
-      const cadastroReal = !isStubNome("PF", byNome.nome);
-      evidencias.push({
-        tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
-        peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
-        detalhe: `Nome vinculado ao cadastro: ${byNome.nome}`,
-      });
-    } else if (byNome?.kind === "PJ") {
-      pessoaJuridicaId = byNome.id;
-      pessoaFisicaId = null;
-      const cadastroReal = !isStubNome("PJ", byNome.nome);
-      evidencias.push({
-        tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
-        peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
-        detalhe: `Razão social vinculada ao cadastro: ${byNome.nome}`,
-      });
+    const nomeParaMatch =
+      current.nomeContraparte && !isNomeContraparteVazio(current.nomeContraparte)
+        ? current.nomeContraparte
+        : extractNomeContraparte(current.descricaoRaw);
+
+    if (!isNomeContraparteVazio(nomeParaMatch)) {
+      const byNome = await findUniquePessoaByNome(db, nomeParaMatch);
+      if (byNome?.kind === "PF") {
+        pessoaFisicaId = byNome.id;
+        pessoaJuridicaId = null;
+        const cadastroReal = !isStubNome("PF", byNome.nome);
+        evidencias.push({
+          tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
+          peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
+          detalhe: `Nome vinculado ao cadastro: ${byNome.nome}`,
+        });
+      } else if (byNome?.kind === "PJ") {
+        pessoaJuridicaId = byNome.id;
+        pessoaFisicaId = null;
+        const cadastroReal = !isStubNome("PJ", byNome.nome);
+        evidencias.push({
+          tipo: cadastroReal ? "NOME_CADASTRO" : "NOME_EXATO",
+          peso: (DEFAULT_WEIGHTS.CPF_EXATO ?? 0.45) * 0.85,
+          detalhe: `Razão social vinculada ao cadastro: ${byNome.nome}`,
+        });
+      }
     }
   }
 

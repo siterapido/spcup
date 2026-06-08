@@ -14,39 +14,13 @@ import { STUB_PF_NOME, STUB_PJ_RAZAO } from "../cadastro/constants";
 import { canExport } from "../export/guard";
 import { isPlaceholderCnpjPrestador } from "../prestacao/constants";
 
-export interface ConfiancaFaixas {
-  abaixo60: number;
-  entre60e85: number;
-  acima85: number;
-}
-
-export interface SystemStatsScope {
-  movimentacoesPorStatus: Record<string, number>;
-  movimentacoesBloqueadas: number;
-  confiancaFaixas: ConfiancaFaixas;
-  arquivosPorStatus: Record<string, number>;
-  exportavel: boolean;
-}
-
-export interface SystemStatsGlobal {
-  movimentacoesPorStatus: Record<string, number>;
-  movimentacoesBloqueadas: number;
-  confiancaFaixas: ConfiancaFaixas;
-  arquivosPorStatus: Record<string, number>;
-  conflitosPendentes: number;
-  pessoasPf: number;
-  pessoasPj: number;
-  pessoasStub: number;
-  sessoesAbertas: number;
-  diretoriosPlaceholder: number;
-}
-
-export interface SystemStats {
-  global: SystemStatsGlobal;
-  scoped: SystemStatsScope;
-  uf: string;
-  exercicio: number;
-}
+export type {
+  ConfiancaFaixas,
+  SystemStats,
+  SystemStatsGlobal,
+  SystemStatsScope,
+} from "./system-stats-types";
+import type { ConfiancaFaixas, SystemStats } from "./system-stats-types";
 
 function rowsToRecord(rows: Array<{ key: string; total: number }>): Record<string, number> {
   const out: Record<string, number> = {};

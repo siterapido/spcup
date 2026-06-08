@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 
-import type { PlanilhaResumo } from "@spc-up/core";
+import type { IngestaoResumo, PlanilhaResumo } from "@spc-up/core/browser";
 
+import { PlanilhaIngestaoResumo } from "@/components/prestacao/planilha-ingestao-resumo";
 import { Button } from "@/components/ui/button";
 
 export type PlanilhaFilter =
   | "todos"
+  | "prontas"
+  | "sem_nome"
   | "sem_pessoa"
   | "baixa_confianca"
   | "merge_pendente"
@@ -15,6 +18,8 @@ export type PlanilhaFilter =
 
 const FILTERS: { id: PlanilhaFilter; label: string; count: (r: PlanilhaResumo) => number }[] = [
   { id: "todos", label: "Todos", count: (r) => r.total },
+  { id: "prontas", label: "Prontas", count: (r) => r.prontas },
+  { id: "sem_nome", label: "Sem nome", count: (r) => r.semNome },
   { id: "sem_pessoa", label: "Sem pessoa", count: (r) => r.semPessoa },
   { id: "baixa_confianca", label: "Baixa confiança", count: (r) => r.baixaConfianca },
   { id: "merge_pendente", label: "Merge pendente", count: (r) => r.mergePendente },
@@ -24,6 +29,7 @@ const FILTERS: { id: PlanilhaFilter; label: string; count: (r: PlanilhaResumo) =
 type Props = {
   resumo: PlanilhaResumo;
   sessaoId: string;
+  ingestaoResumo?: IngestaoResumo;
   activeFilter: PlanilhaFilter;
   onFilterChange: (filter: PlanilhaFilter) => void;
   onExportBlockedClick: () => void;
@@ -32,6 +38,7 @@ type Props = {
 export function PlanilhaToolbar({
   resumo,
   sessaoId,
+  ingestaoResumo,
   activeFilter,
   onFilterChange,
   onExportBlockedClick,
@@ -40,6 +47,10 @@ export function PlanilhaToolbar({
 
   return (
     <div className="space-y-4" id="planilha-toolbar">
+      {ingestaoResumo ? (
+        <PlanilhaIngestaoResumo sessaoId={sessaoId} ingestaoResumo={ingestaoResumo} />
+      ) : null}
+
       {resumo.cadastroAlerta && (
         <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           Cadastro de pessoas vazio para esta UF.{" "}
@@ -61,6 +72,10 @@ export function PlanilhaToolbar({
               style={{ width: `${pct}%` }}
             />
           </div>
+          <p className="mt-2 text-xs text-muted">
+            Para exportar: PF/PJ vinculado · confiança ≥60% · sem merge pendente · sem
+            extração duvidosa (nome não é obrigatório)
+          </p>
         </div>
 
         {resumo.exportavel ? (
@@ -98,7 +113,7 @@ export function PlanilhaToolbar({
               }`}
             >
               {f.label}
-              {f.id !== "todos" && n > 0 ? ` (${n})` : ""}
+              {f.id === "prontas" || (f.id !== "todos" && n > 0) ? ` (${n})` : ""}
             </button>
           );
         })}

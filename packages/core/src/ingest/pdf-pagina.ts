@@ -14,8 +14,8 @@ import {
   INGESTAO_PAGINA_STATUS,
   transactionConsensusKey,
   type DualExtractCandidate,
-  type IngestaoPaginaStatus,
 } from "./dual-extract";
+import { upsertIngestaoPagina } from "./ingestao-pagina";
 import { IngestError, toIngestError } from "./errors";
 import { fileHashBuffer } from "./hash";
 import { ingestLog } from "./log";
@@ -103,49 +103,6 @@ export async function armazenarPdfIngestBuffer(
     pageCount,
     nome: params.filename,
   };
-}
-
-async function upsertIngestaoPagina(
-  db: Db,
-  arquivoId: string,
-  pagina: number,
-  fields: {
-    status: IngestaoPaginaStatus;
-    modo: "texto" | "imagem";
-    aceitas: number;
-    incertas: number;
-    motivo?: string;
-    textoAmostra?: string;
-  },
-): Promise<void> {
-  const now = new Date();
-  await db
-    .insert(ingestaoPagina)
-    .values({
-      arquivoIngestaoId: arquivoId,
-      pagina,
-      status: fields.status,
-      modo: fields.modo,
-      aceitas: fields.aceitas,
-      incertas: fields.incertas,
-      motivo: fields.motivo ?? null,
-      textoAmostra: fields.textoAmostra ?? null,
-      processadoEm: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: [ingestaoPagina.arquivoIngestaoId, ingestaoPagina.pagina],
-      set: {
-        status: fields.status,
-        modo: fields.modo,
-        aceitas: fields.aceitas,
-        incertas: fields.incertas,
-        motivo: fields.motivo ?? null,
-        textoAmostra: fields.textoAmostra ?? null,
-        processadoEm: now,
-        updatedAt: now,
-      },
-    });
 }
 
 export async function finalizeArquivoIfLastPage(
