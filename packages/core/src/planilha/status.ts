@@ -1,3 +1,4 @@
+import { CONSOLIDACAO_EVENTO_STATUS } from "@spc-up/db";
 import { getConfiancaLimiarBaixa } from "../consolidacao/thresholds";
 import type { PlanilhaLinha, PlanilhaResumo } from "./types";
 
@@ -12,7 +13,7 @@ export function deriveLinhaStatus(input: {
 }): PlanilhaLinha["status"] {
   if (input.extracaoDuvidosa) return "extracao_duvidosa";
   if (
-    input.eventoStatus === "PENDENTE" &&
+    input.eventoStatus === CONSOLIDACAO_EVENTO_STATUS.PENDENTE &&
     input.origemCount >= 2
   ) {
     return "merge_pendente";
@@ -34,6 +35,7 @@ export function deriveLinhaStatus(input: {
 }
 
 export function isLinhaPronta(linha: PlanilhaLinha): boolean {
+  if (linha.extracaoDuvidosa === true) return false;
   if (linha.status === "merge_pendente" || linha.status === "extracao_duvidosa") {
     return false;
   }

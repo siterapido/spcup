@@ -38,6 +38,19 @@ describe("isLinhaPronta", () => {
     ).toBe(false);
   });
 
+  it("false quando extracaoDuvidosa true mesmo status pendente", () => {
+    expect(
+      isLinhaPronta(
+        linha({
+          pessoa: { id: "p", tipo: "PF", nome: "A", documento: "12345678901" },
+          confianca: 0.9,
+          status: "pendente",
+          extracaoDuvidosa: true,
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("false com merge_pendente", () => {
     expect(
       isLinhaPronta(
