@@ -45,8 +45,8 @@ export function PrestacaoFlowOverview() {
         </ol>
       </nav>
       <p className="mt-3 text-sm text-muted">
-        Configure UF e prestador, anexe extratos/planilhas, revise as movimentações e exporte
-        o pacote SPCA quando a exportação estiver liberada.
+        Configure UF e prestador, anexe extratos/planilhas, revise na planilha unificada e
+        exporte o pacote SPCA quando a exportação estiver liberada.
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
         <Link

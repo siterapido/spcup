@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -7,14 +8,31 @@ import { useCallback, useEffect, useState } from "react";
 import { AttachmentDropzone } from "@/components/prestacao/attachment-dropzone";
 import { PaginaVerificarPanel } from "@/components/prestacao/pagina-verificar-panel";
 import { SubmissionProgressPanel } from "@/components/prestacao/submission-progress-panel";
-import { WizardStepper } from "@/components/prestacao/wizard-stepper";
+import { useExtratoColumnMap } from "@/hooks/use-extrato-column-map";
+import { clientFileKey } from "@/lib/extrato-column-map-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
+  isPdfFile,
   processarPaginaExtrato,
+  SubmitCancelledError,
   usePrestacaoSubmit,
   type PaginaVerificarItem,
 } from "@/hooks/use-prestacao-submit";
+
+const ExtratoColumnMapPanel = dynamic(
+  () =>
+    import("@/components/prestacao/extrato-column-map-panel").then(
+      (m) => m.ExtratoColumnMapPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted">Carregando visualizador de PDF…</p>
+    ),
+  },
+);
+
 const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
   "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
@@ -24,7 +42,6 @@ type Municipal = { id: string; nomeMunicipio: string; cnpjPrestador: string };
 
 export function PrestacaoWizard() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
   const [uf, setUf] = useState("SP");
   const [tipo, setTipo] = useState<"ESTADUAL" | "MUNICIPAL">("ESTADUAL");
   const [municipalId, setMunicipalId] = useState("");
@@ -32,7 +49,7 @@ export function PrestacaoWizard() {
   const [loadingMunicipais, setLoadingMunicipais] = useState(false);
   const [exercicio, setExercicio] = useState("2025");
   const [files, setFiles] = useState<File[]>([]);
-  const [consolidarExtratos, setConsolidarExtratos] = useState(false);
+  const [showColumnMap, setShowColumnMap] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [estadualPlaceholder, setEstadualPlaceholder] = useState(false);
   const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
@@ -52,8 +69,16 @@ export function PrestacaoWizard() {
     dismissPaginaVerificar,
     isProcessing,
     submit,
+    cancel,
     reset,
   } = usePrestacaoSubmit();
+
+  const hasPdf = files.some((f) => isPdfFile(f));
+  const columnMapState = useExtratoColumnMap(files);
+
+  useEffect(() => {
+    setShowColumnMap(false);
+  }, [files]);
 
   const showSubmitProgress = phase !== "idle";
 
@@ -102,6 +127,10 @@ export function PrestacaoWizard() {
   }, [tipo, uf]);
 
   async function onSubmit() {
+    if (hasPdf && columnMapState.validationError) {
+      setShowColumnMap(true);
+      return;
+    }
     setMessage(null);
     setPendingRedirect(null);
     setSessaoIdAfterSubmit(null);
@@ -109,13 +138,13 @@ export function PrestacaoWizard() {
     try {
       const { warningMessage, redirectPath, sessaoId, paginasVerificar: verificar } =
         await submit({
-        uf,
-        tipo,
-        municipalId: tipo === "MUNICIPAL" ? municipalId : undefined,
-        exercicio,
-        files,
-        consolidarExtratos,
-      });
+          uf,
+          tipo,
+          municipalId: tipo === "MUNICIPAL" ? municipalId : undefined,
+          exercicio,
+          files,
+          extratoColumnMaps: hasPdf ? columnMapState.maps : undefined,
+        });
       if (warningMessage) {
         setMessage(warningMessage);
       }
@@ -125,9 +154,18 @@ export function PrestacaoWizard() {
         return;
       }
       router.push(redirectPath);
-    } catch {
+    } catch (err) {
+      if (err instanceof SubmitCancelledError) return;
       /* hook sets errorMessage / fileErrors */
     }
+  }
+
+  function handleCancelProcessing() {
+    cancel();
+    setPendingRedirect(null);
+    setSessaoIdAfterSubmit(null);
+    setActiveVerificar(null);
+    setMessage(null);
   }
 
   function continueAfterVerificar() {
@@ -180,274 +218,270 @@ export function PrestacaoWizard() {
     }
   }
 
-  function goToStep(target: number) {
-    if (target < step && !isProcessing) {
-      setStep(target);
-    }
-  }
-
   const municipalBlocked =
     tipo === "MUNICIPAL" && !loadingMunicipais && municipais.length === 0;
   const municipalNeedsSelection =
     tipo === "MUNICIPAL" && municipais.length > 0 && !municipalId;
-  const canAdvanceFromPrestador =
-    tipo === "ESTADUAL" || (municipais.length > 0 && Boolean(municipalId));
+  const canSubmit =
+    files.length > 0 &&
+    !isProcessing &&
+    (tipo === "ESTADUAL" || (municipais.length > 0 && Boolean(municipalId))) &&
+    !loadingMunicipais;
 
-  const continueLabel = pendingRedirect?.includes("/consolidacao")
-    ? "Continuar para consolidação"
-    : "Continuar para movimentações";
+  const continueLabel = "Continuar para planilha";
 
   return (
     <Card>
       <CardTitle>Nova prestação de contas</CardTitle>
-      <WizardStepper current={step} onStepClick={goToStep} />
 
-      {step === 1 && (
-        <div className="mt-4 space-y-3">
-          <label className="block text-sm font-medium">
-            UF
-            <select
-              className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm"
-              value={uf}
-              onChange={(e) => setUf(e.target.value)}
-            >
-              {UFS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button type="button" onClick={() => setStep(2)}>
-            Continuar
-          </Button>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="mt-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              className={`rounded-md border p-4 text-left text-sm ${
-                tipo === "ESTADUAL"
-                  ? "border-up-yellow bg-slate-50 font-medium"
-                  : "border-border-default"
-              }`}
-              onClick={() => setTipo("ESTADUAL")}
-            >
-              Estadual
-              <span className="mt-1 block text-muted">Diretório estadual da UF</span>
-            </button>
-            <button
-              type="button"
-              className={`rounded-md border p-4 text-left text-sm ${
-                tipo === "MUNICIPAL"
-                  ? "border-up-yellow bg-slate-50 font-medium"
-                  : "border-border-default"
-              }`}
-              onClick={() => setTipo("MUNICIPAL")}
-            >
-              Municipal
-              <span className="mt-1 block text-muted">Comissão municipal (CNPJ próprio)</span>
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setStep(1)}>
-              Voltar
-            </Button>
-            <Button type="button" onClick={() => setStep(3)}>
-              Continuar
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="mt-4 space-y-3">
-          {tipo === "MUNICIPAL" ? (
-            <>
-              <label className="block text-sm font-medium">
-                Município
-                <select
-                  className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-muted"
-                  value={municipalId}
-                  onChange={(e) => setMunicipalId(e.target.value)}
-                  disabled={loadingMunicipais || municipalBlocked}
-                  aria-invalid={municipalNeedsSelection || municipalBlocked}
-                  aria-describedby={
-                    municipalBlocked
-                      ? "municipal-blocked-msg"
-                      : municipalNeedsSelection
-                        ? "municipal-select-msg"
-                        : undefined
-                  }
-                  required
-                >
-                  <option value="">
-                    {loadingMunicipais ? "Carregando municípios…" : "Selecione…"}
-                  </option>
-                  {municipais.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nomeMunicipio} — CNPJ …{m.cnpjPrestador.slice(-6)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {loadingMunicipais ? (
-                <p className="text-sm text-muted">Buscando municípios cadastrados em {uf}…</p>
-              ) : null}
-
-              {municipalBlocked ? (
-                <div
-                  id="municipal-blocked-msg"
-                  role="alert"
-                  className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900"
-                >
-                  <p className="font-medium">Nenhum município cadastrado para {uf}</p>
-                  <p className="mt-1">
-                    Cadastre o diretório municipal antes de avançar para exercício e anexos.
-                  </p>
-                  <Link
-                    href={`/admin/diretorios-municipais?uf=${encodeURIComponent(uf)}`}
-                    className="mt-3 inline-flex items-center justify-center rounded-md bg-up-black px-3 py-1.5 text-sm font-medium text-up-white hover:bg-up-black-hover"
-                  >
-                    Cadastrar município
-                  </Link>
-                </div>
-              ) : null}
-
-              {municipalNeedsSelection ? (
-                <p id="municipal-select-msg" className="text-sm text-amber-900">
-                  Selecione o município prestador para continuar.
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-muted">
-                Prestador: diretório estadual de <strong>{uf}</strong> (CNPJ vinculado à UF).
-              </p>
-              {estadualPlaceholder && (
-                <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                  CNPJ do prestador estadual ainda é placeholder. Configure o CNPJ real em{" "}
-                  <a href="/admin/diretorios-estaduais" className="font-medium underline">
-                    Diretórios estaduais
-                  </a>
-                  .
-                </p>
-              )}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setStep(2)}>
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setStep(4)}
-              disabled={!canAdvanceFromPrestador || loadingMunicipais}
-            >
-              Continuar
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="mt-4 space-y-3">
-          <label className="block text-sm font-medium">
-            Exercício
-            <select
-              className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm"
-              value={exercicio}
-              onChange={(e) => setExercicio(e.target.value)}
-            >
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-            </select>
-          </label>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setStep(3)}>
-              Voltar
-            </Button>
-            <Button type="button" onClick={() => setStep(5)}>
-              Continuar
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 5 && (
-        <div className="mt-4 space-y-3">
-          <AttachmentDropzone
-            files={files}
-            onChange={setFiles}
+      <div className="mt-4 space-y-4">
+        <label className="block text-sm font-medium">
+          UF
+          <select
+            className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm"
+            value={uf}
+            onChange={(e) => setUf(e.target.value)}
             disabled={isProcessing}
-          />
-          <label className="flex cursor-pointer items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={consolidarExtratos}
-              disabled={isProcessing}
-              onChange={(e) => setConsolidarExtratos(e.target.checked)}
-            />
-            <span>
-              Consolidar extratos bancários
-              <span className="mt-0.5 block text-xs text-muted">
-                Unifica vários PDFs do mesmo período, cruza com o cadastro da UF e
-                mostra confiança antes da revisão final. Importe pessoas em Cadastro antes.
-              </span>
-            </span>
-          </label>
-          {showSubmitProgress ? (
-            <SubmissionProgressPanel
-              progress={progress}
-              statusLabel={statusLabel}
-              steps={steps}
-              fileNames={files.map((f) => f.name)}
-              ingestProgress={ingestProgress}
-              fileErrors={fileErrors}
-              errorLogs={errorLogs}
-              paginasVerificar={paginasVerificar}
-              onReviewPagina={pendingRedirect ? setActiveVerificar : undefined}
-              onContinueAfterVerificar={
-                pendingRedirect && paginasVerificar.length > 0
-                  ? continueAfterVerificar
-                  : undefined
-              }
-              continueLabel={continueLabel}
-            />
-          ) : null}
-          {message && phase !== "error" ? (
-            <p className="text-sm text-amber-900">{message}</p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
+          >
+            {UFS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            className={`rounded-md border p-4 text-left text-sm ${
+              tipo === "ESTADUAL"
+                ? "border-up-yellow bg-slate-50 font-medium"
+                : "border-border-default"
+            }`}
+            onClick={() => setTipo("ESTADUAL")}
+            disabled={isProcessing}
+          >
+            Estadual
+            <span className="mt-1 block text-muted">Diretório estadual da UF</span>
+          </button>
+          <button
+            type="button"
+            className={`rounded-md border p-4 text-left text-sm ${
+              tipo === "MUNICIPAL"
+                ? "border-up-yellow bg-slate-50 font-medium"
+                : "border-border-default"
+            }`}
+            onClick={() => setTipo("MUNICIPAL")}
+            disabled={isProcessing}
+          >
+            Municipal
+            <span className="mt-1 block text-muted">Comissão municipal (CNPJ próprio)</span>
+          </button>
+        </div>
+
+        {tipo === "MUNICIPAL" ? (
+          <>
+            <label className="block text-sm font-medium">
+              Município
+              <select
+                className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-muted"
+                value={municipalId}
+                onChange={(e) => setMunicipalId(e.target.value)}
+                disabled={loadingMunicipais || municipalBlocked || isProcessing}
+                aria-invalid={municipalNeedsSelection || municipalBlocked}
+                aria-describedby={
+                  municipalBlocked
+                    ? "municipal-blocked-msg"
+                    : municipalNeedsSelection
+                      ? "municipal-select-msg"
+                      : undefined
+                }
+                required
+              >
+                <option value="">
+                  {loadingMunicipais ? "Carregando municípios…" : "Selecione…"}
+                </option>
+                {municipais.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nomeMunicipio} — CNPJ …{m.cnpjPrestador.slice(-6)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {loadingMunicipais ? (
+              <p className="text-sm text-muted">Buscando municípios cadastrados em {uf}…</p>
+            ) : null}
+
+            {municipalBlocked ? (
+              <div
+                id="municipal-blocked-msg"
+                role="alert"
+                className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900"
+              >
+                <p className="font-medium">Nenhum município cadastrado para {uf}</p>
+                <p className="mt-1">
+                  Cadastre o diretório municipal antes de iniciar a prestação.
+                </p>
+                <Link
+                  href={`/admin/diretorios-municipais?uf=${encodeURIComponent(uf)}`}
+                  className="mt-3 inline-flex items-center justify-center rounded-md bg-up-black px-3 py-1.5 text-sm font-medium text-up-white hover:bg-up-black-hover"
+                >
+                  Cadastrar município
+                </Link>
+              </div>
+            ) : null}
+
+            {municipalNeedsSelection ? (
+              <p id="municipal-select-msg" className="text-sm text-amber-900">
+                Selecione o município prestador para continuar.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-muted">
+              Prestador: diretório estadual de <strong>{uf}</strong> (CNPJ vinculado à UF).
+            </p>
+            {estadualPlaceholder && (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                CNPJ do prestador estadual ainda é placeholder. Configure o CNPJ real em{" "}
+                <a href="/admin/diretorios-estaduais" className="font-medium underline">
+                  Diretórios estaduais
+                </a>
+                .
+              </p>
+            )}
+          </div>
+        )}
+
+        <label className="block text-sm font-medium">
+          Exercício
+          <select
+            className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm"
+            value={exercicio}
+            onChange={(e) => setExercicio(e.target.value)}
+            disabled={isProcessing}
+          >
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+          </select>
+        </label>
+
+        <AttachmentDropzone
+          files={files}
+          onChange={setFiles}
+          disabled={isProcessing}
+        />
+
+        {hasPdf ? (
+          <div className="space-y-2">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               disabled={isProcessing}
-              onClick={() => setStep(4)}
+              onClick={() => setShowColumnMap((v) => !v)}
             >
-              Voltar
+              {showColumnMap ? "Ocultar mapeamento de colunas" : "Mapear colunas do extrato"}
             </Button>
-            {phase === "error" ? (
-              <Button type="button" variant="outline" onClick={() => reset()}>
-                Tentar novamente
-              </Button>
+            {columnMapState.validationError && !showColumnMap ? (
+              <p className="text-xs font-medium text-red-600">
+                Aviso: {columnMapState.validationError}
+              </p>
             ) : null}
-            <Button
-              type="button"
-              disabled={isProcessing}
-              onClick={() => void onSubmit()}
-            >
-              {isProcessing ? "Processando…" : "Iniciar prestação"}
-            </Button>
           </div>
+        ) : null}
+
+        {showColumnMap && hasPdf ? (
+          <div className="space-y-4 rounded-md border border-border-default p-4">
+            {columnMapState.pdfFiles.length > 1 ? (
+              <div className="flex flex-wrap gap-2">
+                {columnMapState.pdfFiles.map((pdf, index) => {
+                  const key = clientFileKey(pdf);
+                  const isActive = columnMapState.activeKey === key;
+                  return (
+                    <Button
+                      key={key}
+                      type="button"
+                      variant={isActive ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => columnMapState.setActiveKey(key)}
+                    >
+                      Extrato {index + 1}: {pdf.name}
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {columnMapState.activeFile ? (
+              <ExtratoColumnMapPanel
+                file={columnMapState.activeFile}
+                map={columnMapState.activeMap}
+                selectedCampo={columnMapState.selectedCampo}
+                customCampos={columnMapState.customCampos}
+                customLabels={columnMapState.customLabels}
+                inferirDirecao={columnMapState.inferirDirecao}
+                onInferirDirecaoChange={columnMapState.setInferirDirecao}
+                onSelectCampo={columnMapState.setSelectedCampo}
+                onAssign={columnMapState.assignColumn}
+                onAssignMultiple={columnMapState.assignMultipleColumns}
+                onClearColumn={columnMapState.clearColumn}
+                onAddCustomField={columnMapState.addCustomField}
+              />
+            ) : null}
+
+            {columnMapState.validationError ? (
+              <p className="text-xs font-medium text-red-600">
+                Aviso: {columnMapState.validationError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            disabled={!canSubmit}
+            onClick={() => void onSubmit()}
+          >
+            {isProcessing ? "Processando…" : "Iniciar prestação"}
+          </Button>
+          {phase === "error" ? (
+            <Button type="button" variant="outline" onClick={() => reset()}>
+              Tentar novamente
+            </Button>
+          ) : null}
         </div>
-      )}
+
+        {showSubmitProgress ? (
+          <SubmissionProgressPanel
+            progress={progress}
+            statusLabel={statusLabel}
+            steps={steps}
+            fileNames={files.map((f) => f.name)}
+            ingestProgress={ingestProgress}
+            fileErrors={fileErrors}
+            errorLogs={errorLogs}
+            paginasVerificar={paginasVerificar}
+            onReviewPagina={pendingRedirect ? setActiveVerificar : undefined}
+            onContinueAfterVerificar={
+              pendingRedirect && paginasVerificar.length > 0
+                ? continueAfterVerificar
+                : undefined
+            }
+            continueLabel={continueLabel}
+            onCancel={isProcessing ? handleCancelProcessing : undefined}
+          />
+        ) : null}
+
+        {message && phase !== "error" ? (
+          <p className="text-sm text-amber-900">{message}</p>
+        ) : null}
+      </div>
+
       {activeVerificar && sessaoIdAfterSubmit ? (
         <PaginaVerificarPanel
           sessaoId={sessaoIdAfterSubmit}

@@ -1,6 +1,28 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import type { ExtratoColumnMap } from "@spc-up/core/extrato-column-map";
+import { useCallback, useRef, useState } from "react";
+
+import { clientFileKey } from "@/lib/extrato-column-map-client";
+
+export class SubmitCancelledError extends Error {
+  constructor() {
+    super("Processamento cancelado.");
+    this.name = "SubmitCancelledError";
+  }
+}
+
+function isSubmitCancelled(err: unknown, cancelled: boolean): boolean {
+  if (cancelled) return true;
+  if (err instanceof SubmitCancelledError) return true;
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  if (err instanceof Error && err.message === "Upload cancelado.") return true;
+  return false;
+}
+
+function assertNotCancelled(cancelled: boolean): void {
+  if (cancelled) throw new SubmitCancelledError();
+}
 
 export type SubmitPhase =
   | "idle"
@@ -62,7 +84,7 @@ const STEPS_IDLE: SubmitStep[] = [
   { id: "upload", label: "Enviar arquivos", status: "pending" },
   { id: "ingest", label: "Processar movimentações", status: "pending" },
   { id: "consolidacao", label: "Consolidar extratos bancários", status: "pending" },
-  { id: "kanban", label: "Abrir movimentações", status: "pending" },
+  { id: "kanban", label: "Abrir planilha", status: "pending" },
 ];
 
 export type PrestacaoSubmitInput = {
@@ -72,6 +94,8 @@ export type PrestacaoSubmitInput = {
   exercicio: string;
   files: File[];
   consolidarExtratos?: boolean;
+  /** Maps keyed by `clientFileKey(file)` for PDF column hints during extraction. */
+  extratoColumnMaps?: Record<string, ExtratoColumnMap>;
 };
 
 export type IncertaPreview = {
@@ -151,9 +175,11 @@ function uploadFormData(
   url: string,
   formData: FormData,
   onUploadProgress: (loaded: number, total: number) => void,
+  onXhr?: (xhr: XMLHttpRequest) => void,
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    onXhr?.(xhr);
     xhr.open("POST", url);
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
@@ -203,15 +229,26 @@ export async function processarPaginaExtrato(
   sessaoId: string,
   arquivoId: string,
   pagina: number,
-  options?: { force?: boolean },
+  options?: {
+    force?: boolean;
+    signal?: AbortSignal;
+    extratoColumnMap?: ExtratoColumnMap;
+  },
 ): Promise<
   | { ok: true; data: PaginaProcessada }
   | { ok: false; status: number; body: PaginaProcessada & { error?: string } }
 > {
-  const init: RequestInit = { method: "POST" };
+  const init: RequestInit = { method: "POST", signal: options?.signal };
+  const body: Record<string, unknown> = {};
   if (options?.force) {
+    body.force = true;
+  }
+  if (options?.extratoColumnMap) {
+    body.extratoColumnMap = options.extratoColumnMap;
+  }
+  if (Object.keys(body).length > 0) {
     init.headers = { "Content-Type": "application/json" };
-    init.body = JSON.stringify({ force: true });
+    init.body = JSON.stringify(body);
   }
   const res = await fetch(
     `/api/prestacao/sessoes/${sessaoId}/arquivos/${arquivoId}/paginas/${pagina}/processar`,
@@ -270,19 +307,25 @@ type UploadResponseBody = {
   erros?: UploadErroResposta[];
   arquivos?: ArquivoUp[];
   total_movimentacoes?: number;
+  useNotebookLm?: boolean;
 };
 
 function mergeUploadResponses(parts: UploadResponseBody[]): UploadResponseBody {
   const arquivos: ArquivoUp[] = [];
   const erros: UploadErroResposta[] = [];
+  let useNotebookLm = false;
   for (const part of parts) {
     arquivos.push(...(part.arquivos ?? []));
     erros.push(...(part.erros ?? []));
+    if (part.useNotebookLm) {
+      useNotebookLm = true;
+    }
   }
   return {
     arquivos,
     erros,
     total_movimentacoes: arquivos.reduce((s, a) => s + a.movimentacoes_criadas, 0),
+    useNotebookLm,
   };
 }
 
@@ -319,6 +362,10 @@ function buildUploadWarning(upJson: {
 }
 
 export function usePrestacaoSubmit() {
+  const cancelRequestedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const activeXhrRef = useRef<XMLHttpRequest | null>(null);
+
   const [phase, setPhase] = useState<SubmitPhase>("idle");
   const [progress, setProgress] = useState(0);
   const [statusLabel, setStatusLabel] = useState("");
@@ -338,7 +385,28 @@ export function usePrestacaoSubmit() {
     setErrorLogs((prev) => [...prev, entry]);
   }, []);
 
+  const cancel = useCallback(() => {
+    cancelRequestedRef.current = true;
+    activeXhrRef.current?.abort();
+    abortControllerRef.current?.abort();
+    activeXhrRef.current = null;
+    abortControllerRef.current = null;
+    setPhase("idle");
+    setProgress(0);
+    setStatusLabel("");
+    setSteps(STEPS_IDLE);
+    setErrorMessage(null);
+    setFileErrors([]);
+    setErrorLogs([]);
+    setActiveFileName(null);
+    setIngestProgress(null);
+    setPaginasVerificar([]);
+  }, []);
+
   const reset = useCallback(() => {
+    cancelRequestedRef.current = false;
+    activeXhrRef.current = null;
+    abortControllerRef.current = null;
     setPhase("idle");
     setProgress(0);
     setStatusLabel("");
@@ -354,6 +422,10 @@ export function usePrestacaoSubmit() {
   const submit = useCallback(
     async (input: PrestacaoSubmitInput): Promise<PrestacaoSubmitResult> => {
       reset();
+      cancelRequestedRef.current = false;
+      abortControllerRef.current = new AbortController();
+      const submitSignal = abortControllerRef.current.signal;
+
       let currentSteps = STEPS_IDLE.map((s) =>
         s.id === "session" ? { ...s, status: "active" as const } : s,
       );
@@ -374,10 +446,16 @@ export function usePrestacaoSubmit() {
               diretorioMunicipalId:
                 input.tipo === "MUNICIPAL" ? input.municipalId : undefined,
               exercicio: Number.parseInt(input.exercicio, 10),
-              consolidarExtratos: input.consolidarExtratos ?? false,
+              consolidarExtratos:
+                (input.files?.filter(isPdfFile).length ?? 0) >= 2,
             }),
+            signal: submitSignal,
           });
+          assertNotCancelled(cancelRequestedRef.current);
         } catch (networkErr) {
+          if (isSubmitCancelled(networkErr, cancelRequestedRef.current)) {
+            throw new SubmitCancelledError();
+          }
           const msg = "Erro de rede ao criar sessão.";
           const detalhe =
             networkErr instanceof Error ? networkErr.message : String(networkErr);
@@ -436,9 +514,11 @@ export function usePrestacaoSubmit() {
           const fileCount = input.files.length;
           const uploadParts: UploadResponseBody[] = [];
           const consolidarExtratos = input.consolidarExtratos ?? false;
+          let serverSupportsNotebookLm = false;
           const pdfJobs: Array<{
             nome: string;
             arquivoId: string;
+            clientFileKey: string;
             paginas: number;
             pdfIndex: number;
             movimentacoes_criadas: number;
@@ -482,6 +562,7 @@ export function usePrestacaoSubmit() {
 
           try {
             for (let fileIndex = 0; fileIndex < fileCount; fileIndex++) {
+              assertNotCancelled(cancelRequestedRef.current);
               const file = input.files[fileIndex]!;
               const data = new FormData();
               data.append("files", file);
@@ -511,7 +592,12 @@ export function usePrestacaoSubmit() {
                     );
                   }
                 },
+                (xhr) => {
+                  activeXhrRef.current = xhr;
+                },
               );
+              activeXhrRef.current = null;
+              assertNotCancelled(cancelRequestedRef.current);
 
               status = res.status;
               body = res.body;
@@ -519,6 +605,9 @@ export function usePrestacaoSubmit() {
               let partJson: UploadResponseBody;
               try {
                 partJson = JSON.parse(res.body) as UploadResponseBody;
+                if (partJson.useNotebookLm) {
+                  serverSupportsNotebookLm = true;
+                }
               } catch {
                 const snippet = truncateBody(res.body);
                 pushErrorLog({
@@ -539,6 +628,7 @@ export function usePrestacaoSubmit() {
                 pdfJobs.push({
                   nome: stored.nome,
                   arquivoId: stored.arquivo_id,
+                  clientFileKey: clientFileKey(file),
                   paginas: stored.paginas,
                   pdfIndex: pdfJobs.length,
                   movimentacoes_criadas: 0,
@@ -576,118 +666,182 @@ export function usePrestacaoSubmit() {
               countPdfFiles(input.files),
             );
 
-            for (const job of pdfJobs) {
-              for (let pagina = 1; pagina <= job.paginas; pagina += 1) {
-                const pageLabel = formatPdfPageProgressLabel(
-                  job.pdfIndex,
-                  pdfJobs.length,
-                  job.nome,
-                  pagina,
-                  job.paginas,
-                );
+            const isNotebookLm = serverSupportsNotebookLm;
 
-                reportIngest(
-                  pageLabel,
-                  (paginasFeitas / Math.max(totalPaginas, 1)) * 100,
-                );
-                setProgress(
-                  40 +
-                    Math.round(
-                      (45 * (paginasFeitas + 0.5)) / Math.max(totalPaginas, 1),
-                    ),
-                );
+            if (isNotebookLm) {
+              reportIngest(
+                "Processando arquivos com NotebookLM (esta etapa pode demorar alguns minutos)…",
+                10,
+              );
+              setProgress(50);
 
-                const pageRes = await processarPaginaExtrato(
-                  sessaoId,
-                  job.arquivoId,
-                  pagina,
-                );
-                paginasFeitas += 1;
+              const response = await fetch(`/api/prestacao/sessoes/${sessaoId}/processar`, {
+                method: "POST",
+                signal: submitSignal,
+              });
 
-                if (!pageRes.ok) {
-                  const errBody = pageRes.body;
-                  const codigo = errBody.codigo ?? "INGESTAO_DESCONHECIDA";
-                  const mensagem =
-                    errBody.error ?? `Erro na página ${pagina} de ${job.nome}`;
-                  const causaTecnica = errBody.causaTecnica ?? mensagem;
-                  pushErrorLog({
-                    etapa: `Extrato: ${job.nome} (p.${pagina})`,
-                    mensagem: `[${codigo}] ${mensagem}`,
-                    detalhe: causaTecnica,
-                  });
-                  uploadParts.push({
-                    erros: [
-                      {
-                        nome: `${job.nome} (p.${pagina})`,
-                        codigo,
-                        mensagem,
-                        causaTecnica,
-                      },
-                    ],
-                  });
-                  status = pageRes.status;
-                  throw new Error(causaTecnica !== mensagem ? `${mensagem} — ${causaTecnica}` : mensagem);
-                }
+              assertNotCancelled(cancelRequestedRef.current);
 
-                job.movimentacoes_criadas += pageRes.data.movimentacoes_criadas;
-                job.linhas_ignoradas_sem_doc +=
-                  pageRes.data.linhas_ignoradas_sem_doc ?? 0;
+              if (!response.ok) {
+                const errText = await response.text();
+                let errMsg = "Erro no processamento da sessão com NotebookLM";
+                try {
+                  const errJson = JSON.parse(errText);
+                  errMsg = errJson.error || errMsg;
+                } catch {}
 
-                if ((pageRes.data.statusPagina ?? "OK") === "VERIFICAR") {
-                  job.paginasVerificar.push({
-                    arquivoId: job.arquivoId,
-                    nomeArquivo: job.nome,
-                    pagina,
-                    totalPaginas: job.paginas,
-                    statusPagina: "VERIFICAR",
-                    incertas: pageRes.data.incertas ?? [],
-                    linhas_incertas: pageRes.data.linhas_incertas,
-                    modo: pageRes.data.modo,
-                  });
-                }
-
-                const n = pageRes.data.movimentacoes_criadas;
-                const pageStatus = pageRes.data.statusPagina ?? "OK";
-                const statusNote =
-                  pageStatus === "VERIFICAR"
-                    ? " — verificar"
-                    : pageStatus === "NAO_TRANSACIONAL"
-                      ? " — não transacional"
-                      : "";
-                const pageDone =
-                  job.paginas === 1
-                    ? `${job.nome}: ${n} movimentação${n === 1 ? "" : "ões"}${statusNote}`
-                    : `${job.nome} (p.${pagina}): ${n} movimentação${n === 1 ? "" : "ões"}${statusNote}`;
-                ingestCompletedLines.push(pageDone);
-
-                reportIngest(
-                  paginasFeitas >= totalPaginas
-                    ? "Extração concluída"
-                    : `Página ${paginasFeitas}/${totalPaginas} concluída`,
-                  (paginasFeitas / Math.max(totalPaginas, 1)) * 100,
-                );
-                setProgress(
-                  40 + Math.round((45 * paginasFeitas) / Math.max(totalPaginas, 1)),
-                );
+                pushErrorLog({
+                  etapa: "Processar NotebookLM",
+                  mensagem: errMsg,
+                });
+                throw new Error(errMsg);
               }
 
+              const result = await response.json();
+              const created = result.movimentacoesTotal ?? 0;
+              movimentacoesIngestTotal += created;
+
+              ingestCompletedLines.push(
+                `NotebookLM: Processados ${pdfJobs.length} PDF(s) com sucesso. ${created} movimentação(ões) extraída(s).`
+              );
+
+              for (const job of pdfJobs) {
+                const arqResult = result.arquivos?.find((a: any) => a.nome === job.nome);
+                if (arqResult) {
+                  job.movimentacoes_criadas = arqResult.movimentacoes_criadas ?? 0;
+                }
+              }
+
+              reportIngest("Processamento com NotebookLM concluído", 100);
+              setProgress(85);
+
               if (goConsolidacao) {
-                currentSteps = setStepStatus(currentSteps, "consolidacao", "active");
+                currentSteps = setStepStatus(currentSteps, "consolidacao", "done");
                 setSteps(currentSteps);
-                setStatusLabel(
-                  pdfJobs.length === 1
-                    ? "Consolidando extrato…"
-                    : `Consolidando extrato ${job.pdfIndex + 1} de ${pdfJobs.length}…`,
-                );
-                setProgress(
-                  85 +
-                    Math.round(
-                      (8 * (job.pdfIndex + 1)) / Math.max(pdfJobs.length, 1),
-                    ),
-                );
-                await fetch(`/api/prestacao/sessoes/${sessaoId}/consolidacao/run`, {
-                  method: "POST",
-                });
+              }
+            } else {
+              for (const job of pdfJobs) {
+                for (let pagina = 1; pagina <= job.paginas; pagina += 1) {
+                  assertNotCancelled(cancelRequestedRef.current);
+                  const pageLabel = formatPdfPageProgressLabel(
+                    job.pdfIndex,
+                    pdfJobs.length,
+                    job.nome,
+                    pagina,
+                    job.paginas,
+                  );
+
+                  reportIngest(
+                    pageLabel,
+                    (paginasFeitas / Math.max(totalPaginas, 1)) * 100,
+                  );
+                  setProgress(
+                    40 +
+                      Math.round(
+                        (45 * (paginasFeitas + 0.5)) / Math.max(totalPaginas, 1),
+                      ),
+                  );
+
+                  const pageRes = await processarPaginaExtrato(
+                    sessaoId,
+                    job.arquivoId,
+                    pagina,
+                    {
+                      signal: submitSignal,
+                      extratoColumnMap: input.extratoColumnMaps?.[job.clientFileKey],
+                    },
+                  );
+                  assertNotCancelled(cancelRequestedRef.current);
+                  paginasFeitas += 1;
+
+                  if (!pageRes.ok) {
+                    const errBody = pageRes.body;
+                    const codigo = errBody.codigo ?? "INGESTAO_DESCONHECIDA";
+                    const mensagem =
+                      errBody.error ?? `Erro na página ${pagina} de ${job.nome}`;
+                    const causaTecnica = errBody.causaTecnica ?? mensagem;
+                    pushErrorLog({
+                      etapa: `Extrato: ${job.nome} (p.${pagina})`,
+                      mensagem: `[${codigo}] ${mensagem}`,
+                      detalhe: causaTecnica,
+                    });
+                    uploadParts.push({
+                      erros: [
+                        {
+                          nome: `${job.nome} (p.${pagina})`,
+                          codigo,
+                          mensagem,
+                          causaTecnica,
+                        },
+                      ],
+                    });
+                    status = pageRes.status;
+                    throw new Error(causaTecnica !== mensagem ? `${mensagem} — ${causaTecnica}` : mensagem);
+                  }
+
+                  job.movimentacoes_criadas += pageRes.data.movimentacoes_criadas;
+                  job.linhas_ignoradas_sem_doc +=
+                    pageRes.data.linhas_ignoradas_sem_doc ?? 0;
+
+                  if ((pageRes.data.statusPagina ?? "OK") === "VERIFICAR") {
+                    job.paginasVerificar.push({
+                      arquivoId: job.arquivoId,
+                      nomeArquivo: job.nome,
+                      pagina,
+                      totalPaginas: job.paginas,
+                      statusPagina: "VERIFICAR",
+                      incertas: pageRes.data.incertas ?? [],
+                      linhas_incertas: pageRes.data.linhas_incertas,
+                      modo: pageRes.data.modo,
+                    });
+                  }
+
+                  const n = pageRes.data.movimentacoes_criadas;
+                  const pageStatus = pageRes.data.statusPagina ?? "OK";
+                  const statusNote =
+                    pageStatus === "VERIFICAR"
+                      ? " — verificar"
+                      : pageStatus === "NAO_TRANSACIONAL"
+                        ? " — não transacional"
+                        : "";
+                  const pageDone =
+                    job.paginas === 1
+                      ? `${job.nome}: ${n} movimentação${n === 1 ? "" : "ões"}${statusNote}`
+                      : `${job.nome} (p.${pagina}): ${n} movimentação${n === 1 ? "" : "ões"}${statusNote}`;
+                  ingestCompletedLines.push(pageDone);
+
+                  reportIngest(
+                    paginasFeitas >= totalPaginas
+                      ? "Extração concluída"
+                      : `Página ${paginasFeitas}/${totalPaginas} concluída`,
+                    (paginasFeitas / Math.max(totalPaginas, 1)) * 100,
+                  );
+                  setProgress(
+                    40 + Math.round((45 * paginasFeitas) / Math.max(totalPaginas, 1)),
+                  );
+                }
+
+                if (goConsolidacao) {
+                  assertNotCancelled(cancelRequestedRef.current);
+                  currentSteps = setStepStatus(currentSteps, "consolidacao", "active");
+                  setSteps(currentSteps);
+                  setStatusLabel(
+                    pdfJobs.length === 1
+                      ? "Consolidando extrato…"
+                      : `Consolidando extrato ${job.pdfIndex + 1} de ${pdfJobs.length}…`,
+                  );
+                  setProgress(
+                    85 +
+                      Math.round(
+                        (8 * (job.pdfIndex + 1)) / Math.max(pdfJobs.length, 1),
+                      ),
+                  );
+                  await fetch(`/api/prestacao/sessoes/${sessaoId}/consolidacao/run`, {
+                    method: "POST",
+                    signal: submitSignal,
+                  });
+                  assertNotCancelled(cancelRequestedRef.current);
+                }
               }
             }
 
@@ -707,6 +861,11 @@ export function usePrestacaoSubmit() {
               uploadParts.push(mergedPdfPart);
             }
           } catch (uploadErr) {
+            if (
+              isSubmitCancelled(uploadErr, cancelRequestedRef.current)
+            ) {
+              throw new SubmitCancelledError();
+            }
             const msg =
               uploadErr instanceof Error
                 ? uploadErr.message
@@ -817,14 +976,10 @@ export function usePrestacaoSubmit() {
             setFileErrors(displayErrors);
           }
 
-          const redirectPath = goConsolidacao
-            ? `/prestacao/${sessaoId}/consolidacao`
-            : `/prestacao/${sessaoId}/kanban`;
+          const redirectPath = `/prestacao/${sessaoId}/planilha`;
 
           setPhase("redirecting");
-          setStatusLabel(
-            goConsolidacao ? "Abrindo consolidação…" : "Abrindo movimentações…",
-          );
+          setStatusLabel("Abrindo planilha…");
           setProgress(98);
           currentSteps = setStepStatus(currentSteps, "kanban", "done");
           setSteps(currentSteps);
@@ -849,7 +1004,7 @@ export function usePrestacaoSubmit() {
         }
 
         setPhase("redirecting");
-        setStatusLabel("Abrindo movimentações…");
+        setStatusLabel("Abrindo planilha…");
         setProgress(98);
 
         currentSteps = setStepStatus(currentSteps, "kanban", "done");
@@ -860,15 +1015,24 @@ export function usePrestacaoSubmit() {
         return {
           sessaoId,
           warningMessage,
-          redirectPath: `/prestacao/${sessaoId}/kanban`,
+          redirectPath: `/prestacao/${sessaoId}/planilha`,
           paginasVerificar: collectedPaginasVerificar,
         };
       } catch (error) {
+        if (isSubmitCancelled(error, cancelRequestedRef.current)) {
+          cancelRequestedRef.current = false;
+          abortControllerRef.current = null;
+          activeXhrRef.current = null;
+          throw new SubmitCancelledError();
+        }
         const msg = error instanceof Error ? error.message : "Erro de rede.";
         setPhase((p) => (p === "error" ? p : "error"));
         setErrorMessage((m) => m ?? msg);
         setStatusLabel((l) => l || msg);
         throw error;
+      } finally {
+        abortControllerRef.current = null;
+        activeXhrRef.current = null;
       }
     },
     [pushErrorLog, reset],
@@ -900,6 +1064,7 @@ export function usePrestacaoSubmit() {
     dismissPaginaVerificar,
     isProcessing,
     submit,
+    cancel,
     reset,
   };
 }

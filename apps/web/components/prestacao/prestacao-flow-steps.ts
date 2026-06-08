@@ -1,13 +1,8 @@
-export const WIZARD_STEPS = [
-  { id: 1, label: "UF" },
-  { id: 2, label: "Tipo" },
-  { id: 3, label: "Prestador" },
-  { id: 4, label: "Exercício" },
-  { id: 5, label: "Anexos" },
-] as const;
+/** Single-screen upload wizard (no multi-step UI). */
+export const WIZARD_STEPS = [{ id: 1, label: "Upload" }] as const;
 
 export const END_TO_END_FLOW_STEPS = [
-  ...WIZARD_STEPS,
-  { id: 6, label: "Movimentações" },
-  { id: 7, label: "Export" },
+  { id: 1, label: "Upload" },
+  { id: 2, label: "Planilha" },
+  { id: 3, label: "Export" },
 ] as const;
