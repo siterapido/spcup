@@ -210,9 +210,14 @@ export { extractPdfText, MAX_EXTRATO_PAGES, MIN_TEXT_CHARS } from "./ingest/pdf-
 export {
   buildExtratoColumnPromptHint,
   EXTRATO_COLUMN_MAP_CAMPOS_PADRAO,
+  EXTRATO_PER_PDF_REQUIRED_CAMPOS,
+  EXTRATO_SESSION_REQUIRED_CAMPOS,
+  extratoColumnMapHasCampo,
   parseExtratoColumnMap,
   slugCustomField,
   validateExtratoColumnMap,
+  validateExtratoColumnMapPerPdf,
+  validateExtratoColumnMapsSession,
   type ExtratoColumnMap,
   type ExtratoColumnMapEntry,
 } from "./ingest/extrato-column-map";
@@ -269,6 +274,10 @@ export {
   resolveNomeEffective,
   isNomeContraparteVazio,
 } from "./match/nome-contraparte";
+export {
+  compararNomeCadastro,
+  type NomeCadastroComparacao,
+} from "./match/nome-cadastro";
 export {
   evaluateMovimentacaoWithAi,
   type AiMatchResult,
@@ -346,20 +355,38 @@ export {
 } from "./ai/notebooklm";
 
 export {
-  processSessaoWithNotebookLM,
-} from "./prestacao/process-sessao-notebooklm";
-
-export {
   listPlanilhaForSessao,
   mapConsolidacaoEventoToLinha,
   mapMovimentacaoToLinha,
 } from "./planilha/list";
 export type {
+  IngestaoResumo,
+  IngestaoResumoArquivo,
+  IngestaoResumoPagina,
   PlanilhaLinha,
+  PlanilhaLinhaFonte,
+  PlanilhaLinhaStatus,
   PlanilhaOrigem,
   PlanilhaPayload,
+  PlanilhaPessoa,
   PlanilhaResumo,
 } from "./planilha/types";
+export {
+  buildIngestaoResumo,
+  countLinhasPlanilhaPorArquivo,
+  readIngestaoMetadados,
+  readLinhasIgnoradasSemDoc,
+} from "./planilha/ingestao-resumo";
+export type { IngestaoMetadadosLido } from "./planilha/ingestao-resumo";
+export { upsertIngestaoPagina } from "./ingest/ingestao-pagina";
+export {
+  buildNotebookLmIngestMetadados,
+  buildNotebookLmExtratoPrompt,
+  notebookSourceFileName,
+  processSessaoWithNotebookLM,
+  syncDatabasePeopleToNotebook,
+  validateBalanceConsistency,
+} from "./prestacao/process-sessao-notebooklm";
 export { isLinhaPronta, buildResumo, deriveLinhaStatus } from "./planilha/status";
 export {
   applyPlanilhaLote,
