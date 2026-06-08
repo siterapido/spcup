@@ -56,8 +56,10 @@ export {
   extractTransactionsFromPdfText,
   extractTransactionsFromImagePng,
   resolveExtratoModel,
+  resolveMatchModel,
   resolveSecondaryExtratoModel,
   resolveReviewerExtratoModel,
+  GEMINI_FLASH_MODEL,
   type ExtratoExtraction,
   type ExtractStructuredOptions,
 } from "./ai/openrouter";
@@ -194,6 +196,15 @@ export {
 export { renderPdfPageToPng, type RenderPdfPageOptions } from "./ingest/pdf-render";
 export { extractPdfText, MAX_EXTRATO_PAGES, MIN_TEXT_CHARS } from "./ingest/pdf-text";
 export {
+  buildExtratoColumnPromptHint,
+  EXTRATO_COLUMN_MAP_CAMPOS_PADRAO,
+  parseExtratoColumnMap,
+  slugCustomField,
+  validateExtratoColumnMap,
+  type ExtratoColumnMap,
+  type ExtratoColumnMapEntry,
+} from "./ingest/extrato-column-map";
+export {
   armazenarPdfIngestBuffer,
   ignorarPaginaPdfExtrato,
   loadPaginaPdfComoPng,
@@ -234,6 +245,10 @@ export {
 export {
   applyDeterministicMatch,
   extractDocumentCandidates,
+  findCnpjInDescricao,
+  findCpfInDescricao,
+  hasCpfInDescricao,
+  stripDocumentsFromDescricao,
   type ApplyDeterministicMatchOptions,
 } from "./match/rules";
 export {
@@ -257,11 +272,18 @@ export {
   type SystemStatsGlobal,
   type SystemStatsScope,
 } from "./report/system-stats";
-export { normalizeCnpj, normalizeCpf, normalizeName } from "./normalize";
+export {
+  normalizeCnpj,
+  normalizeCpf,
+  normalizeCpfDigitsOnly,
+  normalizeName,
+} from "./normalize";
 export {
   CADASTRO_TIPO,
   countPessoaMovimentacoes,
   deletePessoas,
+  updatePessoa,
+  updatePessoas,
   extractSpreadsheetHeaders,
   getPessoa,
   importCadastroBatch,
@@ -280,6 +302,10 @@ export {
   type DeletePessoasResult,
   type DeletePessoasSkipped,
   type PessoaRef,
+  type UpdatePessoaFields,
+  type UpdatePessoaItem,
+  type UpdatePessoasResult,
+  type UpdatePessoasSkipped,
   type ConflitoResolucao,
   type ImportCadastroResult,
   type SpreadsheetHeadersResult,
@@ -287,3 +313,29 @@ export {
 } from "./cadastro";
 
 export const CORE_PACKAGE = "@spc-up/core";
+
+export {
+  listNotebooks,
+  createNotebook,
+  getOrCreateNotebook,
+  listSources,
+  uploadFileToNotebook,
+  syncCandidateFolder,
+  syncRulesFolder,
+  type NlmNotebook,
+  type NlmSource,
+  type NlmQueryResponse,
+} from "./ai/notebooklm";
+
+export {
+  processSessaoWithNotebookLM,
+} from "./prestacao/process-sessao-notebooklm";
+
+export {
+  listPlanilhaForSessao,
+  mapConsolidacaoEventoToLinha,
+  mapMovimentacaoToLinha,
+} from "./planilha/list";
+export type { PlanilhaLinha, PlanilhaPayload, PlanilhaResumo } from "./planilha/types";
+export { isLinhaPronta, buildResumo, deriveLinhaStatus } from "./planilha/status";
+
