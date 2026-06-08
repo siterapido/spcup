@@ -5,7 +5,8 @@ import {
 } from "@spc-up/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
-import type { OrigemAtributosEvento } from "../provenance/types";
+import { hasCpfInDescricao } from "../match/rules";
+import type { OrigemAtributosEvento, OrigemExtracaoV1 } from "../provenance/types";
 import { countPdfIngestoesForSessao, loadCadastroMatchContext, loadMovimentacaoCandidates } from "./load";
 import { buildConsolidacaoCandidates } from "./candidates";
 
@@ -30,6 +31,7 @@ export type ConsolidacaoListItem = {
     papel: string;
     descricaoRaw: string;
     nomeArquivo: string | null;
+    origemExtracao: OrigemExtracaoV1 | null;
   }>;
   hipoteses: Array<{
     id: string;
@@ -38,6 +40,7 @@ export type ConsolidacaoListItem = {
     payload: unknown;
   }>;
   origemAtributos: OrigemAtributosEvento | null;
+  extracaoConfirmada: boolean;
 };
 
 export async function listConsolidacaoForSessao(
@@ -58,7 +61,7 @@ export async function listConsolidacaoForSessao(
     with: {
       linhas: {
         with: {
-          movimentacao: true,
+          movimentacao: { with: { evidencias: true } },
           arquivoIngestao: true,
         },
       },
@@ -75,7 +78,7 @@ export async function listConsolidacaoForSessao(
     const ctx = await loadCadastroMatchContext(db);
     const drafts = buildConsolidacaoCandidates(movs, ctx);
     const nomeOnlyPix = movs.some(
-      (m) => /pix/i.test(m.nomeArquivo) && !m.descricaoRaw.match(/\d{11}/),
+      (m) => /pix/i.test(m.nomeArquivo) && !hasCpfInDescricao(m.descricaoRaw),
     );
     const anyCadastroMatch = drafts.some((d) => d.confianca >= 0.8);
     cadastroAlerta = nomeOnlyPix && !anyCadastroMatch;
@@ -113,6 +116,8 @@ export async function listConsolidacaoForSessao(
         papel: l.papel,
         descricaoRaw: l.movimentacao.descricaoRaw,
         nomeArquivo: l.arquivoIngestao?.nomeArquivo ?? null,
+        origemExtracao:
+          (l.movimentacao.origemExtracao as OrigemExtracaoV1 | null) ?? null,
       })),
       hipoteses: e.hipoteses.map((h) => ({
         id: h.id,
@@ -121,6 +126,9 @@ export async function listConsolidacaoForSessao(
         payload: h.payload,
       })),
       origemAtributos: (e.origemAtributos as OrigemAtributosEvento | null) ?? null,
+      extracaoConfirmada: e.linhas.some((l) =>
+        l.movimentacao.evidencias.some((ev) => ev.tipo === "EXTRACAO_CONFIRMADA"),
+      ),
     })),
   };
 }

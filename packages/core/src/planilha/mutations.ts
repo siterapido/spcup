@@ -1,5 +1,13 @@
-import { consolidacaoEvento, movimentacao, type Db } from "@spc-up/db";
+import {
+  consolidacaoEvento,
+  consolidacaoLinha,
+  matchEvidencia,
+  movimentacao,
+  type Db,
+} from "@spc-up/db";
 import { and, eq, isNull } from "drizzle-orm";
+
+import { getConfiancaLimiarBaixa } from "../consolidacao/thresholds";
 
 import {
   approveConsolidacaoEvento,
@@ -90,4 +98,86 @@ export async function resolvePlanilhaMerge(
   }
 
   await reject(db, eventoId);
+}
+
+const EVIDENCIA_EXTRACAO_CONFIRMADA = "EXTRACAO_CONFIRMADA";
+
+async function confirmarExtracaoMovimentacao(db: Db, movimentacaoId: string): Promise<void> {
+  const mov = await db.query.movimentacao.findFirst({
+    where: eq(movimentacao.id, movimentacaoId),
+    columns: { confiancaGlobal: true },
+  });
+  if (!mov) {
+    throw new Error("Movimentação não encontrada");
+  }
+
+  const limiar = getConfiancaLimiarBaixa();
+  const confiancaNova = Math.max(mov.confiancaGlobal, limiar);
+
+  await db
+    .delete(matchEvidencia)
+    .where(
+      and(
+        eq(matchEvidencia.movimentacaoId, movimentacaoId),
+        eq(matchEvidencia.tipo, "PAGINA_VERIFICAR"),
+      ),
+    );
+
+  const jaConfirmada = await db.query.matchEvidencia.findFirst({
+    where: and(
+      eq(matchEvidencia.movimentacaoId, movimentacaoId),
+      eq(matchEvidencia.tipo, EVIDENCIA_EXTRACAO_CONFIRMADA),
+    ),
+    columns: { id: true },
+  });
+
+  if (!jaConfirmada) {
+    await db.insert(matchEvidencia).values({
+      movimentacaoId,
+      tipo: EVIDENCIA_EXTRACAO_CONFIRMADA,
+      peso: 1,
+      detalhe: "Extração confirmada na planilha",
+    });
+  }
+
+  await db
+    .update(movimentacao)
+    .set({ confiancaGlobal: confiancaNova })
+    .where(eq(movimentacao.id, movimentacaoId));
+}
+
+export async function confirmarExtracaoPlanilhaLinha(
+  db: Db,
+  linhaId: string,
+  fonte: PlanilhaLinhaFonte,
+): Promise<void> {
+  if (fonte === "movimentacao") {
+    await confirmarExtracaoMovimentacao(db, linhaId);
+    return;
+  }
+
+  const linhas = await db
+    .select({ movimentacaoId: consolidacaoLinha.movimentacaoId })
+    .from(consolidacaoLinha)
+    .where(eq(consolidacaoLinha.eventoId, linhaId));
+
+  if (linhas.length === 0) {
+    throw new Error("Evento de consolidação não encontrado");
+  }
+
+  for (const linha of linhas) {
+    await confirmarExtracaoMovimentacao(db, linha.movimentacaoId);
+  }
+
+  const evento = await db.query.consolidacaoEvento.findFirst({
+    where: eq(consolidacaoEvento.id, linhaId),
+    columns: { confianca: true },
+  });
+  if (evento) {
+    const limiar = getConfiancaLimiarBaixa();
+    await db
+      .update(consolidacaoEvento)
+      .set({ confianca: Math.max(evento.confianca, limiar) })
+      .where(eq(consolidacaoEvento.id, linhaId));
+  }
 }

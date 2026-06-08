@@ -31,6 +31,7 @@ export type ConsolidacaoEventoLinhaInput = {
   justificativa: string | null;
   pessoaFisicaId?: string | null;
   pessoaJuridicaId?: string | null;
+  extracaoConfirmada?: boolean;
   pessoa: {
     nome: string;
     documento: string;
@@ -58,6 +59,7 @@ export type MovimentacaoLinhaInput = {
   arquivoIngestaoId?: string | null;
   origemExtracao: OrigemExtracaoV1 | null;
   statusPaginaVerificar?: boolean;
+  extracaoConfirmada?: boolean;
 };
 
 function mapPessoaFromConsolidacao(
@@ -115,6 +117,7 @@ function isExtracaoDuvidosaConsolidacao(
 }
 
 function isExtracaoDuvidosaMovimentacao(mov: MovimentacaoLinhaInput): boolean {
+  if (mov.extracaoConfirmada) return false;
   if (mov.statusPaginaVerificar) return true;
   return !mov.origemExtracao && mov.confiancaGlobal < EXTRACAO_DUVIDOSA_CONFIANCA;
 }
@@ -124,7 +127,12 @@ export function mapConsolidacaoEventoToLinha(
 ): PlanilhaLinha {
   const origens = origensFromLinhas(evento.linhas);
   const pessoa = mapPessoaFromConsolidacao(evento);
-  const extracaoDuvidosa = isExtracaoDuvidosaConsolidacao(evento.linhas, evento.confianca);
+  const extracaoConfirmada = evento.extracaoConfirmada === true;
+  const extracaoDuvidosaRaw = isExtracaoDuvidosaConsolidacao(
+    evento.linhas,
+    evento.confianca,
+  );
+  const extracaoDuvidosa = extracaoDuvidosaRaw && !extracaoConfirmada;
 
   return {
     id: evento.id,
@@ -140,17 +148,24 @@ export function mapConsolidacaoEventoToLinha(
       pessoa,
       confianca: evento.confianca,
       extracaoDuvidosa,
+      extracaoConfirmada,
     }),
     pessoa,
     origens,
     eventoStatus: evento.status,
     extracaoDuvidosa,
+    extracaoConfirmada,
   };
 }
 
 export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLinha {
   const pessoa = mapPessoaFromMovimentacao(mov);
-  const extracaoDuvidosa = isExtracaoDuvidosaMovimentacao(mov);
+  const extracaoConfirmada = mov.extracaoConfirmada === true;
+  const extracaoDuvidosaRaw = isExtracaoDuvidosaMovimentacao({
+    ...mov,
+    extracaoConfirmada: false,
+  });
+  const extracaoDuvidosa = extracaoDuvidosaRaw && !extracaoConfirmada;
 
   return {
     id: mov.id,
@@ -165,6 +180,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
       pessoa,
       confianca: mov.confiancaGlobal,
       extracaoDuvidosa,
+      extracaoConfirmada,
     }),
     pessoa,
     origens: [
@@ -178,6 +194,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
       },
     ],
     extracaoDuvidosa,
+    extracaoConfirmada,
   };
 }
 
@@ -227,6 +244,7 @@ function dbMovToLinhaInput(
     arquivoIngestaoId: mov.arquivoIngestaoId,
     origemExtracao: (mov.origemExtracao as OrigemExtracaoV1 | null) ?? null,
     statusPaginaVerificar: mov.evidencias.some((e) => e.tipo === "PAGINA_VERIFICAR"),
+    extracaoConfirmada: mov.evidencias.some((e) => e.tipo === "EXTRACAO_CONFIRMADA"),
   };
 }
 

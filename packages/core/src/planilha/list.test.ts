@@ -86,6 +86,7 @@ describe("mapConsolidacaoEventoToLinha", () => {
         pessoa: linha.pessoa,
         confianca: 0.9,
         extracaoDuvidosa: false,
+        extracaoConfirmada: false,
       }),
     ).toBe("pronta");
   });

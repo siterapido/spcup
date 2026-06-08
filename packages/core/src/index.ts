@@ -343,5 +343,7 @@ export {
   planilhaLinhaBelongsToSessao,
   resolvePlanilhaMerge,
   updatePlanilhaLinhaPessoa,
+  confirmarExtracaoPlanilhaLinha,
 } from "./planilha/mutations";
+export { isExtracaoBloqueando } from "./planilha/status";
 

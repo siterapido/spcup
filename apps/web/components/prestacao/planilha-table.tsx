@@ -134,6 +134,23 @@ export function PlanilhaView({
     });
   }
 
+  async function confirmarExtracao(linha: PlanilhaLinha) {
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/prestacao/sessoes/${sessaoId}/planilha/linhas/${linha.id}/extracao`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fonte: linha.fonte }),
+        },
+      );
+      if (res.ok) await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function resolveMerge(linha: PlanilhaLinha, acao: "confirmar" | "separar") {
     setBusy(true);
     try {
@@ -355,6 +372,17 @@ export function PlanilhaView({
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1">
+                        {linha.status === "extracao_duvidosa" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="px-2 py-1 text-xs"
+                            disabled={busy}
+                            onClick={() => void confirmarExtracao(linha)}
+                          >
+                            Confirmar extração
+                          </Button>
+                        )}
                         {linha.status === "merge_pendente" && linha.fonte === "consolidacao" && (
                           <>
                             <Button

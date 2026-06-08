@@ -1,6 +1,6 @@
 // packages/core/src/planilha/status.test.ts
 import { describe, expect, it } from "vitest";
-import { deriveLinhaStatus, isLinhaPronta, buildResumo } from "./status";
+import { deriveLinhaStatus, isLinhaPronta, buildResumo, isExtracaoBloqueando } from "./status";
 import type { PlanilhaLinha } from "./types";
 
 function linha(partial: Partial<PlanilhaLinha>): PlanilhaLinha {
@@ -17,9 +17,32 @@ function linha(partial: Partial<PlanilhaLinha>): PlanilhaLinha {
     origens: [],
     eventoStatus: "PENDENTE",
     extracaoDuvidosa: false,
+    extracaoConfirmada: false,
     ...partial,
   };
 }
+
+describe("isExtracaoBloqueando", () => {
+  it("false quando confirmada", () => {
+    expect(
+      isExtracaoBloqueando({
+        extracaoDuvidosa: true,
+        extracaoConfirmada: true,
+        pessoa: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("false quando pessoa vinculada manualmente", () => {
+    expect(
+      isExtracaoBloqueando({
+        extracaoDuvidosa: true,
+        extracaoConfirmada: false,
+        pessoa: { id: "p", tipo: "PF", nome: "A", documento: "12345678901" },
+      }),
+    ).toBe(false);
+  });
+});
 
 describe("isLinhaPronta", () => {
   it("false sem pessoa", () => {
@@ -38,13 +61,25 @@ describe("isLinhaPronta", () => {
     ).toBe(false);
   });
 
-  it("false quando extracaoDuvidosa true mesmo status pendente", () => {
+  it("true com extracao duvidosa mas pessoa vinculada", () => {
     expect(
       isLinhaPronta(
         linha({
           pessoa: { id: "p", tipo: "PF", nome: "A", documento: "12345678901" },
           confianca: 0.9,
-          status: "pendente",
+          status: "pronta",
+          extracaoDuvidosa: true,
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("false com extracao duvidosa sem pessoa nem confirmacao", () => {
+    expect(
+      isLinhaPronta(
+        linha({
+          confianca: 0.9,
+          status: "extracao_duvidosa",
           extracaoDuvidosa: true,
         }),
       ),
@@ -84,11 +119,12 @@ describe("deriveLinhaStatus", () => {
         pessoa: null,
         confianca: 0.8,
         extracaoDuvidosa: false,
+        extracaoConfirmada: false,
       }),
     ).toBe("merge_pendente");
   });
 
-  it("extracao_duvidosa tem prioridade", () => {
+  it("extracao_duvidosa sem pessoa nem confirmacao", () => {
     expect(
       deriveLinhaStatus({
         eventoStatus: "PENDENTE",
@@ -96,8 +132,21 @@ describe("deriveLinhaStatus", () => {
         pessoa: null,
         confianca: 0.4,
         extracaoDuvidosa: true,
+        extracaoConfirmada: false,
       }),
     ).toBe("extracao_duvidosa");
+  });
+
+  it("pendente apos confirmacao sem pessoa", () => {
+    expect(
+      deriveLinhaStatus({
+        origemCount: 1,
+        pessoa: null,
+        confianca: 0.65,
+        extracaoDuvidosa: true,
+        extracaoConfirmada: true,
+      }),
+    ).toBe("pendente");
   });
 });
 

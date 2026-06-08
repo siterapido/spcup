@@ -4,14 +4,36 @@ import type { PlanilhaLinha, PlanilhaResumo } from "./types";
 
 const LIMIAR_BAIXA = () => getConfiancaLimiarBaixa();
 
+/** Extração duvidosa ainda bloqueia export/revisão? */
+export function isExtracaoBloqueando(input: {
+  extracaoDuvidosa: boolean;
+  extracaoConfirmada: boolean;
+  pessoa: PlanilhaLinha["pessoa"];
+}): boolean {
+  if (!input.extracaoDuvidosa) return false;
+  if (input.extracaoConfirmada) return false;
+  // Vínculo manual de PF/PJ aceita valor/data da linha (spec §7.3)
+  if (input.pessoa) return false;
+  return true;
+}
+
 export function deriveLinhaStatus(input: {
   eventoStatus?: string;
   origemCount: number;
   pessoa: PlanilhaLinha["pessoa"];
   confianca: number;
   extracaoDuvidosa: boolean;
+  extracaoConfirmada: boolean;
 }): PlanilhaLinha["status"] {
-  if (input.extracaoDuvidosa) return "extracao_duvidosa";
+  if (
+    isExtracaoBloqueando({
+      extracaoDuvidosa: input.extracaoDuvidosa,
+      extracaoConfirmada: input.extracaoConfirmada,
+      pessoa: input.pessoa,
+    })
+  ) {
+    return "extracao_duvidosa";
+  }
   if (
     input.eventoStatus === CONSOLIDACAO_EVENTO_STATUS.PENDENTE &&
     input.origemCount >= 2
@@ -29,14 +51,21 @@ export function deriveLinhaStatus(input: {
     status: "pendente",
     pessoa: input.pessoa,
     origens: [],
-    extracaoDuvidosa: false,
+    extracaoDuvidosa: input.extracaoDuvidosa,
+    extracaoConfirmada: input.extracaoConfirmada,
   };
   return isLinhaPronta(draft) ? "pronta" : "pendente";
 }
 
 export function isLinhaPronta(linha: PlanilhaLinha): boolean {
-  if (linha.extracaoDuvidosa === true) return false;
-  if (linha.status === "merge_pendente" || linha.status === "extracao_duvidosa") {
+  if (linha.status === "merge_pendente") return false;
+  if (
+    isExtracaoBloqueando({
+      extracaoDuvidosa: linha.extracaoDuvidosa,
+      extracaoConfirmada: linha.extracaoConfirmada,
+      pessoa: linha.pessoa,
+    })
+  ) {
     return false;
   }
   if (!linha.pessoa) return false;

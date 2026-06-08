@@ -36,6 +36,8 @@ export type PlanilhaLinha = {
   /** Metadados internos para deriveLinhaStatus / escrita */
   eventoStatus?: string;
   extracaoDuvidosa: boolean;
+  /** Operador confirmou extração (valor/data) na planilha */
+  extracaoConfirmada: boolean;
 };
 
 export type PlanilhaResumo = {
