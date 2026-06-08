@@ -16,13 +16,13 @@ import {
   rejectConsolidacaoEvento,
 } from "../consolidacao/approve";
 import { loadCadastroMatchContext } from "../consolidacao/load";
-import {
-  isNomeContraparteVazio,
-  resolveNomeEffective,
-} from "../match/nome-contraparte";
+import { isNomeContraparteVazio } from "../match/nome-contraparte";
 import { applyDeterministicMatch, extractDocumentCandidates } from "../match/rules";
 import { normalizeName } from "../normalize";
-import { assignPessoaToMovimentacao } from "../prestacao/movimentacao-review";
+import {
+  assignPessoaToMovimentacao,
+  type AssignPessoaInput,
+} from "../prestacao/movimentacao-review";
 import type { PlanilhaLinhaFonte } from "./types";
 
 async function findUniquePessoaByNome(
@@ -102,13 +102,9 @@ async function rematchConsolidacaoEventoPorNome(
   }
 
   if (!pessoaFisicaId && !pessoaJuridicaId) {
-    const origens = evento.linhas.map((l) => ({
-      descricaoRaw: l.movimentacao.descricaoRaw,
-      papel: l.papel,
-    }));
-    const nomeEffective = resolveNomeEffective(evento.nomeContraparte, origens);
-    if (!isNomeContraparteVazio(nomeEffective)) {
-      const byNome = await findUniquePessoaByNome(db, nomeEffective);
+    const remetenteDestinatario = evento.remetenteDestinatario;
+    if (!isNomeContraparteVazio(remetenteDestinatario)) {
+      const byNome = await findUniquePessoaByNome(db, remetenteDestinatario!);
       if (byNome?.kind === "PF") {
         pessoaFisicaId = byNome.id;
         justificativa = "Nome único no cadastro";
@@ -132,21 +128,21 @@ async function rematchConsolidacaoEventoPorNome(
     .where(eq(consolidacaoEvento.id, eventoId));
 }
 
-export async function updatePlanilhaLinhaNome(
+export async function updatePlanilhaLinhaRemetenteDestinatario(
   db: Db,
   linhaId: string,
   fonte: PlanilhaLinhaFonte,
-  nomeContraparte: string | null,
+  remetenteDestinatario: string | null,
 ): Promise<void> {
   const normalized =
-    nomeContraparte && !isNomeContraparteVazio(nomeContraparte)
-      ? normalizeName(nomeContraparte)
+    remetenteDestinatario && !isNomeContraparteVazio(remetenteDestinatario)
+      ? normalizeName(remetenteDestinatario)
       : null;
 
   if (fonte === "movimentacao") {
     await db
       .update(movimentacao)
-      .set({ nomeContraparte: normalized })
+      .set({ remetenteDestinatario: normalized })
       .where(eq(movimentacao.id, linhaId));
 
     const mov = await db.query.movimentacao.findFirst({
@@ -161,7 +157,7 @@ export async function updatePlanilhaLinhaNome(
 
   await db
     .update(consolidacaoEvento)
-    .set({ nomeContraparte: normalized })
+    .set({ remetenteDestinatario: normalized })
     .where(eq(consolidacaoEvento.id, linhaId));
 
   const evento = await db.query.consolidacaoEvento.findFirst({
@@ -208,7 +204,12 @@ export async function updatePlanilhaLinhaPessoa(
   },
 ): Promise<void> {
   if (fonte === "movimentacao") {
-    await assignPessoaToMovimentacao(db, linhaId, body);
+    const pessoa: AssignPessoaInput = body.limparPessoa
+      ? { limparPessoa: true }
+      : body.pessoaFisicaId
+        ? { pessoaFisicaId: body.pessoaFisicaId }
+        : { pessoaJuridicaId: body.pessoaJuridicaId! };
+    await assignPessoaToMovimentacao(db, linhaId, pessoa);
     return;
   }
 

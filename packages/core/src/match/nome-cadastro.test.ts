@@ -18,4 +18,14 @@ describe("compararNomeCadastro", () => {
   it("indefinido quando cadastro vazio", () => {
     expect(compararNomeCadastro("MARIA SILVA", "")).toBe("indefinido");
   });
+
+  it.each([
+    ["GABRIELLE DIAS PIMENTEL", "GABRIELLE D PIMENTEL"],
+    ["MANOELA MATIAS HORA", "MANOELA M HORA"],
+    ["VITOR HUGO MOREAU DA CUNHA", "VITOR HUGO M CUNHA"],
+    ["JALICIA LIMA SANTOS MURICY", "JALICIA L S MURICY"],
+    ["MATEUS BULHOES NUNES SOUTO", "MATEUS B N SOUTO"],
+  ])("bate abreviação cadastro: %s vs %s", (extrato, cadastro) => {
+    expect(compararNomeCadastro(extrato, cadastro)).toBe("bate");
+  });
 });

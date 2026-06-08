@@ -20,9 +20,37 @@ export function compararNomeCadastro(
 }
 
 function isTokenSubset(a: string, b: string): boolean {
-  const tokensA = new Set(a.split(" ").filter(Boolean));
-  const tokensB = new Set(b.split(" ").filter(Boolean));
+  const tokensA = a.split(" ").filter(Boolean);
+  const tokensB = b.split(" ").filter(Boolean);
   const [small, big] =
-    tokensA.size <= tokensB.size ? [tokensA, tokensB] : [tokensB, tokensA];
-  return [...small].every((token) => big.has(token));
+    tokensA.length <= tokensB.length ? [tokensA, tokensB] : [tokensB, tokensA];
+  if (tokensMatchWithAbbreviations(small, big)) return true;
+  if (small.length === big.length) {
+    return tokensMatchWithAbbreviations(big, small);
+  }
+  return false;
+}
+
+/** Single-letter tokens in shorter name match longer tokens starting with that letter. */
+function tokensMatchWithAbbreviations(small: string[], big: string[]): boolean {
+  const used = new Set<number>();
+  for (const token of small) {
+    let matched = false;
+    for (let i = 0; i < big.length; i++) {
+      if (used.has(i)) continue;
+      const bigToken = big[i];
+      if (bigToken === token) {
+        used.add(i);
+        matched = true;
+        break;
+      }
+      if (token.length === 1 && bigToken.startsWith(token)) {
+        used.add(i);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
+  }
+  return true;
 }

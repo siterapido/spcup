@@ -20,8 +20,8 @@ export function extractNomeContraparte(descricaoRaw: string): string {
   return normalizeName(cleaned);
 }
 
-export function isNomeContraparteVazio(nome: string): boolean {
-  return nome.trim().length < MIN_NOME_LEN;
+export function isNomeContraparteVazio(nome: string | null | undefined): boolean {
+  return (nome ?? "").trim().length < MIN_NOME_LEN;
 }
 
 export function deriveNomeContraparte(origens: OrigemNomeInput[]): string {

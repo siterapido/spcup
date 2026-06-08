@@ -1,7 +1,3 @@
-import {
-  isNomeContraparteVazio,
-  resolveNomeEffective,
-} from "../match/nome-contraparte";
 import type { OrigemExtracaoV1 } from "../provenance/types";
 import { cleanDescricao } from "./descricao";
 import { deriveLinhaStatus } from "./status";
@@ -19,7 +15,7 @@ export type ConsolidacaoEventoLinhaInput = {
   justificativa: string | null;
   pessoaFisicaId?: string | null;
   pessoaJuridicaId?: string | null;
-  nomeContraparte?: string | null;
+  remetenteDestinatario?: string | null;
   extracaoConfirmada?: boolean;
   pessoa: {
     nome: string;
@@ -35,23 +31,6 @@ export type ConsolidacaoEventoLinhaInput = {
     origemExtracao: OrigemExtracaoV1 | null;
   }>;
 };
-
-export function buildNomeFields(
-  persistido: string | null | undefined,
-  origens: PlanilhaOrigem[],
-): Pick<PlanilhaLinha, "nome" | "nomeContraparte" | "nomeDerivado"> {
-  const origensInput = origens.map((o) => ({
-    descricaoRaw: o.descricaoRaw,
-    papel: o.papel,
-  }));
-  const nome = resolveNomeEffective(persistido, origensInput);
-  const derivado = !persistido || isNomeContraparteVazio(persistido);
-  return {
-    nome,
-    nomeContraparte: persistido ?? null,
-    nomeDerivado: derivado && !isNomeContraparteVazio(nome),
-  };
-}
 
 function mapPessoaFromConsolidacao(
   evento: ConsolidacaoEventoLinhaInput,
@@ -114,8 +93,6 @@ export function mapConsolidacaoEventoToLinha(
     evento.confianca,
   );
   const extracaoDuvidosa = extracaoDuvidosaRaw && !extracaoConfirmada;
-  const nomeFields = buildNomeFields(evento.nomeContraparte, origens);
-
   return {
     id: evento.id,
     fonte: "consolidacao",
@@ -135,7 +112,7 @@ export function mapConsolidacaoEventoToLinha(
       extracaoConfirmada,
     }),
     pessoa,
-    ...nomeFields,
+    remetenteDestinatario: evento.remetenteDestinatario ?? null,
     origens,
     eventoStatus: evento.status,
     extracaoDuvidosa,

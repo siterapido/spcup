@@ -86,17 +86,17 @@ function inferNomeFromDescricao(descricao: string): string | undefined {
 function normalizeExtratoItem(item: Record<string, unknown>): Record<string, unknown> {
   const out = { ...item };
   const contraparte = String(out.contraparte ?? "").trim();
-  const nome = String(out.nome ?? "").trim();
-  if (!nome && contraparte) {
-    out.nome = contraparte;
+  const remetenteDestinatario = String(out.remetente_destinatario ?? "").trim();
+  if (!remetenteDestinatario && contraparte) {
+    out.remetente_destinatario = contraparte;
   }
 
-  const nomeStr = String(out.nome ?? "").trim();
+  const rdStr = String(out.remetente_destinatario ?? "").trim();
   const descricaoStr = String(out.descricao ?? "").trim();
-  if (!nomeStr && descricaoStr) {
+  if (!rdStr && descricaoStr) {
     const inferred = inferNomeFromDescricao(descricaoStr);
     if (inferred) {
-      out.nome = inferred;
+      out.remetente_destinatario = inferred;
     }
   }
 

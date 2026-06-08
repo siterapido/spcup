@@ -7,44 +7,43 @@ import { compararNomeCadastro } from "@spc-up/core/browser";
 
 import { Input } from "@/components/ui/input";
 
-const TOOLTIP_NOME_VAZIO =
+const TOOLTIP_VAZIO =
   "Extração não identificou contraparte — edite ou veja origens";
 
 type Props = {
   sessaoId: string;
   linhaId: string;
   fonte: PlanilhaLinhaFonte;
-  nome: string;
-  nomeDerivado?: boolean;
+  remetenteDestinatario: string | null;
   pessoaNome?: string | null;
   disabled?: boolean;
   onUpdated: () => void;
 };
 
-function isNomeVazio(nome: string): boolean {
-  return !nome || nome.trim().length < 3;
+function isVazio(value: string): boolean {
+  return !value || value.trim().length < 3;
 }
 
-export function PlanilhaNomeCell({
+export function PlanilhaRemetenteDestinatarioCell({
   sessaoId,
   linhaId,
   fonte,
-  nome,
-  nomeDerivado,
+  remetenteDestinatario,
   pessoaNome,
   disabled,
   onUpdated,
 }: Props) {
-  const [value, setValue] = useState(nome);
+  const [value, setValue] = useState(remetenteDestinatario ?? "");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setValue(nome);
-  }, [nome]);
+    setValue(remetenteDestinatario ?? "");
+  }, [remetenteDestinatario]);
 
   async function save(next: string) {
     const trimmed = next.trim();
-    if (trimmed === nome.trim()) return;
+    const current = (remetenteDestinatario ?? "").trim();
+    if (trimmed === current) return;
     setBusy(true);
     try {
       const res = await fetch(
@@ -54,7 +53,7 @@ export function PlanilhaNomeCell({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fonte,
-            nomeContraparte: trimmed.length > 0 ? trimmed : null,
+            remetenteDestinatario: trimmed.length > 0 ? trimmed : null,
           }),
         },
       );
@@ -64,8 +63,8 @@ export function PlanilhaNomeCell({
     }
   }
 
-  const vazio = isNomeVazio(value);
-  const title = vazio ? TOOLTIP_NOME_VAZIO : value || undefined;
+  const vazio = isVazio(value);
+  const title = vazio ? TOOLTIP_VAZIO : value || undefined;
   const comparacao = pessoaNome
     ? compararNomeCadastro(value, pessoaNome)
     : "indefinido";
@@ -78,11 +77,7 @@ export function PlanilhaNomeCell({
         placeholder="—"
         disabled={disabled || busy}
         title={title}
-        aria-label={
-          vazio && nomeDerivado
-            ? `${TOOLTIP_NOME_VAZIO} (derivado das origens)`
-            : undefined
-        }
+        aria-label={vazio ? TOOLTIP_VAZIO : undefined}
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => void save(value)}
         onKeyDown={(e) => {

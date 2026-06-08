@@ -12,11 +12,8 @@ import {
   type ExtractStructuredOptions,
 } from "../ai/openrouter";
 import { applyAiMatchToMovimentacao } from "../match/apply-ai";
-import {
-  extractNomeContraparte,
-  isNomeContraparteVazio,
-} from "../match/nome-contraparte";
 import { applyDeterministicMatch } from "../match/rules";
+import { normalizeName } from "../normalize";
 import { extractDocumentCandidates } from "../match/rules";
 import { normalizeCnpj, normalizeCpf } from "../normalize";
 import { toIngestError } from "./errors";
@@ -31,11 +28,6 @@ import {
   type ParsedTransactionRow,
   type PrestadorContext,
 } from "./types";
-
-function nomeContraparteFromDescricao(descricaoRaw: string): string | undefined {
-  const nome = extractNomeContraparte(descricaoRaw);
-  return isNomeContraparteVazio(nome) ? undefined : nome;
-}
 
 function parseExtractionDate(value: string): Date {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
@@ -102,8 +94,9 @@ function docLabelFromExtratoItem(item: Record<string, unknown>): string | null {
 }
 
 function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransactionRow | null {
-  const nome = String(item.nome ?? item.descricao ?? "").trim();
-  if (nome.length < 3) {
+  const rd =
+    item.remetente_destinatario != null ? String(item.remetente_destinatario).trim() : "";
+  if (rd.length < 3) {
     return null;
   }
 
@@ -117,7 +110,8 @@ function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransact
     return null;
   }
 
-  const descricaoRaw = nome;
+  const descricao = String(item.descricao ?? "").trim();
+  const descricaoRaw = descricao || rd;
   return {
     dataMovimento: parseExtractionDate(String(item.data)),
     valor: Math.abs(valorNum).toFixed(2),
@@ -125,7 +119,7 @@ function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransact
     direcao,
     credDev: credDevFromExtratoItem(item),
     nrExtratoBancario: nrExtratoBancarioFromExtratoItem(item),
-    nomeContraparte: nomeContraparteFromDescricao(descricaoRaw),
+    remetenteDestinatario: normalizeName(rd),
   };
 }
 
@@ -161,6 +155,9 @@ export function rowFromExtratoItem(
     descricaoRaw = docLabel;
   }
 
+  const rd =
+    item.remetente_destinatario != null ? String(item.remetente_destinatario).trim() : "";
+
   return {
     dataMovimento: parseExtractionDate(String(item.data)),
     valor: Math.abs(valorNum).toFixed(2),
@@ -168,7 +165,7 @@ export function rowFromExtratoItem(
     direcao,
     credDev: credDevFromExtratoItem(item),
     nrExtratoBancario: nrExtratoBancarioFromExtratoItem(item),
-    nomeContraparte: nomeContraparteFromDescricao(descricaoRaw),
+    remetenteDestinatario: rd.length >= 3 ? normalizeName(rd) : null,
   };
 }
 
@@ -344,6 +341,10 @@ export function rowFromExtraction(
   }
 
   const descricaoRaw = `${nome} CPF ${cpf}`;
+  const rd =
+    extracted.remetente_destinatario != null
+      ? String(extracted.remetente_destinatario).trim()
+      : "";
   return {
     dataMovimento: parseExtractionDate(String(extracted.data)),
     valor: Math.abs(valorNum).toFixed(2),
@@ -351,7 +352,7 @@ export function rowFromExtraction(
     direcao,
     credDev: null,
     nrExtratoBancario: null,
-    nomeContraparte: nomeContraparteFromDescricao(descricaoRaw),
+    remetenteDestinatario: rd.length >= 3 ? normalizeName(rd) : null,
   };
 }
 

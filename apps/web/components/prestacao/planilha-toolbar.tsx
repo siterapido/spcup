@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 export type PlanilhaFilter =
   | "todos"
   | "prontas"
-  | "sem_nome"
+  | "sem_rd"
   | "sem_pessoa"
   | "baixa_confianca"
   | "merge_pendente"
@@ -19,7 +19,7 @@ export type PlanilhaFilter =
 const FILTERS: { id: PlanilhaFilter; label: string; count: (r: PlanilhaResumo) => number }[] = [
   { id: "todos", label: "Todos", count: (r) => r.total },
   { id: "prontas", label: "Prontas", count: (r) => r.prontas },
-  { id: "sem_nome", label: "Sem nome", count: (r) => r.semNome },
+  { id: "sem_rd", label: "Sem remetente/destinatário", count: (r) => r.semRemetenteDestinatario },
   { id: "sem_pessoa", label: "Sem pessoa", count: (r) => r.semPessoa },
   { id: "baixa_confianca", label: "Baixa confiança", count: (r) => r.baixaConfianca },
   { id: "merge_pendente", label: "Merge pendente", count: (r) => r.mergePendente },
@@ -74,7 +74,7 @@ export function PlanilhaToolbar({
           </div>
           <p className="mt-2 text-xs text-muted">
             Para exportar: PF/PJ vinculado · confiança ≥60% · sem merge pendente · sem
-            extração duvidosa (nome não é obrigatório)
+            extração duvidosa (remetente/destinatário não é obrigatório)
           </p>
         </div>
 

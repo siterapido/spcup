@@ -164,10 +164,10 @@ function mergeConsensusItem(
   b: Record<string, unknown>,
 ): Record<string, unknown> {
   const out = { ...a };
-  const nomeA = String(a.nome ?? a.descricao ?? "").trim();
-  const nomeB = String(b.nome ?? b.descricao ?? "").trim();
-  if (nomeB.length > nomeA.length) {
-    out.nome = b.nome ?? b.descricao;
+  const rdA = String(a.remetente_destinatario ?? "").trim();
+  const rdB = String(b.remetente_destinatario ?? "").trim();
+  if (rdB.length > rdA.length) {
+    out.remetente_destinatario = b.remetente_destinatario;
   }
   if (!out.cpf && b.cpf) {
     out.cpf = b.cpf;

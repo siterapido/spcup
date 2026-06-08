@@ -3,10 +3,6 @@ import { readFile } from "node:fs/promises";
 import type { Db, Movimentacao } from "@spc-up/db";
 import { movimentacao } from "@spc-up/db";
 
-import {
-  extractNomeContraparte,
-  isNomeContraparteVazio,
-} from "../match/nome-contraparte";
 import { computeHashMovimento } from "./hash";
 import {
   MOVIMENTACAO_DIRECAO,
@@ -124,10 +120,7 @@ export async function persistTransactions(
             : 0,
         hashMovimento: computeHashMovimento(prestador.cnpjPrestador, exercicio, row),
         origemExtracao: row.origemExtracao ?? null,
-        nomeContraparte: (() => {
-          const nome = row.nomeContraparte ?? extractNomeContraparte(row.descricaoRaw);
-          return isNomeContraparteVazio(nome) ? null : nome;
-        })(),
+        remetenteDestinatario: row.remetenteDestinatario ?? null,
       })
       .onConflictDoNothing()
       .returning();

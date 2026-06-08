@@ -83,6 +83,7 @@ describe("buildNotebookLmIngestMetadados", () => {
           descricao: "PIX",
           documento_candidato: null,
           nome_candidato: null,
+          remetente_destinatario: null,
           fonte_recurso: null,
           natureza_recurso: null,
           tipo_origem_recurso: null,
@@ -121,6 +122,8 @@ describe("buildNotebookLmExtratoPrompt", () => {
     expect(prompt).toContain("Extrato Jan PIX (1).pdf");
     expect(prompt).toContain("apenas");
     expect(prompt).not.toContain("todos os extratos bancários");
+    expect(prompt).toContain("remetente_destinatario");
+    expect(prompt).toContain("não extraia esse valor da descrição");
   });
 
   it("appends column map hint when extratoColumnMap is provided", () => {
@@ -131,7 +134,7 @@ describe("buildNotebookLmExtratoPrompt", () => {
         { campo: "data", colunaIndex: 0, headerLabel: "Data" },
         { campo: "valor", colunaIndex: 1 },
         { campo: "documento", colunaIndex: 2 },
-        { campo: "nome", colunaIndex: 3 },
+        { campo: "remetente_destinatario", colunaIndex: 3 },
         { campo: "historico", colunaIndex: 4 },
       ],
     });
@@ -241,6 +244,7 @@ describe("NotebookLM Session Processor", () => {
           descricao: "DEPOSITO IDENTIFICADO MARIA",
           documento_candidato: "12345678901",
           nome_candidato: "MARIA CANDIDATA",
+          remetente_destinatario: "MARIA CANDIDATA",
           fonte_recurso: "OR",
           natureza_recurso: "0",
           tipo_origem_recurso: "PF"
@@ -317,6 +321,7 @@ describe("NotebookLM Session Processor", () => {
     expect(insertMock).toHaveBeenCalled();
     expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({
       pessoaFisicaId: "pf-maria-id",
+      remetenteDestinatario: "MARIA CANDIDATA",
     }));
     expect(upsertIngestaoPaginaMock).toHaveBeenCalledWith(
       db,

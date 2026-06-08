@@ -130,7 +130,7 @@ describe("applyDeterministicMatch", () => {
     expect(result.pessoaFisicaId).toBe(existing.id);
   });
 
-  it("matches cadastro by nome_contraparte when descricaoRaw is only CRED PIX", async () => {
+  it("matches cadastro by remetenteDestinatario when descricaoRaw is only CRED PIX", async () => {
     const movimentacaoIdNome = "mov-nome-uuid";
     const existingPf = {
       id: "pf-maria",
@@ -140,7 +140,7 @@ describe("applyDeterministicMatch", () => {
     const movNome = {
       id: movimentacaoIdNome,
       descricaoRaw: "CRED PIX",
-      nomeContraparte: "MARIA SILVA",
+      remetenteDestinatario: "MARIA SILVA",
       confiancaGlobal: 0,
       bloqueioExport: false,
       pessoaFisicaId: null,

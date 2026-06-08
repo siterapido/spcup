@@ -20,7 +20,7 @@ export const EXTRATO_COLUMN_MAP_CAMPOS_PADRAO = [
   "direcao",
   "documento",
   "cpf_cnpj",
-  "nome",
+  "remetente_destinatario",
   "historico",
   "saldo",
   "tipo_pix",
@@ -33,7 +33,7 @@ export const EXTRATO_COLUMN_MAP_CAMPOS_PADRAO = [
 export const EXTRATO_PER_PDF_REQUIRED_CAMPOS = ["data", "valor"] as const;
 
 /** Obrigatório na união de todos os PDFs (≥1 extrato cobre). */
-export const EXTRATO_SESSION_REQUIRED_CAMPOS = ["nome", "historico", "documento"] as const;
+export const EXTRATO_SESSION_REQUIRED_CAMPOS = ["remetente_destinatario", "historico", "documento"] as const;
 
 export function extratoColumnMapHasCampo(map: ExtratoColumnMap, campo: string): boolean {
   return map.colunas.some((c) => c.campo === campo);
@@ -90,7 +90,7 @@ export function validateExtratoColumnMapPerPdf(
   return validateExtratoColumnMapDirecao(map);
 }
 
-/** Valida união da sessão: nome, historico e documento em ≥1 extrato. */
+/** Valida união da sessão: remetente_destinatario, historico e documento em ≥1 extrato. */
 export function validateExtratoColumnMapsSession(
   maps: ExtratoColumnMap[],
 ): { ok: true } | { ok: false; message: string } {
@@ -137,7 +137,7 @@ export function parseExtratoColumnMap(raw: unknown): ExtratoColumnMap | null {
     }
     const e = item as Record<string, unknown>;
     const campo = String(e.campo ?? "").trim();
-    if (!campo) {
+    if (!campo || campo === "nome") {
       return null;
     }
     const colunaIndex = Number(e.colunaIndex);

@@ -7,7 +7,7 @@ import { extractStructuredFromPdf } from "./openrouter";
 
 const SAMPLE_EXTRACTION = {
   cpf: "12345678909",
-  nome: "Joao Silva",
+  remetente_destinatario: "Joao Silva",
   valor: 1000.0,
   data: "2025-03-15",
   direcao: "ENTRADA",

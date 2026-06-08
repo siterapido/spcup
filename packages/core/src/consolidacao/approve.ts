@@ -83,7 +83,7 @@ export async function approveConsolidacaoEvento(
       descricaoRaw: enrichedDescricao,
       pessoaFisicaId: evento.pessoaFisicaId,
       pessoaJuridicaId: evento.pessoaJuridicaId,
-      nomeContraparte: evento.nomeContraparte,
+      remetenteDestinatario: evento.remetenteDestinatario,
       confiancaGlobal: evento.confianca,
       origemExtracao,
       origemEnriquecimento,

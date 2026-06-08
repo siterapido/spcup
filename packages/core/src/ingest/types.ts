@@ -48,7 +48,7 @@ export interface ParsedTransactionRow {
   origemExtracao?: OrigemExtracaoV1 | null;
   /** 0–100 from dual-model pipeline; defaults to 0 in persist when omitted. */
   confiancaGlobal?: number;
-  nomeContraparte?: string;
+  remetenteDestinatario?: string | null;
 }
 
 /** Alias for ParsedTransactionRow used by pipeline helpers. */

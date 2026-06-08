@@ -55,7 +55,24 @@ describe("mapConsolidacaoEventoToLinha", () => {
     expect(linha.eventoStatus).toBe("PENDENTE");
   });
 
-  it("deriva nome da regra D (PIX com nome + completo com doc)", () => {
+  it("usa remetenteDestinatario persistido quando presente", () => {
+    const linha = mapMovimentacaoToLinha({
+      id: "m-nome",
+      dataMovimento: "2025-01-01",
+      valor: "10.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "MARIA SILVA",
+      confiancaGlobal: 0.85,
+      pessoaFisica: null,
+      pessoaJuridica: null,
+      nomeArquivo: "extrato.pdf",
+      origemExtracao: null,
+    });
+    expect(linha.remetenteDestinatario).toBe("MARIA SILVA");
+  });
+
+  it("remetenteDestinatario null sem persistencia", () => {
     const linha = mapConsolidacaoEventoToLinha({
       id: "ev-nome",
       status: "APROVADO",
@@ -82,28 +99,7 @@ describe("mapConsolidacaoEventoToLinha", () => {
         },
       ],
     });
-    expect(linha.nome).toBe("GABRIEL REIS DA SILVA");
-    expect(linha.nomeContraparte).toBeNull();
-    expect(linha.nomeDerivado).toBe(true);
-  });
-
-  it("usa nomeContraparte persistido quando presente", () => {
-    const linha = mapMovimentacaoToLinha({
-      id: "m-nome",
-      dataMovimento: "2025-01-01",
-      valor: "10.00",
-      direcao: "ENTRADA",
-      descricaoRaw: "CRED PIX",
-      nomeContraparte: "MARIA SILVA",
-      confiancaGlobal: 0.85,
-      pessoaFisica: null,
-      pessoaJuridica: null,
-      nomeArquivo: "extrato.pdf",
-      origemExtracao: null,
-    });
-    expect(linha.nome).toBe("MARIA SILVA");
-    expect(linha.nomeContraparte).toBe("MARIA SILVA");
-    expect(linha.nomeDerivado).toBe(false);
+    expect(linha.remetenteDestinatario).toBeNull();
   });
 
   it("deriveLinhaStatus: APROVADO com pessoa vira pronta", () => {
@@ -187,21 +183,22 @@ describe("mapMovimentacaoToLinha", () => {
   });
 });
 
-describe("buildResumo semNome", () => {
-  it("conta linhas sem nome efetivo", () => {
-    const comNome = mapMovimentacaoToLinha({
+describe("buildResumo semRemetenteDestinatario", () => {
+  it("conta linhas sem remetenteDestinatario persistido", () => {
+    const comRemetente = mapMovimentacaoToLinha({
       id: "m1",
       dataMovimento: "2025-01-01",
       valor: "10.00",
       direcao: "ENTRADA",
       descricaoRaw: "DEPOSITO MARIA SILVA",
+      remetenteDestinatario: "MARIA SILVA",
       confiancaGlobal: 0.85,
       pessoaFisica: null,
       pessoaJuridica: null,
       nomeArquivo: "extrato.pdf",
       origemExtracao: null,
     });
-    const semNome = mapMovimentacaoToLinha({
+    const semRemetente = mapMovimentacaoToLinha({
       id: "m2",
       dataMovimento: "2025-01-02",
       valor: "20.00",
@@ -213,7 +210,7 @@ describe("buildResumo semNome", () => {
       nomeArquivo: "extrato.pdf",
       origemExtracao: null,
     });
-    const resumo = buildResumo([comNome, semNome], false);
-    expect(resumo.semNome).toBe(1);
+    const resumo = buildResumo([comRemetente, semRemetente], false);
+    expect(resumo.semRemetenteDestinatario).toBe(1);
   });
 });

@@ -3,15 +3,25 @@ import {
   consolidacaoHipotese,
   consolidacaoLinha,
   CONSOLIDACAO_EVENTO_STATUS,
+  movimentacao,
   type Db,
 } from "@spc-up/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
-import {
-  deriveNomeContraparte,
-  isNomeContraparteVazio,
-} from "../match/nome-contraparte";
-import type { ConsolidacaoEventDraft } from "./types";
+import type { ConsolidacaoEventDraft, ConsolidacaoLinhaDraft } from "./types";
+
+function pickRemetenteDestinatarioFromFilhas(
+  linhas: ConsolidacaoLinhaDraft[],
+  remetenteByMovId: Map<string, string | null>,
+): string | null {
+  for (const linha of linhas) {
+    const remetente = remetenteByMovId.get(linha.movimentacaoId);
+    if (remetente != null && remetente.trim().length > 0) {
+      return remetente;
+    }
+  }
+  return null;
+}
 
 export async function deletePendingConsolidacaoEvents(
   db: Db,
@@ -33,6 +43,21 @@ export async function persistConsolidacaoDrafts(
   drafts: ConsolidacaoEventDraft[],
 ): Promise<string[]> {
   const ids: string[] = [];
+  const movIds = [...new Set(drafts.flatMap((d) => d.linhas.map((l) => l.movimentacaoId)))];
+  const remetenteRows =
+    movIds.length > 0
+      ? await db
+          .select({
+            id: movimentacao.id,
+            remetenteDestinatario: movimentacao.remetenteDestinatario,
+          })
+          .from(movimentacao)
+          .where(inArray(movimentacao.id, movIds))
+      : [];
+  const remetenteByMovId = new Map(
+    remetenteRows.map((r) => [r.id, r.remetenteDestinatario]),
+  );
+
   for (const draft of drafts) {
     const [evento] = await db
       .insert(consolidacaoEvento)
@@ -47,15 +72,10 @@ export async function persistConsolidacaoDrafts(
         pessoaJuridicaId: draft.pessoaJuridicaId,
         justificativa: draft.justificativa,
         origemAtributos: draft.origemAtributos,
-        nomeContraparte: (() => {
-          const nome = deriveNomeContraparte(
-            draft.linhas.map((l) => ({
-              descricaoRaw: l.descricaoRaw,
-              papel: l.papel,
-            })),
-          );
-          return isNomeContraparteVazio(nome) ? null : nome;
-        })(),
+        remetenteDestinatario: pickRemetenteDestinatarioFromFilhas(
+          draft.linhas,
+          remetenteByMovId,
+        ),
       })
       .returning({ id: consolidacaoEvento.id });
     if (!evento) {

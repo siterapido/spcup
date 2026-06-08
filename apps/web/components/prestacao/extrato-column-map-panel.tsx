@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  EXTRATO_SESSION_REQUIRED_CAMPOS,
   type ExtratoColumnMap,
   type ExtratoColumnMapEntry,
 } from "@spc-up/core/extrato-column-map";
@@ -25,7 +26,7 @@ const UI_CAMPOS = [
   "valor",
   "documento",
   "cpf_cnpj",
-  "nome",
+  "remetente_destinatario",
   "historico",
   "saldo",
   "tipo_pix",
@@ -34,7 +35,7 @@ const UI_CAMPOS = [
 ] as const;
 
 const CAMPOS_OBRIGATORIOS_POR_PDF = new Set(["data", "valor"]);
-const CAMPOS_OBRIGATORIOS_SESSAO = new Set(["nome", "historico", "documento"]);
+const CAMPOS_OBRIGATORIOS_SESSAO = new Set<string>(EXTRATO_SESSION_REQUIRED_CAMPOS);
 
 const CAMPOS_OPCIONAIS = new Set(["cpf_cnpj", "saldo", "tipo_pix", "situacao", "hora"]);
 
@@ -44,7 +45,7 @@ const CAMPO_LABELS: Record<string, string> = {
   direcao: "Direção (D/C)",
   documento: "Documento (nº lançamento)",
   cpf_cnpj: "CPF/CNPJ",
-  nome: "Nome",
+  remetente_destinatario: "Remetente/Destinatário",
   historico: "Histórico",
   saldo: "Saldo",
   tipo_pix: "Tipo de PIX",
@@ -289,7 +290,7 @@ export function ExtratoColumnMapPanel({
   const mappedByCampo = new Map(map?.colunas.map((c) => [c.campo, c]));
   const campos = useMemo(() => {
     const base: string[] = colunaDirecaoDetectada
-      ? ["data", "valor", "direcao", "documento", "cpf_cnpj", "nome", "historico", "saldo", "tipo_pix", "situacao", "hora"]
+      ? ["data", "valor", "direcao", "documento", "cpf_cnpj", "remetente_destinatario", "historico", "saldo", "tipo_pix", "situacao", "hora"]
       : [...UI_CAMPOS];
     return [...base, ...customCampos.filter((c) => !base.includes(c))];
   }, [colunaDirecaoDetectada, customCampos]);

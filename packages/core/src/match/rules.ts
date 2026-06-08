@@ -23,7 +23,7 @@ import {
   hasCpfInDescricao,
   stripDocumentsFromDescricao,
 } from "./document-in-text";
-import { extractNomeContraparte, isNomeContraparteVazio } from "./nome-contraparte";
+import { isNomeContraparteVazio } from "./nome-contraparte";
 
 export {
   findCnpjInDescricao,
@@ -292,13 +292,10 @@ export async function applyDeterministicMatch(
         : `CNPJ ${cnpj} extraido da descricao`,
     });
   } else if (cpfs.length === 0 && cnpjs.length === 0) {
-    const nomeParaMatch =
-      current.nomeContraparte && !isNomeContraparteVazio(current.nomeContraparte)
-        ? current.nomeContraparte
-        : extractNomeContraparte(current.descricaoRaw);
+    const nomeParaMatch = current.remetenteDestinatario;
 
     if (!isNomeContraparteVazio(nomeParaMatch)) {
-      const byNome = await findUniquePessoaByNome(db, nomeParaMatch);
+      const byNome = await findUniquePessoaByNome(db, nomeParaMatch!);
       if (byNome?.kind === "PF") {
         pessoaFisicaId = byNome.id;
         pessoaJuridicaId = null;

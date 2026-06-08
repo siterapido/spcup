@@ -10,22 +10,30 @@ const variants = {
     "bg-red-600 text-up-white hover:bg-red-700 focus-visible:ring-red-600",
 } as const;
 
+const sizes = {
+  default: "px-4 py-2 text-sm",
+  sm: "px-3 py-1.5 text-xs",
+} as const;
+
 const base =
-  "inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors duration-150 ease-out-quart disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+  "inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 ease-out-quart disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
 export function buttonClassName(
   variant: keyof typeof variants = "default",
   className = "",
+  size: keyof typeof sizes = "default",
 ) {
-  return `${base} ${variants[variant]} ${className}`.trim();
+  return `${base} ${sizes[size]} ${variants[variant]} ${className}`.trim();
 }
 
 export function Button({
   className = "",
   variant = "default",
+  size = "default",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: keyof typeof variants;
+  size?: keyof typeof sizes;
 }) {
-  return <button className={buttonClassName(variant, className)} {...props} />;
+  return <button className={buttonClassName(variant, className, size)} {...props} />;
 }

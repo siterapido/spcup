@@ -24,7 +24,10 @@ export const EXTRACTION_SCHEMA = {
   type: "object",
   properties: {
     cpf: { type: "string", description: "CPF digits only, 11 characters" },
-    nome: { type: "string", description: "Counterparty name from the document" },
+    remetente_destinatario: {
+      type: "string",
+      description: "Nome na coluna Remetente/Destinatário do extrato",
+    },
     valor: { type: "number", description: "Transaction amount in BRL" },
     data: { type: "string", description: "Transaction date in YYYY-MM-DD format" },
     direcao: {
@@ -33,7 +36,7 @@ export const EXTRACTION_SCHEMA = {
       description: "ENTRADA for credits, SAIDA for debits",
     },
   },
-  required: ["cpf", "nome", "valor", "data", "direcao"],
+  required: ["cpf", "remetente_destinatario", "valor", "data", "direcao"],
   additionalProperties: false,
 } as const;
 
@@ -59,7 +62,11 @@ export const EXTRATO_TRANSACTION_ITEM_SCHEMA = {
     },
     cpf: { type: ["string", "null"], description: "CPF digits only when present; otherwise null" },
     cnpj: { type: ["string", "null"], description: "CNPJ digits only when present; otherwise null" },
-    nome: { type: ["string", "null"], description: "Counterparty name when present; otherwise null" },
+    remetente_destinatario: {
+      type: ["string", "null"],
+      description:
+        "Nome na coluna Remetente/Destinatário do extrato; null se ausente. Um nome por linha.",
+    },
     documento: {
       type: ["string", "null"],
       description:
@@ -94,7 +101,7 @@ export const EXTRATO_TRANSACTION_ITEM_SCHEMA = {
     "cred_dev",
     "cpf",
     "cnpj",
-    "nome",
+    "remetente_destinatario",
     "documento",
     "pagina",
     "indice_linha",
@@ -119,13 +126,13 @@ export const EXTRATO_ARRAY_SCHEMA = {
 const KIMI_EXTRATO_SYSTEM_PROMPT =
   "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
   'Responda APENAS JSON: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
-  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos",' +
+  '"descricao":"...","cred_dev":"...","remetente_destinatario":"...","cpf":"11digitos","cnpj":"14digitos",' +
   '"documento":"12345","pagina":1,"indice_linha":1,"bbox":{"x":0,"y":0,"w":1,"h":0.05}}]}. ' +
   "Analise detalhadamente cada linha e coluna. O texto extraído de tabelas pode estar fora de ordem visual: identifique e associe corretamente a data, valor e descrição de cada movimentação. " +
   "Não pule NENHUMA transação de entrada/crédito ou saída/débito visível. " +
   "cred_dev = código da coluna Cred/Dev quando existir. Use ENTRADA para crédito e SAIDA para débito. " +
   "documento = nº do lançamento/Documento do extrato; não é CPF/CNPJ. " +
-  "cpf/cnpj só dígitos se visíveis; senão preencha nome. " +
+  "remetente_destinatario = coluna Remetente/Destinatário; cpf/cnpj só dígitos se visíveis. " +
   "pagina e indice_linha por transação; bbox normalizado 0-1 na página. " +
   "Não invente linhas.";
 
@@ -135,13 +142,13 @@ export const KIMI_EXTRATO_USER_PDF =
 const GEMINI_EXTRATO_SYSTEM_PROMPT =
   "Você extrai transações de extrato bancário brasileiro (PDF ou texto). " +
   'Responda APENAS JSON válido no schema: {"transacoes":[{"data":"YYYY-MM-DD","valor":0,"direcao":"ENTRADA|SAIDA",' +
-  '"descricao":"...","cred_dev":"...","nome":"...","cpf":"11digitos","cnpj":"14digitos",' +
+  '"descricao":"...","cred_dev":"...","remetente_destinatario":"...","cpf":"11digitos","cnpj":"14digitos",' +
   '"documento":"12345","pagina":1,"indice_linha":1,"bbox":{"x":0,"y":0,"w":1,"h":0.05}}]}. ' +
   "Analise detalhadamente cada linha e coluna. O texto extraído de tabelas pode estar fora de ordem visual: identifique e associe corretamente a data, valor e descrição de cada movimentação. " +
   "Não pule NENHUMA transação de entrada/crédito ou saída/débito visível. " +
   "cred_dev = código da coluna Cred/Dev do extrato. Use ENTRADA para crédito e SAIDA para débito. " +
   "documento = nº do lançamento/Documento do extrato; não é CPF/CNPJ. " +
-  "Preencha nome com o contraparte quando visível; cpf/cnpj só dígitos. " +
+  "Preencha remetente_destinatario da coluna Remetente/Destinatário; cpf/cnpj só dígitos. " +
   "pagina e indice_linha por transação; bbox normalizado 0-1 na página. " +
   "Não invente linhas.";
 
@@ -222,7 +229,7 @@ export function buildPayload(buffer: Buffer, filename: string, model: string): R
           {
             type: "text",
             text:
-              "Extract the main transaction from this PDF: cpf, nome, valor, " +
+              "Extract the main transaction from this PDF: cpf, remetente_destinatario, valor, " +
               "data (YYYY-MM-DD), and direcao (ENTRADA or SAIDA).",
           },
           {

@@ -104,6 +104,7 @@ describe("rowsFromExtratoTransactions", () => {
           direcao: "ENTRADA",
           descricao: "Histórico",
           cred_dev: "PIX",
+          remetente_destinatario: "Fulano Silva",
         },
       ],
     });
@@ -119,14 +120,14 @@ describe("rowsFromExtratoTransactions", () => {
           direcao: "ENTRADA",
           descricao: "PIX",
           documento: "90887766",
-          nome: "Maria",
+          remetente_destinatario: "Maria",
         },
       ],
     });
     expect(rows[0]!.nrExtratoBancario).toBe("90887766");
   });
 
-  it("keeps rows with valid CPF; nome-only lines become rows for match por nome", () => {
+  it("keeps rows with valid CPF; sem-doc lines need remetente_destinatario", () => {
     const extraction = {
       transacoes: [
         {
@@ -135,23 +136,33 @@ describe("rowsFromExtratoTransactions", () => {
           direcao: "ENTRADA",
           descricao: "Deposito",
           cpf: "39053344705",
+          remetente_destinatario: "Joao Silva",
         },
         {
           data: "2025-06-02",
           valor: 50,
           direcao: "SAIDA",
           descricao: "Sem doc",
+          remetente_destinatario: "Maria Santos",
+        },
+        {
+          data: "2025-06-03",
+          valor: 10,
+          direcao: "SAIDA",
+          descricao: "Ignorada",
         },
       ],
     };
 
     const { rows, linhasIgnoradasSemDoc } = rowsFromExtratoTransactions(extraction);
     expect(rows).toHaveLength(2);
-    expect(linhasIgnoradasSemDoc).toBe(0);
+    expect(linhasIgnoradasSemDoc).toBe(1);
     expect(rows[0]!.valor).toBe("100.00");
     expect(rows[0]!.descricaoRaw).toBe("Deposito CPF 39053344705");
+    expect(rows[0]!.remetenteDestinatario).toBe("JOAO SILVA");
     expect(rows[0]!.direcao).toBe("ENTRADA");
     expect(rows[1]!.descricaoRaw).toBe("Sem doc");
+    expect(rows[1]!.remetenteDestinatario).toBe("MARIA SANTOS");
   });
 });
 

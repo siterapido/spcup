@@ -14,6 +14,7 @@ import {
   INGESTAO_PAGINA_STATUS,
   transactionConsensusKey,
   type DualExtractCandidate,
+  type IngestaoPaginaStatus,
 } from "./dual-extract";
 import { upsertIngestaoPagina } from "./ingestao-pagina";
 import { IngestError, toIngestError } from "./errors";
@@ -361,7 +362,7 @@ export async function processarPaginaPdfExtrato(
             data: String(pend.item.data ?? ""),
             valor: pend.item.valor,
             direcao: String(pend.item.direcao ?? ""),
-            nome: String(pend.item.nome ?? pend.item.descricao ?? ""),
+            nome: String(pend.item.remetente_destinatario ?? ""),
           },
         });
       }

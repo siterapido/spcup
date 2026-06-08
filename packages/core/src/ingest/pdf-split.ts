@@ -123,7 +123,7 @@ export function dedupeExtratoTransactions(
       String(item.cred_dev ?? item.credDev ?? "").trim(),
       String(item.cpf ?? ""),
       String(item.cnpj ?? ""),
-      String(item.nome ?? "").trim(),
+      String(item.remetente_destinatario ?? "").trim(),
     ].join("|");
     if (seen.has(key)) {
       continue;

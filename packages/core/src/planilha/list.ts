@@ -12,7 +12,7 @@ import { getSessao } from "../prestacao/sessao";
 import type { OrigemExtracaoV1 } from "../provenance/types";
 import { cleanDescricao } from "./descricao";
 import { buildIngestaoResumo } from "./ingestao-resumo";
-import { buildNomeFields, mapConsolidacaoEventoToLinha } from "./map-consolidacao-linha";
+import { mapConsolidacaoEventoToLinha } from "./map-consolidacao-linha";
 import { buildResumo, deriveLinhaStatus } from "./status";
 import type {
   PlanilhaLinha,
@@ -36,7 +36,7 @@ export type MovimentacaoLinhaInput = {
   confiancaGlobal: number;
   pessoaFisica: { id: string; nome: string; cpf: string } | null;
   pessoaJuridica: { id: string; razaoSocial: string; cnpj: string } | null;
-  nomeContraparte?: string | null;
+  remetenteDestinatario?: string | null;
   nomeArquivo: string | null;
   arquivoIngestaoId?: string | null;
   origemExtracao: OrigemExtracaoV1 | null;
@@ -92,8 +92,6 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
       bbox: mov.origemExtracao?.bbox,
     },
   ];
-  const nomeFields = buildNomeFields(mov.nomeContraparte, origens);
-
   return {
     id: mov.id,
     fonte: "movimentacao",
@@ -112,7 +110,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
       extracaoConfirmada,
     }),
     pessoa,
-    ...nomeFields,
+    remetenteDestinatario: mov.remetenteDestinatario ?? null,
     origens,
     extracaoDuvidosa,
     extracaoConfirmada,
@@ -162,7 +160,7 @@ function dbMovToLinhaInput(
     confiancaGlobal: mov.confiancaGlobal,
     pessoaFisica: mov.pessoaFisica,
     pessoaJuridica: mov.pessoaJuridica,
-    nomeContraparte: mov.nomeContraparte,
+    remetenteDestinatario: mov.remetenteDestinatario,
     nomeArquivo: mov.arquivoIngestao?.nomeArquivo ?? null,
     arquivoIngestaoId: mov.arquivoIngestaoId,
     origemExtracao: (mov.origemExtracao as OrigemExtracaoV1 | null) ?? null,

@@ -221,6 +221,7 @@ export {
   type ExtratoColumnMap,
   type ExtratoColumnMapEntry,
 } from "./ingest/extrato-column-map";
+export { EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN } from "./ingest/extrato-column-map-fixtures";
 export {
   armazenarPdfIngestBuffer,
   ignorarPaginaPdfExtrato,
@@ -270,8 +271,6 @@ export {
 } from "./match/rules";
 export {
   extractNomeContraparte,
-  deriveNomeContraparte,
-  resolveNomeEffective,
   isNomeContraparteVazio,
 } from "./match/nome-contraparte";
 export {
@@ -393,7 +392,7 @@ export {
   planilhaLinhaBelongsToSessao,
   resolvePlanilhaMerge,
   updatePlanilhaLinhaPessoa,
-  updatePlanilhaLinhaNome,
+  updatePlanilhaLinhaRemetenteDestinatario,
   confirmarExtracaoPlanilhaLinha,
 } from "./planilha/mutations";
 export { isExtracaoBloqueando } from "./planilha/status";

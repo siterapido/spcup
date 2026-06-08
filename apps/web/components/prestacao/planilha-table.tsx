@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core/browser";
 import type { BboxNorm } from "@spc-up/core/browser";
 
-import { PlanilhaNomeCell } from "@/components/prestacao/planilha-nome-cell";
+import { PlanilhaRemetenteDestinatarioCell } from "@/components/prestacao/planilha-remetente-destinatario-cell";
 import { PlanilhaPessoaCell } from "@/components/prestacao/planilha-pessoa-cell";
 import {
   PlanilhaFilter,
@@ -55,17 +55,17 @@ function rowKey(linha: PlanilhaLinha): string {
   return `${linha.fonte}:${linha.id}`;
 }
 
-function linhaNome(linha: PlanilhaLinha): string {
-  return linha.nome ?? "";
+function linhaRemetenteDestinatario(linha: PlanilhaLinha): string {
+  return linha.remetenteDestinatario ?? "";
 }
 
 function matchesFilter(linha: PlanilhaLinha, filter: PlanilhaFilter): boolean {
   switch (filter) {
     case "prontas":
       return linha.status === "pronta";
-    case "sem_nome": {
-      const nome = linhaNome(linha);
-      return !nome || nome.trim().length < 3;
+    case "sem_rd": {
+      const rd = linhaRemetenteDestinatario(linha);
+      return !rd || rd.trim().length < 3;
     }
     case "sem_pessoa":
       return !linha.pessoa;
@@ -296,7 +296,7 @@ export function PlanilhaView({
               <th className="px-3 py-2">Valor</th>
               <th className="px-3 py-2">Direção</th>
               <th className="px-3 py-2">Descrição</th>
-              <th className="px-3 py-2">Nome</th>
+              <th className="px-3 py-2">Remetente/Destinatário</th>
               <th className="px-3 py-2">PF/PJ</th>
               <th className="px-3 py-2">Confiança</th>
               <th className="px-3 py-2">Origens</th>
@@ -309,7 +309,7 @@ export function PlanilhaView({
               <tr>
                 <td colSpan={12} className="px-4 py-8 text-center text-muted">
                   {filter === "prontas"
-                    ? "Nenhuma linha pronta ainda. Resolva pendências (nome/PF-PJ/confiança) para liberar a exportação."
+                    ? "Nenhuma linha pronta ainda. Resolva pendências (remetente/destinatário/PF-PJ/confiança) para liberar a exportação."
                     : "Nenhuma linha neste filtro."}
                 </td>
               </tr>
@@ -337,12 +337,11 @@ export function PlanilhaView({
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <PlanilhaNomeCell
+                      <PlanilhaRemetenteDestinatarioCell
                         sessaoId={sessaoId}
                         linhaId={linha.id}
                         fonte={linha.fonte}
-                        nome={linhaNome(linha)}
-                        nomeDerivado={linha.nomeDerivado}
+                        remetenteDestinatario={linha.remetenteDestinatario}
                         pessoaNome={linha.pessoa?.nome ?? null}
                         onUpdated={() => void refresh()}
                         disabled={busy}

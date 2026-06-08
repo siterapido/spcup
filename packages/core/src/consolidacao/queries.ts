@@ -20,7 +20,7 @@ export type ConsolidacaoListItem = {
   justificativa: string | null;
   pessoaFisicaId: string | null;
   pessoaJuridicaId: string | null;
-  nomeContraparte: string | null;
+  remetenteDestinatario: string | null;
   pessoa: {
     nome: string;
     documento: string;
@@ -99,7 +99,7 @@ export async function listConsolidacaoForSessao(
       justificativa: e.justificativa,
       pessoaFisicaId: e.pessoaFisicaId,
       pessoaJuridicaId: e.pessoaJuridicaId,
-      nomeContraparte: e.nomeContraparte,
+      remetenteDestinatario: e.remetenteDestinatario,
       pessoa: e.pessoaFisica
         ? {
             nome: e.pessoaFisica.nome,

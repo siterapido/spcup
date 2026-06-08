@@ -30,7 +30,12 @@ import {
 } from "../ingest/extrato-column-map";
 import { computeHashMovimento } from "../ingest/hash";
 import { upsertIngestaoPagina } from "../ingest/ingestao-pagina";
-import { ARQUIVO_INGESTAO_STATUS, MOVIMENTACAO_STATUS } from "../ingest/types";
+import {
+  ARQUIVO_INGESTAO_STATUS,
+  MOVIMENTACAO_DIRECAO,
+  MOVIMENTACAO_STATUS,
+  type ParsedTransactionRow,
+} from "../ingest/types";
 import { normalizeName } from "../normalize";
 import { readArquivoIngestaoBuffer } from "../storage/read-arquivo";
 import type { ProcessSessaoResult, ProcessPdfArquivoResult } from "./process-sessao";
@@ -84,6 +89,8 @@ Tabela de Códigos SPCA para Referência:
 - CA: Comercialização
 - NI: Não Identificado
 
+Preencha remetente_destinatario somente a partir da coluna mapeada como remetente_destinatario (quando informada no layout de colunas); não extraia esse valor da descrição.
+
 Extraia também os metadados de saldos do extrato bancário.
 Retorne APENAS um objeto JSON válido (sem explicações ou marcações markdown como \`\`\`json). O objeto deve ter o seguinte formato exato:
 {
@@ -99,6 +106,7 @@ Retorne APENAS um objeto JSON válido (sem explicações ou marcações markdown
       "descricao": "Descrição original da transação",
       "documento_candidato": "CPF ou CNPJ do candidato correspondente (somente números, ou null)",
       "nome_candidato": "Nome ou Razão Social do candidato correspondente (ou null)",
+      "remetente_destinatario": "Nome da coluna Remetente/Destinatário (ou null)",
       "fonte_recurso": "Código da fonte de recurso (ex: 'FP', 'OR', 'RC', 'FEFC' ou null)",
       "natureza_recurso": "Código da natureza de recurso (ex: '0', '1' ou null)",
       "tipo_origem_recurso": "Código do tipo de origem do recurso (ex: 'CE', 'CF', 'PF', 'PJ', 'PP', 'CA', 'NI' ou null)"
@@ -118,6 +126,7 @@ interface NotebookLmTx {
   descricao: string;
   documento_candidato: string | null;
   nome_candidato: string | null;
+  remetente_destinatario: string | null;
   fonte_recurso: string | null;
   natureza_recurso: string | null;
   tipo_origem_recurso: string | null;
@@ -134,6 +143,8 @@ interface NotebookLmPayload {
 interface NameCandidate {
   id: string;
   nome: string;
+  cpf?: string;
+  cnpj?: string;
 }
 
 function cleanJsonResponse(response: string): string {
@@ -276,11 +287,16 @@ async function persistNotebookLmTransactions(
       }
     }
 
-    const hashInput = {
+    const hashInput: ParsedTransactionRow = {
       dataMovimento: new Date(tx.data),
       valor: tx.valor.toFixed(2),
       descricaoRaw: tx.descricao,
-      direcao: tx.direcao === "CREDITO" ? "ENTRADA" : "SAIDA",
+      direcao:
+        tx.direcao === "CREDITO"
+          ? MOVIMENTACAO_DIRECAO.ENTRADA
+          : MOVIMENTACAO_DIRECAO.SAIDA,
+      nrExtratoBancario: null,
+      credDev: null,
     };
 
     const hash = computeHashMovimento(
@@ -309,6 +325,10 @@ async function persistNotebookLmTransactions(
         status: MOVIMENTACAO_STATUS.PENDENTE_REVISAO,
         confiancaGlobal: 0.95,
         hashMovimento: hash,
+        remetenteDestinatario: (() => {
+          const rd = tx.remetente_destinatario?.trim() ?? "";
+          return rd.length >= 3 ? normalizeName(rd) : null;
+        })(),
       })
       .onConflictDoNothing()
       .returning();

@@ -324,7 +324,7 @@ describe("extrato extraction (OpenRouter)", () => {
     expect(body.plugins).toBeUndefined();
   });
 
-  it("copies long descricao to nome when nome missing", async () => {
+  it("copies long descricao to remetente_destinatario when missing", async () => {
     process.env.OPENROUTER_CACHE = "0";
     const mockFetch = vi.fn().mockResolvedValue(
       mockOpenRouterResponse({
@@ -345,7 +345,7 @@ describe("extrato extraction (OpenRouter)", () => {
       model: "google/gemini-3.5-flash",
     });
 
-    expect(result.transacoes[0]?.nome).toBe("GABRIEL REIS DA SILVA");
+    expect(result.transacoes[0]?.remetente_destinatario).toBe("GABRIEL REIS DA SILVA");
   });
 
   it("infers cred_dev from short bank codes in descricao", async () => {
@@ -370,10 +370,10 @@ describe("extrato extraction (OpenRouter)", () => {
     });
 
     expect(result.transacoes[0]?.cred_dev).toBe("CRED TEV");
-    expect(result.transacoes[0]?.nome).toBeUndefined();
+    expect(result.transacoes[0]?.remetente_destinatario).toBeUndefined();
   });
 
-  it("does not copy short bank codes to nome", async () => {
+  it("does not copy short bank codes to remetente_destinatario", async () => {
     process.env.OPENROUTER_CACHE = "0";
     const mockFetch = vi.fn().mockResolvedValue(
       mockOpenRouterResponse({
@@ -394,7 +394,7 @@ describe("extrato extraction (OpenRouter)", () => {
       model: "google/gemini-3.5-flash",
     });
 
-    expect(result.transacoes[0]?.nome).toBeUndefined();
+    expect(result.transacoes[0]?.remetente_destinatario).toBeUndefined();
   });
 
   it("uses json_object response_format for Kimi PDF extrato", async () => {

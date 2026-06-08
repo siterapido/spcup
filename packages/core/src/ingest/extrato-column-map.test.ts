@@ -12,7 +12,7 @@ const validColunas = [
   { campo: "data", colunaIndex: 0 },
   { campo: "valor", colunaIndex: 1 },
   { campo: "documento", colunaIndex: 2 },
-  { campo: "nome", colunaIndex: 3 },
+  { campo: "remetente_destinatario", colunaIndex: 3 },
   { campo: "historico", colunaIndex: 4 },
 ];
 
@@ -45,14 +45,14 @@ describe("validateExtratoColumnMap", () => {
     expect(r.ok).toBe(false);
   });
 
-  it("rejects missing nome on single map", () => {
+  it("rejects missing remetente_destinatario on single map", () => {
     const r = validateExtratoColumnMap({
       paginaReferencia: 1,
       inferirDirecaoDoValor: true,
-      colunas: validColunas.filter((c) => c.campo !== "nome"),
+      colunas: validColunas.filter((c) => c.campo !== "remetente_destinatario"),
     });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toContain("nome");
+    if (!r.ok) expect(r.message).toContain("remetente_destinatario");
   });
 
   it("rejects missing historico on single map", () => {
@@ -114,7 +114,7 @@ describe("validateExtratoColumnMapPerPdf", () => {
       colunas: [
         { campo: "data", colunaIndex: 0 },
         { campo: "valor", colunaIndex: 1 },
-        { campo: "nome", colunaIndex: 2 },
+        { campo: "remetente_destinatario", colunaIndex: 2 },
       ],
     });
     expect(r.ok).toBe(true);
@@ -138,7 +138,7 @@ describe("validateExtratoColumnMapsSession", () => {
     colunas: [
       { campo: "data", colunaIndex: 0 },
       { campo: "valor", colunaIndex: 1 },
-      { campo: "nome", colunaIndex: 2 },
+      { campo: "remetente_destinatario", colunaIndex: 2 },
     ],
   };
 
@@ -216,7 +216,7 @@ describe("parseExtratoColumnMap", () => {
       colunas: [
         { campo: "data", colunaIndex: 0 },
         { campo: "valor", colunaIndex: 1 },
-        { campo: "nome", colunaIndex: 2 },
+        { campo: "remetente_destinatario", colunaIndex: 2 },
       ],
     });
     expect(m?.colunas).toHaveLength(3);
@@ -234,5 +234,38 @@ describe("parseExtratoColumnMap", () => {
   it("returns null for invalid", () => {
     expect(parseExtratoColumnMap(null)).toBeNull();
     expect(parseExtratoColumnMap({ paginaReferencia: 2 })).toBeNull();
+  });
+
+  it("rejects legacy campo nome", () => {
+    expect(
+      parseExtratoColumnMap({
+        paginaReferencia: 1,
+        inferirDirecaoDoValor: true,
+        colunas: [
+          { campo: "data", colunaIndex: 0 },
+          { campo: "valor", colunaIndex: 1 },
+          { campo: "nome", colunaIndex: 2 },
+        ],
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("validateExtratoColumnMapsSession remetente_destinatario", () => {
+  it("rejects when remetente_destinatario missing from all maps", () => {
+    const r = validateExtratoColumnMapsSession([
+      {
+        paginaReferencia: 1,
+        inferirDirecaoDoValor: true,
+        colunas: [
+          { campo: "data", colunaIndex: 0 },
+          { campo: "valor", colunaIndex: 1 },
+          { campo: "documento", colunaIndex: 2 },
+          { campo: "historico", colunaIndex: 3 },
+        ],
+      },
+    ]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toContain("remetente_destinatario");
   });
 });

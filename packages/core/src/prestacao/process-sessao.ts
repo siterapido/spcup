@@ -14,6 +14,7 @@ export type ProcessPdfArquivoResult = {
   arquivoId: string;
   nome: string;
   paginas: ProcessarPaginaPdfResult[];
+  movimentacoes_criadas?: number;
   erro?: string;
 };
 

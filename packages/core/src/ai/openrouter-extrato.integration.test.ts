@@ -100,8 +100,10 @@ describe.runIf(runIntegration).sequential("Gemini extrato (integration)", () => 
 
       if (filename.includes("PIX")) {
         expect(result.transacoes.length).toBeGreaterThanOrEqual(30);
-        const withNome = result.transacoes.filter((t) => String(t.nome ?? "").trim()).length;
-        expect(withNome).toBeGreaterThanOrEqual(Math.floor(result.transacoes.length * 0.9));
+        const withRd = result.transacoes.filter((t) =>
+          String(t.remetente_destinatario ?? "").trim(),
+        ).length;
+        expect(withRd).toBeGreaterThanOrEqual(Math.floor(result.transacoes.length * 0.9));
         expect(callCount()).toBe(1);
       }
 
@@ -174,14 +176,14 @@ describe.runIf(runIntegration).sequential("Reviewer scoring (integration)", () =
         valor: 150.0,
         direcao: "ENTRADA",
         descricao: "PIX RECEBIDO JOAO SILVA",
-        nome: "JOAO SILVA",
+        remetente_destinatario: "JOAO SILVA",
       },
       {
         data: "2025-01-30",
         valor: 999.0,
         direcao: "SAIDA",
         descricao: "PIX RECEBIDO JOAO SILVA",
-        nome: "JOAO SILVA",
+        remetente_destinatario: "JOAO SILVA",
       }
     ];
 

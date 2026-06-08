@@ -4,7 +4,10 @@ import { consolidacaoEvento, movimentacao } from "@spc-up/db";
 
 import { loadCadastroMatchContext } from "../consolidacao/load";
 import { applyDeterministicMatch } from "../match/rules";
-import { resolvePlanilhaMerge, updatePlanilhaLinhaNome } from "./mutations";
+import {
+  resolvePlanilhaMerge,
+  updatePlanilhaLinhaRemetenteDestinatario,
+} from "./mutations";
 
 vi.mock("../match/rules", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../match/rules")>();
@@ -42,7 +45,7 @@ describe("resolvePlanilhaMerge", () => {
   });
 });
 
-describe("updatePlanilhaLinhaNome", () => {
+describe("updatePlanilhaLinhaRemetenteDestinatario", () => {
   it("movimentacao sem PF/PJ dispara applyDeterministicMatch", async () => {
     const updateWhere = vi.fn().mockResolvedValue(undefined);
     const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
@@ -61,10 +64,17 @@ describe("updatePlanilhaLinhaNome", () => {
       },
     } as never;
 
-    await updatePlanilhaLinhaNome(db, "mov-1", "movimentacao", "MARIA SILVA");
+    await updatePlanilhaLinhaRemetenteDestinatario(
+      db,
+      "mov-1",
+      "movimentacao",
+      "MARIA SILVA",
+    );
 
     expect(updateFn).toHaveBeenCalledWith(movimentacao);
-    expect(updateSet).toHaveBeenCalledWith({ nomeContraparte: "MARIA SILVA" });
+    expect(updateSet).toHaveBeenCalledWith({
+      remetenteDestinatario: "MARIA SILVA",
+    });
     expect(applyDeterministicMatch).toHaveBeenCalledWith(db, "mov-1");
   });
 
@@ -87,7 +97,12 @@ describe("updatePlanilhaLinhaNome", () => {
     } as never;
 
     vi.mocked(applyDeterministicMatch).mockClear();
-    await updatePlanilhaLinhaNome(db, "mov-1", "movimentacao", "OUTRO NOME");
+    await updatePlanilhaLinhaRemetenteDestinatario(
+      db,
+      "mov-1",
+      "movimentacao",
+      "OUTRO NOME",
+    );
 
     expect(applyDeterministicMatch).not.toHaveBeenCalled();
   });
@@ -106,7 +121,7 @@ describe("updatePlanilhaLinhaNome", () => {
       .fn()
       .mockResolvedValueOnce({ pessoaFisicaId: null, pessoaJuridicaId: null })
       .mockResolvedValueOnce({
-        nomeContraparte: "MARIA SILVA",
+        remetenteDestinatario: "MARIA SILVA",
         linhas: [
           {
             papel: "COMPLETO",
@@ -137,10 +152,17 @@ describe("updatePlanilhaLinhaNome", () => {
       },
     } as never;
 
-    await updatePlanilhaLinhaNome(db, "ev-1", "consolidacao", "MARIA SILVA");
+    await updatePlanilhaLinhaRemetenteDestinatario(
+      db,
+      "ev-1",
+      "consolidacao",
+      "MARIA SILVA",
+    );
 
     expect(updateFn).toHaveBeenCalledWith(consolidacaoEvento);
-    expect(updateSet).toHaveBeenCalledWith({ nomeContraparte: "MARIA SILVA" });
+    expect(updateSet).toHaveBeenCalledWith({
+      remetenteDestinatario: "MARIA SILVA",
+    });
     expect(updateFn).toHaveBeenCalledTimes(2);
     expect(updateSet).toHaveBeenLastCalledWith({
       pessoaFisicaId: "pf-maria",
@@ -168,8 +190,13 @@ describe("updatePlanilhaLinhaNome", () => {
       },
     } as never;
 
-    await updatePlanilhaLinhaNome(db, "mov-1", "movimentacao", "  ");
+    await updatePlanilhaLinhaRemetenteDestinatario(
+      db,
+      "mov-1",
+      "movimentacao",
+      "  ",
+    );
 
-    expect(updateSet).toHaveBeenCalledWith({ nomeContraparte: null });
+    expect(updateSet).toHaveBeenCalledWith({ remetenteDestinatario: null });
   });
 });

@@ -40,12 +40,7 @@ export type PlanilhaLinha = {
   confianca: number;
   status: PlanilhaLinhaStatus;
   pessoa: PlanilhaPessoa | null;
-  /** Nome efetivo para exibição (persistido ou derivado) */
-  nome: string;
-  /** Valor persistido em nome_contraparte; null = só derivado */
-  nomeContraparte: string | null;
-  /** true quando nome vem só da derivação das origens */
-  nomeDerivado: boolean;
+  remetenteDestinatario: string | null;
   origens: PlanilhaOrigem[];
   /** Metadados internos para deriveLinhaStatus / escrita */
   eventoStatus?: string;
@@ -58,7 +53,7 @@ export type PlanilhaResumo = {
   total: number;
   prontas: number;
   semPessoa: number;
-  semNome: number;
+  semRemetenteDestinatario: number;
   baixaConfianca: number;
   mergePendente: number;
   extracaoDuvidosa: number;

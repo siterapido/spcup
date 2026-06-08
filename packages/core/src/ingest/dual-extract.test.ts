@@ -57,14 +57,14 @@ describe("partitionDualTransactions", () => {
   const base = { data: "2025-03-01", valor: "100.00", direcao: "SAIDA" };
 
   it("places matching keys in consenso", () => {
-    const primary = [{ ...base, nome: "A" }];
-    const secondary = [{ ...base, nome: "Alice Longer Name" }];
+    const primary = [{ ...base, remetente_destinatario: "A" }];
+    const secondary = [{ ...base, remetente_destinatario: "Alice Longer Name" }];
     const { consenso, divergentes } = partitionDualTransactions(primary, secondary);
     expect(consenso).toHaveLength(1);
     expect(consenso[0]?.consenso).toBe(true);
     expect(consenso[0]?.score).toBe(100);
     expect(consenso[0]?.modeloOrigem).toBe("consenso");
-    expect(String(consenso[0]?.item.nome)).toBe("Alice Longer Name");
+    expect(String(consenso[0]?.item.remetente_destinatario)).toBe("Alice Longer Name");
     expect(divergentes).toHaveLength(0);
   });
 

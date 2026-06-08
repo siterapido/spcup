@@ -226,7 +226,7 @@ export const movimentacao = pgTable(
     valor: numeric("valor", { precision: 15, scale: 2 }).notNull(),
     dataMovimento: date("data_movimento").notNull(),
     descricaoRaw: text("descricao_raw").notNull(),
-    nomeContraparte: varchar("nome_contraparte", { length: 255 }),
+    remetenteDestinatario: varchar("remetente_destinatario", { length: 255 }),
     /** Código coluna Cred/Dev do extrato (ex. CRED TEV, PIX). */
     credDev: varchar("cred_dev", { length: 128 }),
     nrExtratoBancario: varchar("nr_extrato_bancario", { length: 64 }),
@@ -282,7 +282,7 @@ export const consolidacaoEvento = pgTable(
     valor: numeric("valor", { precision: 15, scale: 2 }).notNull(),
     direcao: varchar("direcao", { length: 10 }).notNull(),
     confianca: real("confianca").notNull(),
-    nomeContraparte: varchar("nome_contraparte", { length: 255 }),
+    remetenteDestinatario: varchar("remetente_destinatario", { length: 255 }),
     pessoaFisicaId: uuid("pessoa_fisica_id").references(() => pessoaFisica.id),
     pessoaJuridicaId: uuid("pessoa_juridica_id").references(() => pessoaJuridica.id),
     movimentacaoCanonicaId: uuid("movimentacao_canonica_id").references(() => movimentacao.id),

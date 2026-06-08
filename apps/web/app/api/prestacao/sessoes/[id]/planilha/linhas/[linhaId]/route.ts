@@ -1,7 +1,7 @@
 import {
   planilhaLinhaBelongsToSessao,
-  updatePlanilhaLinhaNome,
   updatePlanilhaLinhaPessoa,
+  updatePlanilhaLinhaRemetenteDestinatario,
 } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 import { revalidatePath } from "next/cache";
@@ -15,7 +15,7 @@ const bodySchema = z.object({
   pessoaFisicaId: z.string().uuid().optional(),
   pessoaJuridicaId: z.string().uuid().optional(),
   limparPessoa: z.literal(true).optional(),
-  nomeContraparte: z.string().max(255).nullable().optional(),
+  remetenteDestinatario: z.string().max(255).nullable().optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string; linhaId: string }> };
@@ -33,15 +33,20 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const db = getDb();
-  const { fonte, nomeContraparte: _nomeContraparte, ...pessoa } = body;
+  const { fonte, remetenteDestinatario: _remetenteDestinatario, ...pessoa } = body;
   const belongs = await planilhaLinhaBelongsToSessao(db, id, linhaId, fonte);
   if (!belongs) {
     return NextResponse.json({ error: "Linha não encontrada" }, { status: 404 });
   }
 
   try {
-    if ("nomeContraparte" in body) {
-      await updatePlanilhaLinhaNome(db, linhaId, fonte, body.nomeContraparte ?? null);
+    if ("remetenteDestinatario" in body) {
+      await updatePlanilhaLinhaRemetenteDestinatario(
+        db,
+        linhaId,
+        fonte,
+        body.remetenteDestinatario ?? null,
+      );
     }
     if (body.pessoaFisicaId || body.pessoaJuridicaId || body.limparPessoa) {
       await updatePlanilhaLinhaPessoa(db, linhaId, fonte, pessoa);
