@@ -338,4 +338,9 @@ export {
 } from "./planilha/list";
 export type { PlanilhaLinha, PlanilhaPayload, PlanilhaResumo } from "./planilha/types";
 export { isLinhaPronta, buildResumo, deriveLinhaStatus } from "./planilha/status";
+export {
+  applyPlanilhaLote,
+  resolvePlanilhaMerge,
+  updatePlanilhaLinhaPessoa,
+} from "./planilha/mutations";
 
