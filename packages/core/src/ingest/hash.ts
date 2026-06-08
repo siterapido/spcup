@@ -16,6 +16,7 @@ export function computeHashMovimento(
   cnpjPrestador: string,
   exercicio: number,
   row: ParsedTransactionRow,
+  discriminador = "",
 ): string {
   const payload = [
     cnpjPrestador,
@@ -26,6 +27,7 @@ export function computeHashMovimento(
     row.direcao,
     row.credDev ?? "",
     row.nrExtratoBancario ?? "",
+    discriminador,
   ].join("|");
   return createHash("sha256").update(payload, "utf8").digest("hex");
 }
