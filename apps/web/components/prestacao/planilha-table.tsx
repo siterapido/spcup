@@ -343,6 +343,7 @@ export function PlanilhaView({
                         fonte={linha.fonte}
                         nome={linhaNome(linha)}
                         nomeDerivado={linha.nomeDerivado}
+                        pessoaNome={linha.pessoa?.nome ?? null}
                         onUpdated={() => void refresh()}
                         disabled={busy}
                       />
