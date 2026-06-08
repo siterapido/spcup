@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default async function ConsolidacaoPage({
+export default async function MovimentacoesPage({
   params,
 }: {
   params: Promise<{ sessaoId: string }>;

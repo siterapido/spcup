@@ -265,22 +265,12 @@ export function SessoesList({
                   </Badge>
                 </Td>
                 <Td className="text-right">
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Link
-                      href={`/prestacao/${s.id}/kanban`}
-                      className="text-sm font-medium text-up-black underline"
-                    >
-                      Movimentações
-                    </Link>
-                    {s.consolidarExtratos ? (
-                      <Link
-                        href={`/prestacao/${s.id}/consolidacao`}
-                        className="text-sm font-medium text-up-black underline"
-                      >
-                        Consolidação
-                      </Link>
-                    ) : null}
-                  </div>
+                  <Link
+                    href={`/prestacao/${s.id}/planilha`}
+                    className="text-sm font-medium text-up-black underline"
+                  >
+                    Planilha
+                  </Link>
                 </Td>
               </tr>
             ))}

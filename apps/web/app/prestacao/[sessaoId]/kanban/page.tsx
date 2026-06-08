@@ -1,14 +1,10 @@
-import { MovimentacoesList } from "@/components/prestacao/movimentacoes-list";
+import { redirect } from "next/navigation";
 
-export default async function MovimentacoesPage({
+export default async function KanbanPage({
   params,
 }: {
   params: Promise<{ sessaoId: string }>;
 }) {
   const { sessaoId } = await params;
-  return (
-    <main className="mx-auto max-w-[1400px] px-4 py-8">
-      <MovimentacoesList sessaoId={sessaoId} />
-    </main>
-  );
+  redirect(`/prestacao/${sessaoId}/planilha`);
 }
