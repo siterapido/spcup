@@ -10,6 +10,7 @@ const uploadFileToNotebookMock = vi.fn();
 const queryNotebookMock = vi.fn();
 const deleteSourceMock = vi.fn();
 const listSourcesMock = vi.fn();
+const resolveQuerySourceIdsMock = vi.fn();
 const consolidateMock = vi.fn();
 const readBufferMock = vi.fn();
 const upsertPessoaMock = vi.fn();
@@ -24,6 +25,7 @@ vi.mock("../ai/notebooklm", () => ({
   queryNotebook: (...args: any[]) => queryNotebookMock(...args),
   deleteSource: (...args: any[]) => deleteSourceMock(...args),
   listSources: (...args: any[]) => listSourcesMock(...args),
+  resolveQuerySourceIds: (...args: any[]) => resolveQuerySourceIdsMock(...args),
 }));
 
 vi.mock("../consolidacao/run", () => ({
@@ -155,6 +157,7 @@ describe("NotebookLM Session Processor", () => {
     process.env.USE_NOTEBOOKLM = "true";
     vi.clearAllMocks();
     listSourcesMock.mockResolvedValue([]);
+    resolveQuerySourceIdsMock.mockReturnValue(["source-pdf", "source-cadastro"]);
     upsertIngestaoPaginaMock.mockResolvedValue(undefined);
   });
 

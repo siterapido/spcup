@@ -378,9 +378,12 @@ export {
   uploadFileToNotebook,
   syncCandidateFolder,
   syncRulesFolder,
+  parseNlmCliOutput,
+  resolveQuerySourceIds,
   type NlmNotebook,
   type NlmSource,
   type NlmQueryResponse,
+  type QueryNotebookOptions,
 } from "./ai/notebooklm";
 
 export {

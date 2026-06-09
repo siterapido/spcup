@@ -20,6 +20,7 @@ import {
   queryNotebook,
   deleteSource,
   listSources,
+  resolveQuerySourceIds,
 } from "../ai/notebooklm";
 import { upsertPessoa } from "../cadastro/upsert";
 import { consolidateSession } from "../consolidacao/run";
@@ -590,12 +591,14 @@ export async function processSessaoWithNotebookLM(
           })
           .where(eq(arquivoIngestao.id, arq.arquivoId));
 
+        const notebookPdfName = notebookSourceFileName(arq.arquivoId, arq.nome);
+        const sources = await listSources(notebookId);
+        const sourceIds = resolveQuerySourceIds(sources, notebookPdfName);
+
         const res = await queryNotebook(
           notebookId,
-          buildNotebookLmExtratoPrompt(
-            notebookSourceFileName(arq.arquivoId, arq.nome),
-            columnMap,
-          ),
+          buildNotebookLmExtratoPrompt(notebookPdfName, columnMap),
+          { sourceIds },
         );
         const cleanJson = cleanJsonResponse(res.answer);
 
