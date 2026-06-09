@@ -118,7 +118,7 @@ export function SessoesList({
         : `Excluir ${ids.length} prestações selecionadas?`;
     if (
       !window.confirm(
-        `${label}\n\nA prestação sai da lista e as movimentações vinculadas são ocultadas. Prestações com movimentações já exportadas não podem ser excluídas.`,
+        `${label}\n\nA prestação e os dados vinculados (movimentações, arquivos, consolidação) serão apagados do banco. Prestações com movimentações já exportadas não podem ser excluídas.`,
       )
     ) {
       return;

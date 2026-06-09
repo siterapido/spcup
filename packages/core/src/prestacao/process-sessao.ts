@@ -7,6 +7,7 @@ import {
   type ProcessarPaginaPdfResult,
 } from "../ingest/pdf-pagina";
 import type { ExtratoColumnMap } from "../ingest/extrato-column-map";
+import type { ExtratoModeloId } from "../ingest/extrato-modelo";
 import { ARQUIVO_INGESTAO_STATUS, type PrestadorContext } from "../ingest/types";
 import { getSessao, prestadorFromSessao } from "./sessao";
 
@@ -60,6 +61,7 @@ import { processSessaoWithNotebookLM } from "./process-sessao-notebooklm";
 export type ProcessSessaoPdfOptions = {
   skipConsolidacao?: boolean;
   extratoColumnMaps?: Record<string, ExtratoColumnMap>;
+  extratoModeloIds?: Record<string, ExtratoModeloId>;
 };
 
 export async function processSessaoPdfArquivos(

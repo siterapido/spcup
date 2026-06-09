@@ -121,6 +121,7 @@ export async function persistTransactions(
         hashMovimento: computeHashMovimento(prestador.cnpjPrestador, exercicio, row),
         origemExtracao: row.origemExtracao ?? null,
         remetenteDestinatario: row.remetenteDestinatario ?? null,
+        camposExtracao: row.camposExtracao ?? {},
       })
       .onConflictDoNothing()
       .returning();

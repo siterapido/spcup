@@ -99,6 +99,13 @@
       "when": 1781125200000,
       "tag": "0013_remetente_destinatario",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1781211600000,
+      "tag": "0014_campos_extracao",
+      "breakpoints": true
     }
   ]
 }

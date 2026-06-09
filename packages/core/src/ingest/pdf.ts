@@ -21,6 +21,7 @@ import { origemFromExtratoItem } from "../provenance/attach-extracao";
 import { getPdfPageCount } from "./pdf-split";
 import { extractPdfText } from "./pdf-text";
 import { persistTransactions } from "./ofx";
+import { buildCamposExtracaoFromExtratoItem, type CamposExtracao } from "./campos-extracao";
 import {
   MOVIMENTACAO_DIRECAO,
   type MovimentacaoDirecao,
@@ -97,6 +98,7 @@ function rowFromExtratoItemSemDoc(item: Record<string, unknown>): ParsedTransact
     credDev: credDevFromExtratoItem(item),
     nrExtratoBancario: nrExtratoBancarioFromExtratoItem(item),
     remetenteDestinatario: normalizeName(rd),
+    camposExtracao: buildCamposExtracaoFromExtratoItem(item),
   };
 }
 
@@ -143,6 +145,7 @@ export function rowFromExtratoItem(
     credDev: credDevFromExtratoItem(item),
     nrExtratoBancario: nrExtratoBancarioFromExtratoItem(item),
     remetenteDestinatario: rd.length >= 3 ? normalizeName(rd) : null,
+    camposExtracao: buildCamposExtracaoFromExtratoItem(item),
   };
 }
 
@@ -327,6 +330,7 @@ export function rowFromExtraction(
     credDev: null,
     nrExtratoBancario: null,
     remetenteDestinatario: rd.length >= 3 ? normalizeName(rd) : null,
+    camposExtracao: buildCamposExtracaoFromExtratoItem(extracted),
   };
 }
 

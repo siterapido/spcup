@@ -1,6 +1,7 @@
 import type { CadastroLinkTier } from "../match/cadastro-link";
 import type { NomeCadastroComparacao } from "../match/nome-cadastro";
 import type { OrigemExtracaoV1, BboxNorm } from "../provenance/types";
+import type { CamposExtracao } from "../ingest/campos-extracao";
 
 export type PlanilhaLinhaStatus =
   | "pronta"
@@ -28,6 +29,7 @@ export type PlanilhaOrigem = {
   origemExtracao?: OrigemExtracaoV1 | null;
   indiceLinha?: number;
   bbox?: BboxNorm;
+  camposExtracao?: CamposExtracao | null;
 };
 
 export type PlanilhaLinha = {
@@ -51,6 +53,7 @@ export type PlanilhaLinha = {
   extracaoConfirmada: boolean;
   cadastroLinkTier?: CadastroLinkTier | null;
   comparacaoNome?: NomeCadastroComparacao | null;
+  camposExtracao: CamposExtracao;
 };
 
 export type PlanilhaResumo = {
@@ -97,8 +100,9 @@ export type IngestaoResumo = {
 };
 
 export type PlanilhaPayload = {
-  sessao: { id: string; uf: string; exercicio: number };
+  sessao: { id: string; uf: string; exercicio: number; mesReferencia?: string | null };
   linhas: PlanilhaLinha[];
   resumo: PlanilhaResumo;
   ingestaoResumo: IngestaoResumo;
+  colunas: string[];
 };

@@ -27,6 +27,7 @@ export function planilhaLinhaFromEvento(evento: ConsolidacaoEventoRow): Planilha
       nomeArquivo: l.nomeArquivo,
       arquivoIngestaoId: l.arquivoIngestaoId,
       origemExtracao: l.origemExtracao,
+      camposExtracao: l.camposExtracao || null,
     })),
   });
 }

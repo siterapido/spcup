@@ -40,9 +40,13 @@ function hasXmllint(): boolean {
 
 const xmllintAvailable = hasXmllint();
 
-vi.mock("@spc-up/db", () => ({
-  getDb: vi.fn(() => ({})),
-}));
+vi.mock("@spc-up/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@spc-up/db")>();
+  return {
+    ...actual,
+    getDb: vi.fn(() => ({})),
+  };
+});
 
 describe("CLI program", () => {
   it("lists ingest and validate-xsd in root help", () => {

@@ -72,6 +72,15 @@ export {
 } from "./ingest/errors";
 export { ingestLog, type IngestFase, type IngestLogFields } from "./ingest/log";
 export {
+  buildCamposExtracaoFromExtratoItem,
+  buildCamposExtracaoFromNotebookTx,
+  campoExtracao,
+  espelharCamposLegados,
+  mergeCamposExtracao,
+  type CamposExtracao,
+  type MovimentacaoCamposLike,
+} from "./ingest/campos-extracao";
+export {
   createSessao,
   getSessao,
   prestadorFromSessao,
@@ -227,7 +236,14 @@ export {
 export {
   EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN,
   EXTRATO_COLUMN_MAP_PIX_6COL,
+  EXTRATO_COLUMN_MAP_CAIXA_TOTAL_JAN,
 } from "./ingest/extrato-column-map-fixtures";
+export {
+  type ExtratoModeloId,
+  EXTRATO_MODELO_LABELS,
+  detectExtratoModeloFromFilename,
+  extratoColumnMapForModelo,
+} from "./ingest/extrato-modelo";
 export {
   armazenarPdfIngestBuffer,
   ignorarPaginaPdfExtrato,
@@ -372,6 +388,11 @@ export {
   mapConsolidacaoEventoToLinha,
   mapMovimentacaoToLinha,
 } from "./planilha/list";
+export {
+  PLANILHA_COLUNA_ORDER,
+  colunasFromModelos,
+  colunasFromCamposUnion,
+} from "./planilha/colunas-sessao";
 export type {
   IngestaoResumo,
   IngestaoResumoArquivo,

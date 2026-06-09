@@ -59,6 +59,7 @@ export function deriveLinhaStatus(input: {
     origens: [],
     extracaoDuvidosa: input.extracaoDuvidosa,
     extracaoConfirmada: input.extracaoConfirmada,
+    camposExtracao: {},
   };
   return isLinhaPronta(draft) ? "pronta" : "pendente";
 }

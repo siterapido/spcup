@@ -75,7 +75,26 @@ export function PdfOrigemPainel({
   }, [arquivoIngestaoId, paginaInicial, bboxProp, highlightModeProp]);
 
   useEffect(() => {
-    if (bboxProp || textLoading || textError || paginas.length === 0) {
+    if (bboxProp) {
+      return;
+    }
+
+    if (textLoading) {
+      return;
+    }
+
+    // Se houver erro de extração ou nenhuma página de texto, tenta o fallback pelo indiceLinha
+    if (textError || paginas.length === 0 || paginas.every((p) => p.itens.length === 0)) {
+      if (indiceLinha != null && indiceLinha > 0) {
+        const isPage1 = paginaInicial === 1;
+        const yStart = isPage1 ? 0.35 : 0.15;
+        const rowHeight = 0.04;
+        const y = Math.min(0.95, yStart + (indiceLinha - 1) * rowHeight);
+        setBboxAtual({ x: 0.02, y, w: 0.96, h: rowHeight });
+        setHighlightModeAtual("estimada");
+      } else {
+        setHighlightModeAtual("none");
+      }
       return;
     }
 
@@ -101,13 +120,24 @@ export function PdfOrigemPainel({
         return;
       }
 
+      // Fallback caso a heurística de texto não encontre nada, mas temos o indiceLinha
+      if (indiceLinha != null && indiceLinha > 0) {
+        const isPage1 = paginaInicial === 1;
+        const yStart = isPage1 ? 0.35 : 0.15;
+        const rowHeight = 0.04;
+        const y = Math.min(0.95, yStart + (indiceLinha - 1) * rowHeight);
+        setBboxAtual({ x: 0.02, y, w: 0.96, h: rowHeight });
+        setHighlightModeAtual("estimada");
+        return;
+      }
+
       setHighlightModeAtual("none");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [bboxProp, textLoading, textError, paginas, dataMovimento, valor, descricaoRaw]);
+  }, [bboxProp, textLoading, textError, paginas, dataMovimento, valor, descricaoRaw, indiceLinha, paginaInicial]);
 
   useEffect(() => {
     let cancelled = false;

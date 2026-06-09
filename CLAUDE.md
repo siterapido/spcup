@@ -1,5 +1,7 @@
 # SPC UP — contexto do projeto
 
+> Mantenha em sincronia com [GEMINI.md](./GEMINI.md).
+
 ## Stack
 
 - Monorepo pnpm: `packages/core`, `packages/db`, `apps/web`, `apps/cli`

@@ -27,4 +27,4 @@ Mapa referência Caixa PIX: importar `EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN` de `@spc
 3. `POST .../processar` com `extratoColumnMaps`
 4. Planilha: coluna Remetente/Destinatário + bolinha verde/âmbar vs cadastro
 
-See also: [CLAUDE.md](./CLAUDE.md)
+See also: [CLAUDE.md](./CLAUDE.md), [GEMINI.md](./GEMINI.md)

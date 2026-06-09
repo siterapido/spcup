@@ -9,6 +9,7 @@ import {
   stripDocumentsFromDescricao,
   type OrigemAtributosEvento,
   type OrigemExtracaoV1,
+  type CamposExtracao,
 } from "@spc-up/core/browser";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClassName } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export type ConsolidacaoEventoRow = {
     nomeArquivo: string | null;
     arquivoIngestaoId?: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
+    camposExtracao?: CamposExtracao | null;
   }>;
   hipoteses: Array<{
     id: string;

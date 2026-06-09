@@ -5,6 +5,22 @@ import { useCallback, useMemo, useState } from "react";
 import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core/browser";
 import type { BboxNorm } from "@spc-up/core/browser";
 
+const EXTRA_COLUNAS_LABELS: Record<string, string> = {
+  hora: "Hora",
+  tipo_pix: "Tipo PIX",
+  situacao: "Situação",
+  saldo: "Saldo",
+};
+
+function formatColunaExtraLabel(col: string): string {
+  if (col in EXTRA_COLUNAS_LABELS) return EXTRA_COLUNAS_LABELS[col]!;
+  if (col.startsWith("custom_")) {
+    const label = col.slice(7).replace(/_/g, " ");
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  return col.charAt(0).toUpperCase() + col.slice(1).replace(/_/g, " ");
+}
+
 import { PlanilhaRemetenteDestinatarioCell } from "@/components/prestacao/planilha-remetente-destinatario-cell";
 import { PlanilhaPessoaCell } from "@/components/prestacao/planilha-pessoa-cell";
 import {
@@ -121,6 +137,11 @@ export function PlanilhaView({
     () => linhas.filter((l) => matchesFilter(l, filter)),
     [linhas, filter],
   );
+
+  const colunasExtras = useMemo(() => {
+    const fixed = new Set(["data", "valor", "direcao", "documento", "historico", "remetente_destinatario"]);
+    return (initial.colunas ?? []).filter((col) => !fixed.has(col));
+  }, [initial.colunas]);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/prestacao/sessoes/${sessaoId}/planilha`);
@@ -299,6 +320,11 @@ export function PlanilhaView({
               <th className="px-3 py-2">Direção</th>
               <th className="px-3 py-2">Descrição</th>
               <th className="px-3 py-2">Remetente/Destinatário</th>
+              {colunasExtras.map((col) => (
+                <th key={col} className="px-3 py-2 whitespace-nowrap">
+                  {formatColunaExtraLabel(col)}
+                </th>
+              ))}
               <th className="px-3 py-2">PF/PJ</th>
               <th className="px-3 py-2">Confiança</th>
               <th className="px-3 py-2">Origens</th>
@@ -309,7 +335,7 @@ export function PlanilhaView({
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-muted">
+                <td colSpan={12 + colunasExtras.length} className="px-4 py-8 text-center text-muted">
                   {filter === "prontas"
                     ? "Nenhuma linha pronta ainda. Resolva pendências (remetente/destinatário/PF-PJ/confiança) para liberar a exportação."
                     : "Nenhuma linha neste filtro."}
@@ -351,6 +377,14 @@ export function PlanilhaView({
                         disabled={busy}
                       />
                     </td>
+                    {colunasExtras.map((col) => {
+                      const val = linha.camposExtracao?.[col];
+                      return (
+                        <td key={col} className="whitespace-nowrap px-3 py-2 text-xs text-slate-700">
+                          {val || "—"}
+                        </td>
+                      );
+                    })}
                     <td className="px-3 py-2">
                       <PlanilhaPessoaCell
                         sessaoId={sessaoId}

@@ -8,7 +8,7 @@ import {
   sessaoPrestacao,
   type Db,
 } from "@spc-up/db";
-import { and, count, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, lt, or } from "drizzle-orm";
 
 import { STUB_PF_NOME, STUB_PJ_RAZAO } from "../cadastro/constants";
 import { canExport } from "../export/guard";
@@ -34,15 +34,15 @@ async function countMovimentacoesByStatus(
   db: Db,
   filter?: { uf: string; exercicio: number },
 ): Promise<Record<string, number>> {
-  const base = db
+  const conditions = [isNull(movimentacao.deletedAt)];
+  if (filter) {
+    conditions.push(eq(movimentacao.uf, filter.uf), eq(movimentacao.exercicio, filter.exercicio));
+  }
+  const rows = await db
     .select({ key: movimentacao.status, total: count() })
     .from(movimentacao)
-    .$dynamic();
-  const rows = filter
-    ? await base
-        .where(and(eq(movimentacao.uf, filter.uf), eq(movimentacao.exercicio, filter.exercicio)))
-        .groupBy(movimentacao.status)
-    : await base.groupBy(movimentacao.status);
+    .where(and(...conditions))
+    .groupBy(movimentacao.status);
   return rowsToRecord(rows.map((r) => ({ key: r.key, total: Number(r.total) })));
 }
 
@@ -50,17 +50,18 @@ async function countArquivosByStatus(
   db: Db,
   filter?: { uf: string; exercicio: number },
 ): Promise<Record<string, number>> {
-  const base = db
+  const conditions = [
+    or(isNull(arquivoIngestao.sessaoPrestacaoId), isNull(sessaoPrestacao.deletedAt)),
+  ];
+  if (filter) {
+    conditions.push(eq(arquivoIngestao.uf, filter.uf), eq(arquivoIngestao.exercicio, filter.exercicio));
+  }
+  const rows = await db
     .select({ key: arquivoIngestao.status, total: count() })
     .from(arquivoIngestao)
-    .$dynamic();
-  const rows = filter
-    ? await base
-        .where(
-          and(eq(arquivoIngestao.uf, filter.uf), eq(arquivoIngestao.exercicio, filter.exercicio)),
-        )
-        .groupBy(arquivoIngestao.status)
-    : await base.groupBy(arquivoIngestao.status);
+    .leftJoin(sessaoPrestacao, eq(arquivoIngestao.sessaoPrestacaoId, sessaoPrestacao.id))
+    .where(and(...conditions))
+    .groupBy(arquivoIngestao.status);
   return rowsToRecord(rows.map((r) => ({ key: r.key, total: Number(r.total) })));
 }
 
@@ -68,9 +69,10 @@ async function countConfiancaFaixas(
   db: Db,
   filter?: { uf: string; exercicio: number },
 ): Promise<ConfiancaFaixas> {
-  const scope = filter
-    ? [eq(movimentacao.uf, filter.uf), eq(movimentacao.exercicio, filter.exercicio)]
-    : [];
+  const scope = [isNull(movimentacao.deletedAt)];
+  if (filter) {
+    scope.push(eq(movimentacao.uf, filter.uf), eq(movimentacao.exercicio, filter.exercicio));
+  }
 
   const [abaixo60Row] = await db
     .select({ total: count() })
@@ -102,7 +104,7 @@ async function countMovimentacoesBloqueadas(
   db: Db,
   filter?: { uf: string; exercicio: number },
 ): Promise<number> {
-  const conditions = [eq(movimentacao.bloqueioExport, true)];
+  const conditions = [eq(movimentacao.bloqueioExport, true), isNull(movimentacao.deletedAt)];
   if (filter) {
     conditions.push(eq(movimentacao.uf, filter.uf), eq(movimentacao.exercicio, filter.exercicio));
   }
@@ -151,20 +153,33 @@ export async function getSystemStats(
       .select({ total: count() })
       .from(cadastroConflito)
       .where(eq(cadastroConflito.status, "PENDENTE")),
-    db.select({ total: count() }).from(pessoaFisica),
-    db.select({ total: count() }).from(pessoaJuridica),
     db
       .select({ total: count() })
       .from(pessoaFisica)
-      .where(eq(pessoaFisica.nome, STUB_PF_NOME)),
+      .where(isNull(pessoaFisica.deletedAt)),
     db
       .select({ total: count() })
       .from(pessoaJuridica)
-      .where(eq(pessoaJuridica.razaoSocial, STUB_PJ_RAZAO)),
+      .where(isNull(pessoaJuridica.deletedAt)),
+    db
+      .select({ total: count() })
+      .from(pessoaFisica)
+      .where(and(eq(pessoaFisica.nome, STUB_PF_NOME), isNull(pessoaFisica.deletedAt))),
+    db
+      .select({ total: count() })
+      .from(pessoaJuridica)
+      .where(
+        and(eq(pessoaJuridica.razaoSocial, STUB_PJ_RAZAO), isNull(pessoaJuridica.deletedAt)),
+      ),
     db
       .select({ total: count() })
       .from(sessaoPrestacao)
-      .where(inArray(sessaoPrestacao.status, ["ABERTA", "EM_PROCESSAMENTO"])),
+      .where(
+        and(
+          inArray(sessaoPrestacao.status, ["ABERTA", "EM_PROCESSAMENTO"]),
+          isNull(sessaoPrestacao.deletedAt),
+        ),
+      ),
     db.select().from(diretorioEstadual),
     canExport(db, uf, exercicio),
   ]);

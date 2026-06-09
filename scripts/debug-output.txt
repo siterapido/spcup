@@ -1,0 +1,10 @@
+Total sessions: 1
+Session ID: 92298be8-1b68-49fc-a961-b8bf8280585f
+  UF: BA, Exercicio: 2025, Referencia: 2025-01
+  Status: ABERTA, Consolidar: true
+  Files (2):
+    - Name: EXTRATO TOTAL JANEIRO (1) (1).pdf, Status: ERRO
+      Error: NotebookLM CLI failed (nlm): nlm query notebook 326dffba-1f82-4f7b-9023-62223ccab40d Você concilia transações bancárias de prestação de contas partidária no Brasil.
+    - Name: Extrato Jan PIX (1).pdf, Status: ERRO
+      Error: NotebookLM CLI failed (nlm): nlm query notebook 326dffba-1f82-4f7b-9023-62223ccab40d Você concilia transações bancárias de prestação de contas partidária no Brasil.
+--------------------------------------------------

@@ -5,6 +5,7 @@ import { isNomeContraparteVazio } from "../match/nome-contraparte";
 import { cleanDescricao } from "./descricao";
 import { deriveLinhaStatus } from "./status";
 import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPessoa } from "./types";
+import { CamposExtracao, campoExtracao, mergeCamposExtracao } from "../ingest/campos-extracao";
 
 const EXTRACAO_DUVIDOSA_CONFIANCA = 0.4;
 
@@ -35,6 +36,7 @@ export type ConsolidacaoEventoLinhaInput = {
     nomeArquivo: string | null;
     arquivoIngestaoId?: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
+    camposExtracao: CamposExtracao | null;
   }>;
 };
 
@@ -62,6 +64,7 @@ function origensFromLinhas(
     origemExtracao: l.origemExtracao,
     indiceLinha: l.origemExtracao?.indiceLinha,
     bbox: l.origemExtracao?.bbox,
+    camposExtracao: l.camposExtracao,
   }));
 }
 
@@ -145,6 +148,9 @@ export function mapConsolidacaoEventoToLinha(
           comparacaoNome ?? "indefinido",
         )
       : null;
+  const camposExtracao = (evento.linhas || []).reduce((acc, l) => {
+    return mergeCamposExtracao(acc, (l.camposExtracao as CamposExtracao) ?? {});
+  }, {} as CamposExtracao);
   return {
     id: evento.id,
     fonte: "consolidacao",
@@ -164,12 +170,13 @@ export function mapConsolidacaoEventoToLinha(
       extracaoConfirmada,
     }),
     pessoa,
-    remetenteDestinatario: evento.remetenteDestinatario ?? null,
+    remetenteDestinatario: campoExtracao({ camposExtracao, remetenteDestinatario: evento.remetenteDestinatario }, 'remetente_destinatario') ?? null,
     origens,
     eventoStatus: evento.status,
     extracaoDuvidosa,
     extracaoConfirmada,
     cadastroLinkTier,
     comparacaoNome,
+    camposExtracao,
   };
 }

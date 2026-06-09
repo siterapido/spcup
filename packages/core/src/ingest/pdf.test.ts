@@ -75,6 +75,11 @@ describe("rowFromExtraction", () => {
     expect(row.direcao).toBe("ENTRADA");
     expect(row.descricaoRaw).toContain("12345678909");
     expect(row.nrExtratoBancario).toBeNull();
+    expect(row.camposExtracao).toEqual({
+      data: "2025-03-15",
+      valor: "1000.00",
+      direcao: "ENTRADA",
+    });
   });
 });
 
@@ -161,8 +166,22 @@ describe("rowsFromExtratoTransactions", () => {
     expect(rows[0]!.descricaoRaw).toBe("Deposito CPF 39053344705");
     expect(rows[0]!.remetenteDestinatario).toBe("JOAO SILVA");
     expect(rows[0]!.direcao).toBe("ENTRADA");
+    expect(rows[0]!.camposExtracao).toEqual({
+      data: "2025-06-01",
+      valor: "100.00",
+      direcao: "ENTRADA",
+      descricao: "Deposito",
+      remetente_destinatario: "Joao Silva",
+    });
     expect(rows[1]!.descricaoRaw).toBe("Sem doc");
     expect(rows[1]!.remetenteDestinatario).toBe("MARIA SANTOS");
+    expect(rows[1]!.camposExtracao).toEqual({
+      data: "2025-06-02",
+      valor: "50.00",
+      direcao: "SAIDA",
+      descricao: "Sem doc",
+      remetente_destinatario: "Maria Santos",
+    });
   });
 });
 

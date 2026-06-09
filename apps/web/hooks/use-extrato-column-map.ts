@@ -10,6 +10,11 @@ import {
   type ExtratoColumnMap,
   type ExtratoColumnMapEntry,
 } from "@spc-up/core/extrato-column-map";
+import {
+  type ExtratoModeloId,
+  detectExtratoModeloFromFilename,
+  extratoColumnMapForModelo,
+} from "@spc-up/core/browser";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { clientFileKey } from "@/lib/extrato-column-map-client";
@@ -21,11 +26,60 @@ export function useExtratoColumnMap(files: File[]) {
   );
 
   const [maps, setMaps] = useState<Record<string, ExtratoColumnMap>>({});
+  const [modeloByClientKey, setModeloByClientKey] = useState<Record<string, ExtratoModeloId>>({});
   const [columnCounts, setColumnCounts] = useState<Record<string, number>>({});
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [selectedCampo, setSelectedCampo] = useState<string>("data");
   const [inferirDirecao, setInferirDirecao] = useState(true);
   const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const validKeys = new Set(pdfFiles.map((f) => clientFileKey(f)));
+
+    setModeloByClientKey((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const k in next) {
+        if (!validKeys.has(k)) {
+          delete next[k];
+          changed = true;
+        }
+      }
+      for (const f of pdfFiles) {
+        const key = clientFileKey(f);
+        if (!next[key]) {
+          next[key] = detectExtratoModeloFromFilename(f.name);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    setMaps((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const k in next) {
+        if (!validKeys.has(k)) {
+          delete next[k];
+          changed = true;
+        }
+      }
+      for (const f of pdfFiles) {
+        const key = clientFileKey(f);
+        if (!next[key]) {
+          const modelo = detectExtratoModeloFromFilename(f.name);
+          if (modelo !== "outro") {
+            const preset = extratoColumnMapForModelo(modelo);
+            if (preset) {
+              next[key] = preset;
+              changed = true;
+            }
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [pdfFiles]);
 
   useEffect(() => {
     if (pdfFiles.length === 0) {
@@ -324,9 +378,23 @@ export function useExtratoColumnMap(files: File[]) {
     });
   }, [activeFile, activeMap, canCopyMapToOtherPdfs, pdfFiles]);
 
+  const setModeloForFile = useCallback((key: string, modelo: ExtratoModeloId) => {
+    setModeloByClientKey((prev) => ({ ...prev, [key]: modelo }));
+    if (modelo !== "outro") {
+      const preset = extratoColumnMapForModelo(modelo);
+      if (preset) {
+        setMaps((prev) => ({ ...prev, [key]: preset }));
+      }
+    } else {
+      setMaps((prev) => ({ ...prev, [key]: { paginaReferencia: 1, colunas: [] } }));
+    }
+  }, []);
+
   return {
     pdfFiles,
     maps,
+    modeloByClientKey,
+    setModeloForFile,
     activeFile,
     activeKey: activeFile ? clientFileKey(activeFile) : null,
     setActiveKey,

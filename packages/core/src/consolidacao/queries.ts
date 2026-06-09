@@ -77,6 +77,7 @@ export type ConsolidacaoListItem = {
     nomeArquivo: string | null;
     arquivoIngestaoId: string | null;
     origemExtracao: OrigemExtracaoV1 | null;
+    camposExtracao: Record<string, string | null> | null;
   }>;
   hipoteses: Array<{
     id: string;
@@ -173,6 +174,7 @@ export async function listConsolidacaoForSessao(
           null,
         origemExtracao:
           (l.movimentacao.origemExtracao as OrigemExtracaoV1 | null) ?? null,
+        camposExtracao: l.movimentacao.camposExtracao as Record<string, string | null> | null,
       })),
       hipoteses: e.hipoteses.map((h) => ({
         id: h.id,

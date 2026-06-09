@@ -45,11 +45,28 @@ export type {
 export { ARQUIVO_INGESTAO_STATUS } from "./ingest/types";
 
 export {
+  buildCamposExtracaoFromExtratoItem,
+  buildCamposExtracaoFromNotebookTx,
+  campoExtracao,
+  espelharCamposLegados,
+  mergeCamposExtracao,
+  type CamposExtracao,
+  type MovimentacaoCamposLike,
+} from "./ingest/campos-extracao";
+
+export {
   mapConsolidacaoEventoToLinha,
   type ConsolidacaoEventoLinhaInput,
 } from "./planilha/map-consolidacao-linha";
 
 export type { CadastroLinkTier } from "./match/cadastro-link";
+
+export {
+  type ExtratoModeloId,
+  EXTRATO_MODELO_LABELS,
+  detectExtratoModeloFromFilename,
+  extratoColumnMapForModelo,
+} from "./ingest/extrato-modelo";
 
 export type {
   IngestaoResumo,
@@ -63,3 +80,4 @@ export type {
   PlanilhaPessoa,
   PlanilhaResumo,
 } from "./planilha/types";
+

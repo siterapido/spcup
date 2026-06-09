@@ -17,6 +17,7 @@ const createSchema = z.object({
   diretorioMunicipalId: z.string().uuid().optional(),
   exercicio: z.number().int(),
   consolidarExtratos: z.boolean().optional(),
+  mesReferencia: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });
 
 export async function GET(request: Request) {
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
       diretorioMunicipalId: body.diretorioMunicipalId,
       exercicio: body.exercicio,
       consolidarExtratos: body.consolidarExtratos,
+      mesReferencia: body.mesReferencia,
     });
     const full = await getSessao(db, sessao.id);
     const prestador = full ? prestadorFromSessao(full) : null;
