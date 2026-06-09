@@ -40,6 +40,9 @@ import { normalizeName } from "../normalize";
 import { readArquivoIngestaoBuffer } from "../storage/read-arquivo";
 import type { ProcessSessaoResult, ProcessPdfArquivoResult } from "./process-sessao";
 import { getSessao, prestadorFromSessao } from "./sessao";
+import { buildCamposExtracaoFromNotebookTx, espelharCamposLegados } from "../ingest/campos-extracao";
+import type { OrigemExtracaoV1 } from "../provenance/types";
+import { detectExtratoModeloFromFilename, type ExtratoModeloId } from "../ingest/extrato-modelo";
 
 const BALANCE_EPSILON = 0.05;
 
@@ -91,6 +94,14 @@ Tabela de Códigos SPCA para Referência:
 
 Preencha remetente_destinatario somente a partir da coluna mapeada como remetente_destinatario (quando informada no layout de colunas); não extraia esse valor da descrição.
 
+Regras adicionais para campos de extração:
+- documento: o número do lançamento ou documento do extrato (distinct de documento_candidato).
+- historico: o conteúdo integral da coluna de histórico do extrato.
+- hora: hora do lançamento (se disponível).
+- tipo_pix: tipo do PIX (ex: 'Enviado', 'Recebido').
+- situacao: a situação do lançamento (ex: 'Efetivado').
+- saldo: o valor do saldo após o lançamento.
+
 Extraia também os metadados de saldos do extrato bancário.
 Retorne APENAS um objeto JSON válido (sem explicações ou marcações markdown como \`\`\`json). O objeto deve ter o seguinte formato exato:
 {
@@ -109,7 +120,13 @@ Retorne APENAS um objeto JSON válido (sem explicações ou marcações markdown
       "remetente_destinatario": "Nome da coluna Remetente/Destinatário (ou null)",
       "fonte_recurso": "Código da fonte de recurso (ex: 'FP', 'OR', 'RC', 'FEFC' ou null)",
       "natureza_recurso": "Código da natureza de recurso (ex: '0', '1' ou null)",
-      "tipo_origem_recurso": "Código do tipo de origem do recurso (ex: 'CE', 'CF', 'PF', 'PJ', 'PP', 'CA', 'NI' ou null)"
+      "tipo_origem_recurso": "Código do tipo de origem do recurso (ex: 'CE', 'CF', 'PF', 'PJ', 'PP', 'CA', 'NI' ou null)",
+      "documento": "Número do documento / lançamento do extrato (ou null)",
+      "historico": "Conteúdo integral da coluna de histórico (ou null)",
+      "hora": "Hora da transação (ex: 'HH:MM', ou null)",
+      "tipo_pix": "Tipo de PIX (ou null)",
+      "situacao": "Situação do lançamento (ou null)",
+      "saldo": "Valor do saldo após o lançamento (ou null)"
     }
   ]
 }`;
@@ -130,6 +147,12 @@ interface NotebookLmTx {
   fonte_recurso: string | null;
   natureza_recurso: string | null;
   tipo_origem_recurso: string | null;
+  documento: string | null;
+  historico: string | null;
+  hora: string | null;
+  tipo_pix: string | null;
+  situacao: string | null;
+  saldo: string | null;
 }
 
 interface NotebookLmPayload {
@@ -250,6 +273,7 @@ type PersistNotebookLmContext = {
   exercicio: number;
   sessaoId: string;
   arquivoIngestaoId: string;
+  nomeArquivo: string;
   prestadorBase: ReturnType<typeof prestadorFromSessao>;
 };
 
@@ -259,7 +283,7 @@ async function persistNotebookLmTransactions(
   transactions: NotebookLmTx[],
 ): Promise<number> {
   let created = 0;
-  const { uf, exercicio, sessaoId, arquivoIngestaoId, prestadorBase } = ctx;
+  const { uf, exercicio, sessaoId, arquivoIngestaoId, nomeArquivo, prestadorBase } = ctx;
 
   for (let index = 0; index < transactions.length; index += 1) {
     const tx = transactions[index]!;
@@ -287,15 +311,31 @@ async function persistNotebookLmTransactions(
       }
     }
 
+    const campos = buildCamposExtracaoFromNotebookTx(tx as any);
+    const legado = espelharCamposLegados(campos);
+    const descRaw = tx.historico != null ? (tx.historico ?? tx.descricao) : tx.descricao;
+
+    const isPf = cleanedDoc.length === 11;
+    const origemExtracao: OrigemExtracaoV1 = {
+      versao: 1,
+      arquivoIngestaoId,
+      nomeArquivo,
+      pagina: 1,
+      indiceLinha: index,
+      cpfContraparte: hasValidDoc && isPf ? cleanedDoc : null,
+      cnpjContraparte: hasValidDoc && !isPf ? cleanedDoc : null,
+      horaContraparte: tx.hora || null,
+    };
+
     const hashInput: ParsedTransactionRow = {
       dataMovimento: new Date(tx.data),
       valor: tx.valor.toFixed(2),
-      descricaoRaw: tx.descricao,
+      descricaoRaw: descRaw,
       direcao:
         tx.direcao === "CREDITO"
           ? MOVIMENTACAO_DIRECAO.ENTRADA
           : MOVIMENTACAO_DIRECAO.SAIDA,
-      nrExtratoBancario: null,
+      nrExtratoBancario: legado.nrExtratoBancario,
       credDev: null,
     };
 
@@ -313,7 +353,7 @@ async function persistNotebookLmTransactions(
         exercicio,
         dataMovimento: tx.data,
         valor: tx.valor.toFixed(2),
-        descricaoRaw: tx.descricao,
+        descricaoRaw: descRaw,
         direcao: tx.direcao === "CREDITO" ? "ENTRADA" : "SAIDA",
         pessoaFisicaId: pfId,
         pessoaJuridicaId: pjId,
@@ -325,10 +365,10 @@ async function persistNotebookLmTransactions(
         status: MOVIMENTACAO_STATUS.PENDENTE_REVISAO,
         confiancaGlobal: 0.95,
         hashMovimento: hash,
-        remetenteDestinatario: (() => {
-          const rd = tx.remetente_destinatario?.trim() ?? "";
-          return rd.length >= 3 ? normalizeName(rd) : null;
-        })(),
+        camposExtracao: campos,
+        nrExtratoBancario: legado.nrExtratoBancario,
+        remetenteDestinatario: legado.remetenteDestinatario,
+        origemExtracao,
       })
       .onConflictDoNothing()
       .returning();
@@ -396,6 +436,7 @@ export async function syncDatabasePeopleToNotebook(
 export type ProcessSessaoNotebookLmOptions = {
   skipConsolidacao?: boolean;
   extratoColumnMaps?: Record<string, ExtratoColumnMap>;
+  extratoModeloIds?: Record<string, ExtratoModeloId>;
 };
 
 export async function processSessaoWithNotebookLM(
@@ -497,22 +538,28 @@ export async function processSessaoWithNotebookLM(
 
     for (const arq of processedSucessfully) {
       try {
+        const modeloId = options?.extratoModeloIds?.[arq.arquivoId] ?? detectExtratoModeloFromFilename(arq.nome);
         const rawMap = options?.extratoColumnMaps?.[arq.arquivoId];
         const columnMap = rawMap ? parseExtratoColumnMap(rawMap) ?? rawMap : undefined;
 
-        if (columnMap) {
-          const existingRow = pendingById.get(arq.arquivoId);
-          const existingMetadados =
-            existingRow?.metadados != null && typeof existingRow.metadados === "object"
-              ? (existingRow.metadados as Record<string, unknown>)
-              : {};
-          await db
-            .update(arquivoIngestao)
-            .set({
-              metadados: { ...existingMetadados, extratoColumnMap: columnMap },
-            })
-            .where(eq(arquivoIngestao.id, arq.arquivoId));
-        }
+        const existingRow = pendingById.get(arq.arquivoId);
+        const existingMetadados =
+          existingRow?.metadados != null && typeof existingRow.metadados === "object"
+            ? (existingRow.metadados as Record<string, unknown>)
+            : {};
+        
+        const nextMetadados = {
+          ...existingMetadados,
+          extratoModeloId: modeloId,
+          ...(columnMap ? { extratoColumnMap: columnMap } : {}),
+        };
+
+        await db
+          .update(arquivoIngestao)
+          .set({
+            metadados: nextMetadados,
+          })
+          .where(eq(arquivoIngestao.id, arq.arquivoId));
 
         const res = await queryNotebook(
           notebookId,
@@ -543,6 +590,7 @@ export async function processSessaoWithNotebookLM(
           {
             ...persistCtxBase,
             arquivoIngestaoId: arq.arquivoId,
+            nomeArquivo: arq.nome,
           },
           transactions,
         );
@@ -554,17 +602,20 @@ export async function processSessaoWithNotebookLM(
           avisos.push(`[${arq.nome}] Nenhuma transação extraída do extrato.`);
         }
 
-        const existingRow = pendingById.get(arq.arquivoId);
-        let existingMetadados =
-          existingRow?.metadados != null && typeof existingRow.metadados === "object"
-            ? (existingRow.metadados as Record<string, unknown>)
+        const freshRow = pendingById.get(arq.arquivoId);
+        const currentMetadados =
+          freshRow?.metadados != null && typeof freshRow.metadados === "object"
+            ? (freshRow.metadados as Record<string, unknown>)
             : {};
-        if (columnMap) {
-          existingMetadados = { ...existingMetadados, extratoColumnMap: columnMap };
-        }
+
+        const finalExistingMetadados = {
+          ...currentMetadados,
+          extratoModeloId: modeloId,
+          ...(columnMap ? { extratoColumnMap: columnMap } : {}),
+        };
 
         const metadados = buildNotebookLmIngestMetadados(
-          existingMetadados,
+          finalExistingMetadados,
           payload,
           transactions,
           created,

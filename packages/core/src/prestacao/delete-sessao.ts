@@ -1,10 +1,9 @@
-import {
-  consolidacaoEvento,
-  movimentacao,
-  sessaoPrestacao,
-  type Db,
-} from "@spc-up/db";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { movimentacao, sessaoPrestacao, type Db } from "@spc-up/db";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
+
+import { purgeSessaoData } from "./purge-sessao-data";
+
+export { purgeSessaoData } from "./purge-sessao-data";
 
 export const SESSAO_DELETE_CODES = {
   NOT_FOUND: "SESSAO_NOT_FOUND",
@@ -31,14 +30,30 @@ async function hasExportedMovimentacoes(db: Db, sessaoId: string): Promise<boole
       and(
         eq(movimentacao.sessaoPrestacaoId, sessaoId),
         eq(movimentacao.status, "EXPORTADO"),
-        isNull(movimentacao.deletedAt),
       ),
     )
     .limit(1);
   return rows.length > 0;
 }
 
-/** Soft-delete prestação e dados vinculados (movimentações e eventos de consolidação). */
+/** Remove prestações soft-deleted que ainda ocupam o banco. */
+export async function purgeSoftDeletedSessoes(db: Db): Promise<number> {
+  const rows = await db
+    .select({ id: sessaoPrestacao.id })
+    .from(sessaoPrestacao)
+    .where(isNotNull(sessaoPrestacao.deletedAt));
+  let purged = 0;
+  for (const row of rows) {
+    if (await hasExportedMovimentacoes(db, row.id)) {
+      continue;
+    }
+    await purgeSessaoData(db, row.id);
+    purged += 1;
+  }
+  return purged;
+}
+
+/** Exclui prestação e dados vinculados do banco (não soft delete). */
 export async function softDeleteSessoes(
   db: Db,
   ids: string[],
@@ -72,14 +87,6 @@ export async function softDeleteSessoes(
       });
       continue;
     }
-    if (sessao.deletedAt != null) {
-      skipped.push({
-        id,
-        reason: "Prestação já excluída",
-        code: SESSAO_DELETE_CODES.DELETED,
-      });
-      continue;
-    }
 
     if (await hasExportedMovimentacoes(db, id)) {
       skipped.push({
@@ -91,26 +98,7 @@ export async function softDeleteSessoes(
       continue;
     }
 
-    const now = new Date();
-    await db
-      .update(movimentacao)
-      .set({ deletedAt: now, updatedAt: now })
-      .where(
-        and(eq(movimentacao.sessaoPrestacaoId, id), isNull(movimentacao.deletedAt)),
-      );
-    await db
-      .update(consolidacaoEvento)
-      .set({ deletedAt: now, updatedAt: now })
-      .where(
-        and(
-          eq(consolidacaoEvento.sessaoPrestacaoId, id),
-          isNull(consolidacaoEvento.deletedAt),
-        ),
-      );
-    await db
-      .update(sessaoPrestacao)
-      .set({ deletedAt: now, updatedAt: now })
-      .where(eq(sessaoPrestacao.id, id));
+    await purgeSessaoData(db, id);
     deleted += 1;
   }
 

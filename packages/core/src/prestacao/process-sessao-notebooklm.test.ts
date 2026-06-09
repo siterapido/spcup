@@ -87,6 +87,12 @@ describe("buildNotebookLmIngestMetadados", () => {
           fonte_recurso: null,
           natureza_recurso: null,
           tipo_origem_recurso: null,
+          documento: null,
+          historico: null,
+          hora: null,
+          tipo_pix: null,
+          situacao: null,
+          saldo: null,
         },
       ],
     };
@@ -247,7 +253,13 @@ describe("NotebookLM Session Processor", () => {
           remetente_destinatario: "MARIA CANDIDATA",
           fonte_recurso: "OR",
           natureza_recurso: "0",
-          tipo_origem_recurso: "PF"
+          tipo_origem_recurso: "PF",
+          documento: null,
+          historico: null,
+          hora: null,
+          tipo_pix: null,
+          situacao: null,
+          saldo: null
         }
       ]
     });
@@ -364,9 +376,16 @@ describe("NotebookLM Session Processor", () => {
       descricao: "CRED PIX",
       documento_candidato: null,
       nome_candidato: null,
+      remetente_destinatario: null,
       fonte_recurso: null,
       natureza_recurso: null,
       tipo_origem_recurso: null,
+      documento: null,
+      historico: null,
+      hora: null,
+      tipo_pix: null,
+      situacao: null,
+      saldo: null,
     };
     queryNotebookMock.mockResolvedValue({
       answer: JSON.stringify({
@@ -438,9 +457,16 @@ describe("NotebookLM Session Processor", () => {
           descricao: "DEPOSITO IDENTIFICADO MARIA",
           documento_candidato: "12345678901",
           nome_candidato: "MARIA CANDIDATA",
+          remetente_destinatario: null,
           fonte_recurso: "OR",
           natureza_recurso: "0",
-          tipo_origem_recurso: "PF"
+          tipo_origem_recurso: "PF",
+          documento: null,
+          historico: null,
+          hora: null,
+          tipo_pix: null,
+          situacao: null,
+          saldo: null
         },
         {
           data: "2026-01-11",
@@ -449,9 +475,16 @@ describe("NotebookLM Session Processor", () => {
           descricao: "TARIFA BANCARIA",
           documento_candidato: null,
           nome_candidato: null,
+          remetente_destinatario: null,
           fonte_recurso: null,
           natureza_recurso: null,
-          tipo_origem_recurso: null
+          tipo_origem_recurso: null,
+          documento: null,
+          historico: null,
+          hora: null,
+          tipo_pix: null,
+          situacao: null,
+          saldo: null
         }
       ]
     });
@@ -587,9 +620,16 @@ describe("NotebookLM Session Processor", () => {
           descricao: "PIX A",
           documento_candidato: null,
           nome_candidato: null,
+          remetente_destinatario: null,
           fonte_recurso: null,
           natureza_recurso: null,
           tipo_origem_recurso: null,
+          documento: null,
+          historico: null,
+          hora: null,
+          tipo_pix: null,
+          situacao: null,
+          saldo: null,
         },
       ],
     };
@@ -606,9 +646,16 @@ describe("NotebookLM Session Processor", () => {
           descricao: "PIX B",
           documento_candidato: null,
           nome_candidato: null,
+          remetente_destinatario: null,
           fonte_recurso: null,
           natureza_recurso: null,
           tipo_origem_recurso: null,
+          documento: null,
+          historico: null,
+          hora: null,
+          tipo_pix: null,
+          situacao: null,
+          saldo: null,
         },
       ],
     };
@@ -739,9 +786,16 @@ describe("NotebookLM Session Processor", () => {
               descricao: "OK",
               documento_candidato: null,
               nome_candidato: null,
+              remetente_destinatario: null,
               fonte_recurso: null,
               natureza_recurso: null,
               tipo_origem_recurso: null,
+              documento: null,
+              historico: null,
+              hora: null,
+              tipo_pix: null,
+              situacao: null,
+              saldo: null
             },
           ],
         }),
@@ -908,9 +962,16 @@ describe("NotebookLM Session Processor", () => {
           descricao: "DEPOSITO IDENTIFICADO MARIA",
           documento_candidato: "123",
           nome_candidato: "MARIA CANDIDAT",
+          remetente_destinatario: null,
           fonte_recurso: "OR",
           natureza_recurso: "0",
-          tipo_origem_recurso: "PF"
+          tipo_origem_recurso: "PF",
+          documento: null,
+          historico: null,
+          hora: null,
+          tipo_pix: null,
+          situacao: null,
+          saldo: null
         }
       ]
     });
