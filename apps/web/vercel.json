@@ -5,8 +5,7 @@
   "regions": ["gru1"],
   "functions": {
     "app/api/**/*.ts": {
-      "maxDuration": 300,
-      "memory": 1024
+      "maxDuration": 300
     }
   }
 }

@@ -33,3 +33,9 @@ dist/
 .vercel
 .env*.local
 *.tsbuildinfo
+
+# Local Antigravity CLI sessions (symlinks to ~/.gemini config)
+.antigravitycli/
+
+# Local env variants
+.env.local.*
