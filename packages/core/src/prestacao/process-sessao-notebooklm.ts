@@ -23,6 +23,7 @@ import {
 } from "../ai/notebooklm";
 import { upsertPessoa } from "../cadastro/upsert";
 import { consolidateSession } from "../consolidacao/run";
+import { contraparteDoHistorico } from "../consolidacao/contraparte-historico";
 import {
   buildExtratoColumnPromptHint,
   type ExtratoColumnMap,
@@ -101,6 +102,8 @@ Regras adicionais para campos de extração:
 - tipo_pix: tipo do PIX (ex: 'Enviado', 'Recebido').
 - situacao: a situação do lançamento (ex: 'Efetivado').
 - saldo: o valor do saldo após o lançamento.
+- pagina: o número da página no PDF (de 1 a N) onde esta transação aparece.
+- indice_linha: o índice sequencial da transação naquela página específica, começando em 1 para cada nova página.
 
 Extraia também os metadados de saldos do extrato bancário.
 Retorne APENAS um objeto JSON válido (sem explicações ou marcações markdown como \`\`\`json). O objeto deve ter o seguinte formato exato:
@@ -115,6 +118,8 @@ Retorne APENAS um objeto JSON válido (sem explicações ou marcações markdown
       "valor": 1250.50,
       "direcao": "CREDITO" | "DEBITO",
       "descricao": "Descrição original da transação",
+      "pagina": 1,
+      "indice_linha": 1,
       "documento_candidato": "CPF ou CNPJ do candidato correspondente (somente números, ou null)",
       "nome_candidato": "Nome ou Razão Social do candidato correspondente (ou null)",
       "remetente_destinatario": "Nome da coluna Remetente/Destinatário (ou null)",
@@ -141,6 +146,8 @@ interface NotebookLmTx {
   valor: number;
   direcao: "CREDITO" | "DEBITO";
   descricao: string;
+  pagina?: number | string | null;
+  indice_linha?: number | string | null;
   documento_candidato: string | null;
   nome_candidato: string | null;
   remetente_destinatario: string | null;
@@ -311,17 +318,39 @@ async function persistNotebookLmTransactions(
       }
     }
 
+    // Fallback: if NotebookLM didn't extract remetente_destinatario, try parsing the historico
+    if (!tx.remetente_destinatario && tx.historico) {
+      const fromHistorico = contraparteDoHistorico(tx.historico);
+      if (fromHistorico) {
+        tx.remetente_destinatario = fromHistorico;
+      }
+    }
+
     const campos = buildCamposExtracaoFromNotebookTx(tx as any);
     const legado = espelharCamposLegados(campos);
     const descRaw = tx.historico != null ? (tx.historico ?? tx.descricao) : tx.descricao;
 
     const isPf = cleanedDoc.length === 11;
+    const txPagina =
+      typeof tx.pagina === "number" && Number.isFinite(tx.pagina) && tx.pagina >= 1
+        ? tx.pagina
+        : typeof tx.pagina === "string" && /^\d+$/.test(tx.pagina)
+          ? parseInt(tx.pagina, 10)
+          : 1;
+
+    const txIndiceLinha =
+      typeof tx.indice_linha === "number" && Number.isFinite(tx.indice_linha) && tx.indice_linha >= 1
+        ? tx.indice_linha
+        : typeof tx.indice_linha === "string" && /^\d+$/.test(tx.indice_linha)
+          ? parseInt(tx.indice_linha, 10)
+          : index;
+
     const origemExtracao: OrigemExtracaoV1 = {
       versao: 1,
       arquivoIngestaoId,
       nomeArquivo,
-      pagina: 1,
-      indiceLinha: index,
+      pagina: txPagina,
+      indiceLinha: txIndiceLinha,
       cpfContraparte: hasValidDoc && isPf ? cleanedDoc : null,
       cnpjContraparte: hasValidDoc && !isPf ? cleanedDoc : null,
       horaContraparte: tx.hora || null,

@@ -1,6 +1,6 @@
 # SPC UP — contexto do projeto
 
-> Mantenha em sincronia com [GEMINI.md](./GEMINI.md).
+> Mantenha em sincronia com [CLAUDE.md](./CLAUDE.md).
 
 ## Stack
 
@@ -30,3 +30,5 @@
 
 - Spec/plano remetente: `docs/superpowers/specs/2026-06-08-remetente-destinatario-design.md`, `docs/superpowers/plans/2026-06-08-remetente-destinatario.md`
 - Deploy: `docs/dev-scripts.md#deploy-remetente_destinatario`
+
+See also: [AGENTS.md](./AGENTS.md)

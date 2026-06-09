@@ -5,7 +5,7 @@ import { isNomeContraparteVazio } from "../match/nome-contraparte";
 import { cleanDescricao } from "./descricao";
 import { deriveLinhaStatus } from "./status";
 import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPessoa } from "./types";
-import { CamposExtracao, mergeCamposExtracao } from "../ingest/campos-extracao";
+import { CamposExtracao, campoExtracao, mergeCamposExtracao } from "../ingest/campos-extracao";
 
 const EXTRACAO_DUVIDOSA_CONFIANCA = 0.4;
 
@@ -170,7 +170,7 @@ export function mapConsolidacaoEventoToLinha(
       extracaoConfirmada,
     }),
     pessoa,
-    remetenteDestinatario: evento.remetenteDestinatario ?? null,
+    remetenteDestinatario: campoExtracao({ camposExtracao, remetenteDestinatario: evento.remetenteDestinatario }, 'remetente_destinatario') ?? null,
     origens,
     eventoStatus: evento.status,
     extracaoDuvidosa,
