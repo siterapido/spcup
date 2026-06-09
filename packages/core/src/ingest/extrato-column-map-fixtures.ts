@@ -16,3 +16,16 @@ export const EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN: ExtratoColumnMap = {
     { campo: "historico", colunaIndex: 4, headerLabel: "Histórico" },
   ],
 };
+
+export const EXTRATO_COLUMN_MAP_CAIXA_TOTAL_JAN: ExtratoColumnMap = {
+  paginaReferencia: 1,
+  inferirDirecaoDoValor: true,
+  colunas: [
+    { campo: "data", colunaIndex: 0, headerLabel: "Data" },
+    { campo: "documento", colunaIndex: 1, headerLabel: "Documento" },
+    { campo: "historico", colunaIndex: 2, headerLabel: "Histórico" },
+    { campo: "valor", colunaIndex: 3, headerLabel: "Valor" },
+    { campo: "saldo", colunaIndex: 4, headerLabel: "Saldo" },
+  ],
+};
+
