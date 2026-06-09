@@ -36,6 +36,7 @@ export type MovimentacaoDirecao =
   (typeof MOVIMENTACAO_DIRECAO)[keyof typeof MOVIMENTACAO_DIRECAO];
 
 import type { OrigemExtracaoV1 } from "../provenance/types";
+import type { CamposExtracao } from "./campos-extracao";
 
 export interface ParsedTransactionRow {
   dataMovimento: Date;
@@ -49,6 +50,7 @@ export interface ParsedTransactionRow {
   /** 0–100 from dual-model pipeline; defaults to 0 in persist when omitted. */
   confiancaGlobal?: number;
   remetenteDestinatario?: string | null;
+  camposExtracao?: CamposExtracao | null;
 }
 
 /** Alias for ParsedTransactionRow used by pipeline helpers. */
