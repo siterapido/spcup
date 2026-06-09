@@ -43,6 +43,30 @@ function hasCampo(map: ExtratoColumnMap, campo: string): boolean {
   return extratoColumnMapHasCampo(map, campo);
 }
 
+/** Um mapa cobre campo de sessão (ex.: tipo_pix conta como historico em extrato PIX). */
+export function extratoSessionCampoSatisfiedByMap(
+  map: ExtratoColumnMap,
+  campo: (typeof EXTRATO_SESSION_REQUIRED_CAMPOS)[number],
+): boolean {
+  if (hasCampo(map, campo)) {
+    return true;
+  }
+  if (campo === "historico" && hasCampo(map, "tipo_pix")) {
+    return true;
+  }
+  if (campo === "documento" && hasCampo(map, "tipo_pix")) {
+    return true;
+  }
+  return false;
+}
+
+function sessionUnionHasCampo(
+  maps: ExtratoColumnMap[],
+  campo: (typeof EXTRATO_SESSION_REQUIRED_CAMPOS)[number],
+): boolean {
+  return maps.some((map) => extratoSessionCampoSatisfiedByMap(map, campo));
+}
+
 function validateExtratoColumnMapStructure(
   map: ExtratoColumnMap,
 ): { ok: true } | { ok: false; message: string } {
@@ -98,7 +122,7 @@ export function validateExtratoColumnMapsSession(
     return { ok: true };
   }
   for (const campo of EXTRATO_SESSION_REQUIRED_CAMPOS) {
-    if (!maps.some((map) => hasCampo(map, campo))) {
+    if (!sessionUnionHasCampo(maps, campo)) {
       return {
         ok: false,
         message: `Falta mapear ${campo} em pelo menos um extrato`,

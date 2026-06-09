@@ -3,6 +3,7 @@
 import {
   EXTRATO_SESSION_REQUIRED_CAMPOS,
   extratoColumnMapHasCampo,
+  extratoSessionCampoSatisfiedByMap,
   slugCustomField,
   validateExtratoColumnMapPerPdf,
   validateExtratoColumnMapsSession,
@@ -244,7 +245,7 @@ export function useExtratoColumnMap(files: File[]) {
           continue;
         }
         const m = maps[key];
-        if (m && extratoColumnMapHasCampo(m, campo)) {
+        if (m && extratoSessionCampoSatisfiedByMap(m, campo)) {
           coverage[campo] = { fileName: f.name };
           break;
         }

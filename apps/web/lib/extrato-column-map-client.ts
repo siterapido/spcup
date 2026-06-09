@@ -130,6 +130,10 @@ const CAMPOS_AUTO_MAPS = [
   { campo: "situacao", keywords: ["situacao", "situação", "status", "estado"] },
   { campo: "hora", keywords: ["hora", "hor.", "time"] },
   {
+    campo: "tipo_pix",
+    keywords: ["tipo de pix", "tipo pix", "tipo_pix", "tipo", "modalidade pix"],
+  },
+  {
     campo: "direcao",
     keywords: [
       "cred",

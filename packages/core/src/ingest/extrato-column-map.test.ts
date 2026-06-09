@@ -7,6 +7,7 @@ import {
   validateExtratoColumnMapPerPdf,
   validateExtratoColumnMapsSession,
 } from "./extrato-column-map";
+import { EXTRATO_COLUMN_MAP_PIX_6COL } from "./extrato-column-map-fixtures";
 
 const validColunas = [
   { campo: "data", colunaIndex: 0 },
@@ -248,6 +249,14 @@ describe("parseExtratoColumnMap", () => {
         ],
       }),
     ).toBeNull();
+  });
+});
+
+describe("EXTRATO_COLUMN_MAP_PIX_6COL", () => {
+  it("validates per-PDF and session for 6-column PIX layout", () => {
+    expect(validateExtratoColumnMapPerPdf(EXTRATO_COLUMN_MAP_PIX_6COL).ok).toBe(true);
+    expect(validateExtratoColumnMapsSession([EXTRATO_COLUMN_MAP_PIX_6COL]).ok).toBe(true);
+    expect(validateExtratoColumnMap(EXTRATO_COLUMN_MAP_PIX_6COL).ok).toBe(true);
   });
 });
 

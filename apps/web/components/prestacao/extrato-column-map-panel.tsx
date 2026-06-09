@@ -2,6 +2,7 @@
 
 import {
   EXTRATO_SESSION_REQUIRED_CAMPOS,
+  extratoSessionCampoSatisfiedByMap,
   type ExtratoColumnMap,
   type ExtratoColumnMapEntry,
 } from "@spc-up/core/extrato-column-map";
@@ -448,6 +449,11 @@ export function ExtratoColumnMapPanel({
                     {CAMPOS_OBRIGATORIOS_POR_PDF.has(campo) ||
                     (campo === "direcao" && colunaDirecaoDetectada) ||
                     (CAMPOS_OBRIGATORIOS_SESSAO.has(campo) &&
+                      !(map &&
+                        extratoSessionCampoSatisfiedByMap(
+                          map,
+                          campo as (typeof EXTRATO_SESSION_REQUIRED_CAMPOS)[number],
+                        )) &&
                       !mapped &&
                       !sessionCoverage[campo]) ? (
                       <span className="text-xs font-medium text-red-600" title="Obrigatório">

@@ -215,6 +215,7 @@ export {
   EXTRATO_PER_PDF_REQUIRED_CAMPOS,
   EXTRATO_SESSION_REQUIRED_CAMPOS,
   extratoColumnMapHasCampo,
+  extratoSessionCampoSatisfiedByMap,
   parseExtratoColumnMap,
   slugCustomField,
   validateExtratoColumnMap,
@@ -223,7 +224,10 @@ export {
   type ExtratoColumnMap,
   type ExtratoColumnMapEntry,
 } from "./ingest/extrato-column-map";
-export { EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN } from "./ingest/extrato-column-map-fixtures";
+export {
+  EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN,
+  EXTRATO_COLUMN_MAP_PIX_6COL,
+} from "./ingest/extrato-column-map-fixtures";
 export {
   armazenarPdfIngestBuffer,
   ignorarPaginaPdfExtrato,
