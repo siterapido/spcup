@@ -5,6 +5,20 @@ import { notFound } from "next/navigation";
 import { PlanilhaView } from "@/components/prestacao/planilha-table";
 import { Card, CardTitle } from "@/components/ui/card";
 
+function formatMesReferencia(mesReferencia?: string | null): string {
+  if (!mesReferencia) return "";
+  const parts = mesReferencia.split("-");
+  if (parts.length !== 2) return "";
+  const [ano, mes] = parts;
+  const meses = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+  const mesIndex = Number.parseInt(mes!, 10) - 1;
+  if (mesIndex < 0 || mesIndex > 11) return "";
+  return `${meses[mesIndex]}/${ano}`;
+}
+
 export default async function PlanilhaPage({
   params,
 }: {
@@ -19,13 +33,18 @@ export default async function PlanilhaPage({
     <main className="mx-auto max-w-[min(96rem,100%)] px-4 py-10">
       <Card className="space-y-6">
         <div>
-          <CardTitle>Planilha unificada</CardTitle>
+          <CardTitle>
+            Prestação {payload.sessao.uf} {payload.sessao.exercicio}
+            {payload.sessao.mesReferencia
+              ? ` — ${formatMesReferencia(payload.sessao.mesReferencia)}`
+              : ""}
+          </CardTitle>
           <p className="mt-1 text-sm text-muted">
             Vincule PF/PJ, resolva merges pendentes e libere a exportação quando todas as linhas
             estiverem prontas.
           </p>
           <p className="mt-1 text-xs text-muted">
-            {payload.sessao.uf} · exercício {payload.sessao.exercicio} · sessão {sessaoId}
+            Sessão {sessaoId}
           </p>
         </div>
         <PlanilhaView sessaoId={sessaoId} initial={payload} />

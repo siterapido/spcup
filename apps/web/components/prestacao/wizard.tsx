@@ -12,6 +12,7 @@ import { useExtratoColumnMap } from "@/hooks/use-extrato-column-map";
 import { clientFileKey } from "@/lib/extrato-column-map-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { ExtratoModeloSelect } from "@/components/prestacao/extrato-modelo-select";
 import {
   isPdfFile,
   processarPaginaExtrato,
@@ -48,6 +49,7 @@ export function PrestacaoWizard() {
   const [municipais, setMunicipais] = useState<Municipal[]>([]);
   const [loadingMunicipais, setLoadingMunicipais] = useState(false);
   const [exercicio, setExercicio] = useState("2025");
+  const [mesReferencia, setMesReferencia] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [showColumnMap, setShowColumnMap] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -148,6 +150,8 @@ export function PrestacaoWizard() {
           exercicio,
           files,
           extratoColumnMaps: hasPdf ? columnMapState.maps : undefined,
+          extratoModeloIds: hasPdf ? columnMapState.modeloByClientKey : undefined,
+          mesReferencia: mesReferencia || undefined,
         });
       if (warningMessage) {
         setMessage(warningMessage);
@@ -374,6 +378,18 @@ export function PrestacaoWizard() {
           </select>
         </label>
 
+        <label className="block text-sm font-medium">
+          Mês de referência (opcional)
+          <input
+            type="month"
+            className="mt-1 w-full rounded-md border border-border-default px-3 py-2 text-sm bg-white"
+            value={mesReferencia}
+            onChange={(e) => setMesReferencia(e.target.value)}
+            disabled={isProcessing}
+            placeholder="Ex: 2025-01"
+          />
+        </label>
+
         <AttachmentDropzone
           files={files}
           onChange={setFiles}
@@ -439,9 +455,26 @@ export function PrestacaoWizard() {
             ) : null}
 
             {columnMapState.activeFile ? (
-              <ExtratoColumnMapPanel
-                file={columnMapState.activeFile}
-                map={columnMapState.activeMap}
+              <div className="space-y-4">
+                <div className="rounded-md border border-border-default bg-slate-50 p-4">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Layout do extrato para {columnMapState.activeFile.name}
+                  </label>
+                  <ExtratoModeloSelect
+                    value={columnMapState.modeloByClientKey[clientFileKey(columnMapState.activeFile)] || "outro"}
+                    onChange={(val) =>
+                      columnMapState.setModeloForFile(
+                        clientFileKey(columnMapState.activeFile!),
+                        val,
+                      )
+                    }
+                    disabled={isProcessing}
+                  />
+                </div>
+
+                <ExtratoColumnMapPanel
+                  file={columnMapState.activeFile}
+                  map={columnMapState.activeMap}
                 selectedCampo={columnMapState.selectedCampo}
                 customCampos={columnMapState.customCampos}
                 customLabels={columnMapState.customLabels}
@@ -457,6 +490,7 @@ export function PrestacaoWizard() {
                 sessionCoverage={columnMapState.sessionCoverageForActive}
                 onColumnCountChange={columnMapState.setColumnCountForActiveFile}
               />
+              </div>
             ) : null}
 
             {columnMapState.validationError ? (

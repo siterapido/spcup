@@ -1,6 +1,7 @@
 "use client";
 
 import type { ExtratoColumnMap } from "@spc-up/core/extrato-column-map";
+import type { ExtratoModeloId } from "@spc-up/core/browser";
 import { useCallback, useRef, useState } from "react";
 
 import { clientFileKey } from "@/lib/extrato-column-map-client";
@@ -96,6 +97,8 @@ export type PrestacaoSubmitInput = {
   consolidarExtratos?: boolean;
   /** Maps keyed by `clientFileKey(file)` for PDF column hints during extraction. */
   extratoColumnMaps?: Record<string, ExtratoColumnMap>;
+  extratoModeloIds?: Record<string, ExtratoModeloId>;
+  mesReferencia?: string;
 };
 
 export type IncertaPreview = {
@@ -448,6 +451,7 @@ export function usePrestacaoSubmit() {
               exercicio: Number.parseInt(input.exercicio, 10),
               consolidarExtratos:
                 (input.files?.filter(isPdfFile).length ?? 0) >= 2,
+              mesReferencia: input.mesReferencia,
             }),
             signal: submitSignal,
           });
@@ -686,17 +690,30 @@ export function usePrestacaoSubmit() {
                   }
                 }
               }
-              const hasExtratoColumnMaps =
-                Object.keys(extratoColumnMapsByArquivoId).length > 0;
+
+              const extratoModeloIdsByArquivoId: Record<string, ExtratoModeloId> = {};
+              if (input.extratoModeloIds) {
+                for (const job of pdfJobs) {
+                  const modelo = input.extratoModeloIds[job.clientFileKey];
+                  if (modelo) {
+                    extratoModeloIdsByArquivoId[job.arquivoId] = modelo;
+                  }
+                }
+              }
+
+              const hasMapsOrModels =
+                Object.keys(extratoColumnMapsByArquivoId).length > 0 ||
+                Object.keys(extratoModeloIdsByArquivoId).length > 0;
 
               const response = await fetch(`/api/prestacao/sessoes/${sessaoId}/processar`, {
                 method: "POST",
                 signal: submitSignal,
-                ...(hasExtratoColumnMaps
+                ...(hasMapsOrModels
                   ? {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        extratoColumnMaps: extratoColumnMapsByArquivoId,
+                        extratoColumnMaps: Object.keys(extratoColumnMapsByArquivoId).length > 0 ? extratoColumnMapsByArquivoId : undefined,
+                        extratoModeloIds: Object.keys(extratoModeloIdsByArquivoId).length > 0 ? extratoModeloIdsByArquivoId : undefined,
                       }),
                     }
                   : {}),

@@ -4,6 +4,7 @@ import {
   validateExtratoColumnMapPerPdf,
   validateExtratoColumnMapsSession,
   type ExtratoColumnMap,
+  type ExtratoModeloId,
 } from "@spc-up/core";
 import { getDb } from "@spc-up/db";
 import { NextResponse } from "next/server";
@@ -60,18 +61,34 @@ export async function POST(
   const db = getDb();
 
   let extratoColumnMaps: Record<string, ExtratoColumnMap> | undefined;
+  let extratoModeloIds: Record<string, ExtratoModeloId> | undefined;
+
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     try {
       const body = (await request.json()) as {
         extratoColumnMaps?: Record<string, unknown>;
+        extratoModeloIds?: Record<string, unknown>;
       };
+
       const parsedMaps = parseExtratoColumnMapsBody(body.extratoColumnMaps);
       if (!parsedMaps.ok) {
         return NextResponse.json({ error: parsedMaps.error }, { status: 400 });
       }
       extratoColumnMaps =
         Object.keys(parsedMaps.maps).length > 0 ? parsedMaps.maps : undefined;
+
+      if (body.extratoModeloIds && typeof body.extratoModeloIds === "object" && !Array.isArray(body.extratoModeloIds)) {
+        const models: Record<string, ExtratoModeloId> = {};
+        for (const [key, value] of Object.entries(body.extratoModeloIds)) {
+          if (value === "caixa_pix" || value === "caixa_total" || value === "outro") {
+            models[key] = value as ExtratoModeloId;
+          } else {
+            return NextResponse.json({ error: `Modelo inválido: ${value}` }, { status: 400 });
+          }
+        }
+        extratoModeloIds = Object.keys(models).length > 0 ? models : undefined;
+      }
     } catch {
       return NextResponse.json(
         { error: "Corpo JSON inválido" },
@@ -81,7 +98,7 @@ export async function POST(
   }
 
   try {
-    const result = await processSessaoPdfArquivos(db, id, { extratoColumnMaps });
+    const result = await processSessaoPdfArquivos(db, id, { extratoColumnMaps, extratoModeloIds });
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

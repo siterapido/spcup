@@ -10,9 +10,32 @@ import type {
   OrigemEnriquecimentoV1,
   OrigemExtracaoV1,
   OrigemRef,
+  CamposExtracao,
 } from "@spc-up/core/browser";
 
 import { PdfOrigemViewer } from "./pdf-origem-viewer";
+
+const EXTRA_COLUNAS_LABELS: Record<string, string> = {
+  data: "Data",
+  valor: "Valor",
+  direcao: "Direção",
+  documento: "Doc./Extrato",
+  historico: "Histórico",
+  remetente_destinatario: "Remetente/Destinatário",
+  hora: "Hora",
+  tipo_pix: "Tipo PIX",
+  situacao: "Situação",
+  saldo: "Saldo",
+};
+
+function formatColunaExtraLabel(col: string): string {
+  if (col in EXTRA_COLUNAS_LABELS) return EXTRA_COLUNAS_LABELS[col]!;
+  if (col.startsWith("custom_")) {
+    const label = col.slice(7).replace(/_/g, " ");
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  return col.charAt(0).toUpperCase() + col.slice(1).replace(/_/g, " ");
+}
 
 const ATRIBUTO_LABELS: Record<string, string> = {
   dataMovimento: "Data",
@@ -47,6 +70,7 @@ type LinhaPdf = {
   descricaoRaw: string;
   nomeArquivo: string | null;
   origemExtracao?: OrigemExtracaoV1 | null;
+  camposExtracao?: CamposExtracao | null;
 };
 
 type Row = {
@@ -332,6 +356,47 @@ export function OrigensPanel({
           </tbody>
         </table>
       </div>
+      {linhas.some((l) => l.camposExtracao && Object.keys(l.camposExtracao).length > 0) && (
+        <div className="mt-4 space-y-3">
+          <p className={`font-medium text-slate-800 ${compact ? "text-xs" : "text-sm"}`}>
+            Campos extraídos do extrato
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {linhas.map((l, idx) => {
+              if (!l.camposExtracao || Object.keys(l.camposExtracao).length === 0) return null;
+              const papel = l.papel || `Origem ${idx + 1}`;
+              const arquivo = l.nomeArquivo || "Extrato";
+              return (
+                <div key={idx} className="rounded-md border border-border-default bg-slate-50/50 p-3">
+                  <div className="flex items-center justify-between border-b border-border-default pb-1.5 mb-2">
+                    <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                      {papel}
+                    </span>
+                    <span className="text-[10px] text-muted truncate max-w-[12rem]" title={arquivo}>
+                      {arquivo}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    {Object.entries(l.camposExtracao).map(([key, val]) => {
+                      if (val === null || val === undefined || val === "") return null;
+                      return (
+                        <div key={key} className="flex flex-col">
+                          <span className="text-[10px] text-muted capitalize font-medium">
+                            {formatColunaExtraLabel(key)}
+                          </span>
+                          <span className="font-semibold text-slate-800 break-words">
+                            {val}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {viewer && (
         <PdfOrigemViewer
           open
