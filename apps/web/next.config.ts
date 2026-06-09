@@ -11,6 +11,7 @@ const canvasTraceGlobs = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   transpilePackages: ["@spc-up/core", "@spc-up/db", "@spc-up/spca"],
   outputFileTracingRoot: tracingRoot,
   serverExternalPackages: ["pdf-parse", "@napi-rs/canvas"],

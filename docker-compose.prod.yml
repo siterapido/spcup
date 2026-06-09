@@ -1,0 +1,30 @@
+name: spcup
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spcup-web:latest
+    container_name: spcup_web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      AUTH_URL: https://spcup.insightfy.com.br
+      STORAGE_ROOT: /data/uploads
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    volumes:
+      - spcup_uploads:/data/uploads
+    networks:
+      evolution_net:
+        ipv4_address: 172.18.0.11
+
+volumes:
+  spcup_uploads:
+
+networks:
+  evolution_net:
+    external: true
