@@ -175,6 +175,52 @@ describe("mapConsolidacaoEventoToLinha", () => {
       }),
     ).toBe("pronta");
   });
+
+  it("mescla camposExtracao das origens de PIX e Total", () => {
+    const linha = mapConsolidacaoEventoToLinha({
+      id: "ev-campos",
+      status: "PENDENTE",
+      dataMovimento: "2025-01-15",
+      valor: "150.00",
+      direcao: "SAIDA",
+      confianca: 0.9,
+      justificativa: null,
+      pessoa: null,
+      linhas: [
+        {
+          movimentacaoId: "m1",
+          papel: "PIX",
+          descricaoRaw: "PIX ENVIADO JOAO",
+          nomeArquivo: "pix.pdf",
+          origemExtracao: null,
+          camposExtracao: {
+            remetente_destinatario: "JOAO SILVA",
+            hora: "14:30",
+            tipo_pix: "Enviado",
+          },
+        },
+        {
+          movimentacaoId: "m2",
+          papel: "COMPLETO",
+          descricaoRaw: "JOAO SILVA CPF 123",
+          nomeArquivo: "total.pdf",
+          origemExtracao: null,
+          camposExtracao: {
+            documento: "987654",
+            historico: "PIX ENVIADO JOAO",
+            saldo: "1000.00",
+          },
+        },
+      ],
+    });
+    expect(linha.camposExtracao).toBeDefined();
+    expect(linha.camposExtracao.remetente_destinatario).toBe("JOAO SILVA");
+    expect(linha.camposExtracao.hora).toBe("14:30");
+    expect(linha.camposExtracao.tipo_pix).toBe("Enviado");
+    expect(linha.camposExtracao.documento).toBe("987654");
+    expect(linha.camposExtracao.historico).toBe("PIX ENVIADO JOAO");
+    expect(linha.camposExtracao.saldo).toBe("1000.00");
+  });
 });
 
 describe("mapMovimentacaoToLinha", () => {
@@ -197,6 +243,31 @@ describe("mapMovimentacaoToLinha", () => {
     expect(linha.status).toBe("pronta");
     expect(linha.origens).toHaveLength(1);
     expect(linha.origens[0]?.movimentacaoId).toBe("m1");
+  });
+
+  it("mapeia camposExtracao da movimentacao flat", () => {
+    const linha = mapMovimentacaoToLinha({
+      id: "m1",
+      dataMovimento: "2025-01-01",
+      valor: "10.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "DEPOSITO",
+      confiancaGlobal: 0.85,
+      pessoaFisica: { id: "pf1", nome: "MARIA", cpf: "12345678901" },
+      pessoaJuridica: null,
+      nomeArquivo: "extrato.pdf",
+      origemExtracao: null,
+      statusPaginaVerificar: false,
+      camposExtracao: {
+        remetente_destinatario: "MARIA SILVA",
+        hora: "12:00",
+      },
+    });
+    expect(linha.camposExtracao).toBeDefined();
+    expect(linha.camposExtracao.remetente_destinatario).toBe("MARIA SILVA");
+    expect(linha.camposExtracao.hora).toBe("12:00");
+    expect(linha.origens[0]?.camposExtracao).toBeDefined();
+    expect(linha.origens[0]?.camposExtracao?.remetente_destinatario).toBe("MARIA SILVA");
   });
 
   it("sem pessoa fica pendente via deriveLinhaStatus", () => {

@@ -495,4 +495,44 @@ describe("buildConsolidacaoCandidates", () => {
     });
     expect(events.filter((e) => e.linhas.length === 2)).toHaveLength(0);
   });
+
+  it("pairs PIX and COMPLETO using camposExtracao.historico and contraparteDoHistorico when remetenteDestinatario is missing on COMPLETO", () => {
+    const pix: MovimentacaoCandidate = {
+      id: "pix-1",
+      arquivoIngestaoId: "arq-pix",
+      nomeArquivo: "Extrato Jan PIX.pdf",
+      dataMovimento: "2025-01-15",
+      valor: "500.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: "MARIA SILVA",
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+    };
+    const comp: MovimentacaoCandidate = {
+      id: "comp-1",
+      arquivoIngestaoId: "arq-total",
+      nomeArquivo: "EXTRATO TOTAL JANEIRO.pdf",
+      dataMovimento: "2025-01-15",
+      valor: "500.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "PIX RECEBIDO - MARIA SILVA",
+      remetenteDestinatario: null,
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+      camposExtracao: {
+        historico: "PIX RECEBIDO - MARIA SILVA"
+      }
+    };
+
+    const events = buildConsolidacaoCandidates([pix, comp], {
+      pessoaByCpf: new Map(),
+      pessoaByCnpj: new Map(),
+    });
+
+    expect(events.filter((e) => e.linhas.length === 2)).toHaveLength(1);
+    expect(events[0]!.confianca).toBe(0.65);
+  });
 });

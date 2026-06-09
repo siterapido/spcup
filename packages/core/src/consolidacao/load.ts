@@ -27,6 +27,7 @@ export async function loadMovimentacaoCandidates(
       remetenteDestinatario: movimentacao.remetenteDestinatario,
       origemExtracao: movimentacao.origemExtracao,
       contaBancariaId: movimentacao.contaBancariaId,
+      camposExtracao: movimentacao.camposExtracao,
     })
     .from(movimentacao)
     .innerJoin(arquivoIngestao, eq(movimentacao.arquivoIngestaoId, arquivoIngestao.id))
@@ -53,6 +54,7 @@ export async function loadMovimentacaoCandidates(
       cnpjExtraido: docs.cnpj,
       origemExtracao,
       contaBancariaId: row.contaBancariaId,
+      camposExtracao: row.camposExtracao as Record<string, string | null> | null,
     };
   });
 }

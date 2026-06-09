@@ -9,9 +9,12 @@ import type {
   ConsolidacaoEventDraft,
   ConsolidacaoHipoteseDraft,
   ConsolidacaoLinhaDraft,
+  ConsolidacaoLinhaPapel,
   MovimentacaoCandidate,
   PessoaRef,
 } from "./types";
+import { contraparteDoHistorico } from "./contraparte-historico";
+import { campoExtracao } from "../ingest/campos-extracao";
 
 function extractDocsFromMov(m: MovimentacaoCandidate): {
   cpf: string | null;
@@ -51,6 +54,17 @@ function remetenteFromMov(m: MovimentacaoCandidate): string {
   return normalizeName(m.remetenteDestinatario ?? "");
 }
 
+function remetenteOuHistorico(m: MovimentacaoCandidate, papel: ConsolidacaoLinhaPapel): string {
+  if (papel === "COMPLETO") {
+    const h = campoExtracao(m, "historico");
+    const parsed = contraparteDoHistorico(h ?? "");
+    if (parsed) {
+      return parsed;
+    }
+  }
+  return remetenteFromMov(m);
+}
+
 function nomesBatem(extraido: string, cadastro: string): boolean {
   return compararNomeCadastro(extraido, cadastro) === "bate";
 }
@@ -60,8 +74,10 @@ function pairEligible(a: MovimentacaoCandidate, b: MovimentacaoCandidate): boole
   const docsB = extractDocsFromMov(b);
   if (docsA.cpf && docsB.cpf && docsA.cpf === docsB.cpf) return true;
   if (docsA.cnpj && docsB.cnpj && docsA.cnpj === docsB.cnpj) return true;
-  const nomeA = remetenteFromMov(a);
-  const nomeB = remetenteFromMov(b);
+  const papelA = classifyArquivoPapel(a.nomeArquivo);
+  const papelB = classifyArquivoPapel(b.nomeArquivo);
+  const nomeA = remetenteOuHistorico(a, papelA);
+  const nomeB = remetenteOuHistorico(b, papelB);
   if (nomeA.length >= 3 && nomeB.length >= 3 && nomesBatem(nomeA, nomeB)) return true;
   if ((docsA.cpf || docsA.cnpj || docsB.cpf || docsB.cnpj) && nomesBatem(nomeA, nomeB)) {
     return true;
@@ -130,8 +146,10 @@ function scorePair(
 
   const cpfCompleto = cpfB ?? cpfA;
   const cnpjCompleto = cnpjB ?? cnpjA;
-  const nomePix = remetenteFromMov(a);
-  const nomeCompleto = remetenteFromMov(b);
+  const papelA = classifyArquivoPapel(a.nomeArquivo);
+  const papelB = classifyArquivoPapel(b.nomeArquivo);
+  const nomePix = remetenteOuHistorico(a, papelA);
+  const nomeCompleto = remetenteOuHistorico(b, papelB);
   const pessoaByCpf = cpfCompleto ? resolvePessoa(cpfCompleto, null, ctx) : null;
   const pessoaByCnpj = cnpjCompleto ? resolvePessoa(null, cnpjCompleto, ctx) : null;
 

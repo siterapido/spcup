@@ -1,6 +1,7 @@
 import {
   CONSOLIDACAO_EVENTO_STATUS,
   movimentacao,
+  arquivoIngestao,
   type Db,
 } from "@spc-up/db";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
@@ -23,6 +24,9 @@ import type {
   PlanilhaPayload,
   PlanilhaPessoa,
 } from "./types";
+import { ExtratoModeloId, detectExtratoModeloFromFilename } from "../ingest/extrato-modelo";
+import { colunasFromModelos, colunasFromCamposUnion, PLANILHA_COLUNA_ORDER } from "./colunas-sessao";
+import type { CamposExtracao } from "../ingest/campos-extracao";
 
 export type { ConsolidacaoEventoLinhaInput } from "./map-consolidacao-linha";
 export { mapConsolidacaoEventoToLinha } from "./map-consolidacao-linha";
@@ -82,6 +86,7 @@ export type MovimentacaoLinhaInput = {
   statusPaginaVerificar?: boolean;
   extracaoConfirmada?: boolean;
   evidencias?: Array<{ tipo: string }>;
+  camposExtracao?: Record<string, string | null> | null;
 };
 
 type MovimentacaoPessoaRef = {
@@ -158,6 +163,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
       origemExtracao: mov.origemExtracao,
       indiceLinha: mov.origemExtracao?.indiceLinha,
       bbox: mov.origemExtracao?.bbox,
+      camposExtracao: mov.camposExtracao ?? {},
     },
   ];
   return {
@@ -184,6 +190,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     extracaoConfirmada,
     cadastroLinkTier,
     comparacaoNome: pessoa ? comparacaoNome : null,
+    camposExtracao: mov.camposExtracao ?? {},
   };
 }
 
@@ -237,6 +244,7 @@ function dbMovToLinhaInput(
     statusPaginaVerificar: mov.evidencias.some((e) => e.tipo === "PAGINA_VERIFICAR"),
     extracaoConfirmada: mov.evidencias.some((e) => e.tipo === "EXTRACAO_CONFIRMADA"),
     evidencias: mov.evidencias.map((e) => ({ tipo: e.tipo })),
+    camposExtracao: mov.camposExtracao as Record<string, string | null> | null,
   };
 }
 
@@ -309,10 +317,45 @@ export async function listPlanilhaForSessao(
   const resumo = buildResumo(linhas, cadastroAlerta);
   const ingestaoResumo = await buildIngestaoResumo(db, sessaoId, linhas, resumo);
 
+  const arquivos = await db
+    .select({
+      id: arquivoIngestao.id,
+      nomeArquivo: arquivoIngestao.nomeArquivo,
+      metadados: arquivoIngestao.metadados,
+    })
+    .from(arquivoIngestao)
+    .where(eq(arquivoIngestao.sessaoPrestacaoId, sessaoId));
+
+  const modelIds = arquivos.map((arq) => {
+    const meta = arq.metadados as Record<string, any> | null;
+    const fromMeta = meta?.extratoModeloId;
+    if (fromMeta && typeof fromMeta === "string") {
+      return fromMeta as ExtratoModeloId;
+    }
+    return detectExtratoModeloFromFilename(arq.nomeArquivo);
+  });
+
+  const colMap = colunasFromModelos(modelIds);
+  const colCampos = colunasFromCamposUnion(linhas.map((l) => l.camposExtracao));
+  const combinedSet = new Set<string>([...colMap, ...colCampos]);
+  const excluded = new Set(["data", "valor", "direcao"]);
+  const filtered = Array.from(combinedSet).filter((col) => !excluded.has(col));
+  const colunas = filtered.sort((a, b) => {
+    const idxA = PLANILHA_COLUNA_ORDER.indexOf(a as any);
+    const idxB = PLANILHA_COLUNA_ORDER.indexOf(b as any);
+    if (idxA !== -1 && idxB !== -1) {
+      return idxA - idxB;
+    }
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
   return {
-    sessao: { id: sessao.id, uf: sessao.uf, exercicio: sessao.exercicio },
+    sessao: { id: sessao.id, uf: sessao.uf, exercicio: sessao.exercicio, mesReferencia: sessao.mesReferencia },
     linhas,
     resumo,
     ingestaoResumo,
+    colunas,
   };
 }
