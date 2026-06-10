@@ -386,6 +386,7 @@ export {
   mapConsolidacaoEventoToLinha,
   mapMovimentacaoToLinha,
 } from "./planilha/list";
+export { getOrigemDestaque } from "./planilha";
 export {
   PLANILHA_COLUNA_ORDER,
   colunasFromModelos,

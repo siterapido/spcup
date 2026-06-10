@@ -26,7 +26,7 @@ import type {
 } from "./types";
 import { ExtratoModeloId, detectExtratoModeloFromFilename } from "../ingest/extrato-modelo";
 import { colunasFromModelos, colunasFromCamposUnion, PLANILHA_COLUNA_ORDER } from "./colunas-sessao";
-import type { CamposExtracao } from "../ingest/campos-extracao";
+import { campoExtracao, type CamposExtracao } from "../ingest/campos-extracao";
 
 export type { ConsolidacaoEventoLinhaInput } from "./map-consolidacao-linha";
 export { mapConsolidacaoEventoToLinha } from "./map-consolidacao-linha";
@@ -155,7 +155,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     {
       movimentacaoId: mov.id,
       arquivoIngestaoId:
-        mov.origemExtracao?.arquivoIngestaoId ?? mov.arquivoIngestaoId ?? undefined,
+        mov.arquivoIngestaoId ?? mov.origemExtracao?.arquivoIngestaoId ?? undefined,
       nomeArquivo: mov.nomeArquivo,
       pagina: mov.origemExtracao?.pagina,
       descricaoRaw: mov.descricaoRaw,
@@ -184,7 +184,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
       extracaoConfirmada,
     }),
     pessoa,
-    remetenteDestinatario: mov.remetenteDestinatario ?? null,
+    remetenteDestinatario: campoExtracao(mov, 'remetente_destinatario') ?? null,
     origens,
     extracaoDuvidosa,
     extracaoConfirmada,

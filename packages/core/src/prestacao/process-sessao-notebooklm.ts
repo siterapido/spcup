@@ -23,6 +23,7 @@ import {
 } from "../ai/notebooklm";
 import { upsertPessoa } from "../cadastro/upsert";
 import { consolidateSession } from "../consolidacao/run";
+import { contraparteDoHistorico } from "../consolidacao/contraparte-historico";
 import {
   buildExtratoColumnPromptHint,
   type ExtratoColumnMap,
@@ -308,6 +309,14 @@ async function persistNotebookLmTransactions(
         pfId = upsertRes.pessoaFisicaId || null;
       } else {
         pjId = upsertRes.pessoaJuridicaId || null;
+      }
+    }
+
+    // Fallback: if NotebookLM didn't extract remetente_destinatario, try parsing the historico
+    if (!tx.remetente_destinatario && tx.historico) {
+      const fromHistorico = contraparteDoHistorico(tx.historico);
+      if (fromHistorico) {
+        tx.remetente_destinatario = fromHistorico;
       }
     }
 

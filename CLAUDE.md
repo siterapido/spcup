@@ -23,6 +23,9 @@
 - Cadastro BA: `pessoas bahia (1).xlsx` — headers `nome`, `documento`, `tipo` (257 linhas).
 - Nomes no cadastro às vezes abreviam nomes do meio (`GABRIELLE D PIMENTEL` vs extrato `GABRIELLE DIAS PIMENTEL`); `compararNomeCadastro` trata iniciais de 1 letra.
 - Fixture mapa Caixa PIX: `EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN` em `packages/core/src/ingest/extrato-column-map-fixtures.ts`.
+- **Consolidation:** Removido guarda `consolidarExtratos` de `consolidateSession()` (jun/2026). Consolidation roda automaticamente com ≥2 PDFs independente da flag da sessão. `skipConsolidacao` é o mecanismo correto de opt-out.
+- **Mudança de schema:** `consolidarExtratos` coluna existe ainda no DB mas não bloqueia mais consolidação. Pode ser obsoleta.
+- **Batch:** Não `campoExtracao()` na planilha já faz fallback p/ `camposExtracao.jsonb` antes de usar `remetenteDestinatario` direto. Fix aplicado em list.ts:187 e map-consolidacao-linha.ts:173.
 
 ## Docs
 

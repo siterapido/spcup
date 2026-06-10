@@ -33,10 +33,6 @@ export async function consolidateSession(
   if (!sessao) {
     throw new Error("Sessão não encontrada");
   }
-  if (!sessao.consolidarExtratos) {
-    return { skipped: true, reason: "FLAG_OFF" };
-  }
-
   const pdfCount = await countPdfIngestoesForSessao(db, sessaoId);
   if (pdfCount < 2) {
     return { skipped: true, reason: "LESS_THAN_TWO_PDF" };
