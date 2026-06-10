@@ -9,7 +9,6 @@ import { maskDocumento } from "@/lib/mask-document";
 import { planilhaLinhaFromEvento } from "@/lib/planilha-linha-from-evento";
 
 import type { PlanilhaLinha } from "@spc-up/core/browser";
-
 import { findCnpjInDescricao, findCpfInDescricao, type BboxNorm } from "@spc-up/core/browser";
 
 type LinhaDocumento = ConsolidacaoEventoRow["linhas"][number];
@@ -261,12 +260,16 @@ function LinhaDocumentoTabela({
   onVerPdf,
   onCompararPdf,
   sublinhaSanfona = false,
+  destaqueAtivo = false,
+  onHighlight,
 }: {
   row: LinhaPlanilhaDocumento;
-  onVerPdf: (linha: LinhaDocumento) => void;
+  onVerPdf: (linha: LinhaDocumento, linhaId?: string) => void;
   onCompararPdf?: (evento: ConsolidacaoEventoRow) => void;
   /** Linha dentro da sanfona expandida (só número do doc. na coluna #). */
   sublinhaSanfona?: boolean;
+  destaqueAtivo?: boolean;
+  onHighlight?: () => void;
 }) {
   const { evento, linha } = row;
   const rotuloNumero = sublinhaSanfona
@@ -275,8 +278,30 @@ function LinhaDocumentoTabela({
       ? `${row.indiceEvento}.${row.indiceDocumento}`
       : String(row.indiceEvento);
 
+  const trClassName = [
+    sublinhaSanfona ? "bg-sky-50/40" : undefined,
+    destaqueAtivo ? "ring-2 ring-amber-400 bg-amber-50" : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <tr className={sublinhaSanfona ? "bg-sky-50/40" : undefined}>
+    <tr
+      className={trClassName}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (
+          target.closest("button") ||
+          target.closest("input") ||
+          target.closest("a") ||
+          target.closest("[role='button']")
+        ) {
+          return;
+        }
+        onHighlight?.();
+      }}
+      style={{ cursor: onHighlight ? "pointer" : undefined }}
+    >
       <td className="sticky left-0 z-[5] border border-slate-200 bg-slate-50 px-1 py-1.5" />
       <td className="sticky left-8 z-[5] border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-600">
         {rotuloNumero}
@@ -292,7 +317,7 @@ function LinhaDocumentoTabela({
               className="font-medium text-primary underline"
               onClick={(e) => {
                 e.stopPropagation();
-                onVerPdf(linha);
+                onVerPdf(linha, linha.id);
               }}
             >
               Ver
@@ -336,11 +361,15 @@ export function ConsolidacaoPlanilha({
   const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set());
   const [pdfViewer, setPdfViewer] = useState<ViewerState | null>(null);
   const [comparadorLinha, setComparadorLinha] = useState<PlanilhaLinha | null>(null);
+  const [destaqueLinhaId, setDestaqueLinhaId] = useState<string | null>(null);
 
   const eventosOrdenados = useMemo(() => ordenarEventos(eventos), [eventos]);
   const linhasPlanilha = useMemo(() => expandirLinhasDocumento(eventos), [eventos]);
 
-  const abrirPdf = (linha: LinhaDocumento) => {
+  const abrirPdf = (linha: LinhaDocumento, linhaId?: string) => {
+    if (linhaId) {
+      setDestaqueLinhaId(linhaId);
+    }
     const o = linha.origemExtracao!;
     setPdfViewer({
       arquivoIngestaoId: o.arquivoIngestaoId,
@@ -530,6 +559,12 @@ export function ConsolidacaoPlanilha({
                             onVerPdf={abrirPdf}
                             onCompararPdf={abrirComparador}
                             sublinhaSanfona
+                            destaqueAtivo={row.linha ? destaqueLinhaId === row.linha.id : false}
+                            onHighlight={() => {
+                              if (row.linha) {
+                                void abrirPdf(row.linha, row.linha.id);
+                              }
+                            }}
                           />
                         ))}
                     </Fragment>
@@ -544,6 +579,12 @@ export function ConsolidacaoPlanilha({
                     }}
                     onVerPdf={abrirPdf}
                     onCompararPdf={abrirComparador}
+                    destaqueAtivo={row.linha ? destaqueLinhaId === row.linha.id : false}
+                    onHighlight={() => {
+                      if (row.linha) {
+                        void abrirPdf(row.linha, row.linha.id);
+                      }
+                    }}
                   />
                 ))}
           </tbody>
@@ -560,6 +601,11 @@ export function ConsolidacaoPlanilha({
           bbox={pdfViewer.bbox}
           highlightLabel={pdfViewer.highlightLabel}
           indiceLinha={pdfViewer.indiceLinha}
+          destaqueOrigem={{
+            pagina: pdfViewer.pagina,
+            indiceLinha: pdfViewer.indiceLinha,
+            bbox: pdfViewer.bbox,
+          }}
         />
       )}
 

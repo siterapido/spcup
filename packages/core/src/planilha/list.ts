@@ -155,7 +155,7 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     {
       movimentacaoId: mov.id,
       arquivoIngestaoId:
-        mov.origemExtracao?.arquivoIngestaoId ?? mov.arquivoIngestaoId ?? undefined,
+        mov.arquivoIngestaoId ?? mov.origemExtracao?.arquivoIngestaoId ?? undefined,
       nomeArquivo: mov.nomeArquivo,
       pagina: mov.origemExtracao?.pagina,
       descricaoRaw: mov.descricaoRaw,

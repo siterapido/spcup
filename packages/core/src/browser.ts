@@ -81,3 +81,6 @@ export type {
   PlanilhaResumo,
 } from "./planilha/types";
 
+export { getOrigemDestaque } from "./planilha";
+
+

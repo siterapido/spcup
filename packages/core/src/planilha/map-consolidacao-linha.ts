@@ -55,7 +55,7 @@ function origensFromLinhas(
   return linhas.map((l) => ({
     movimentacaoId: l.movimentacaoId,
     arquivoIngestaoId:
-      l.origemExtracao?.arquivoIngestaoId ?? l.arquivoIngestaoId ?? undefined,
+      l.arquivoIngestaoId ?? l.origemExtracao?.arquivoIngestaoId ?? undefined,
     nomeArquivo: l.nomeArquivo,
     pagina: l.origemExtracao?.pagina,
     descricaoRaw: l.descricaoRaw,

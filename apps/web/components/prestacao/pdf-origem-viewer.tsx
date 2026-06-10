@@ -15,6 +15,11 @@ type Props = {
   /** Rótulo do dado em conferência (ex.: "Valor · extrato.pdf"). */
   highlightLabel?: string;
   indiceLinha?: number;
+  destaqueOrigem?: {
+    pagina: number;
+    indiceLinha?: number;
+    bbox?: BboxNorm;
+  };
 };
 
 export function PdfOrigemViewer({
@@ -26,6 +31,7 @@ export function PdfOrigemViewer({
   bbox,
   highlightLabel,
   indiceLinha,
+  destaqueOrigem,
 }: Props) {
   if (!open) {
     return null;
@@ -57,6 +63,7 @@ export function PdfOrigemViewer({
           bbox={bbox}
           highlightMode={bbox ? "extracao" : "none"}
           indiceLinha={indiceLinha}
+          destaqueOrigem={destaqueOrigem}
           dataMovimento=""
           valor=""
           descricaoRaw=""

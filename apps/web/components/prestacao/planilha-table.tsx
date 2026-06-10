@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core/browser";
+import { getOrigemDestaque } from "@spc-up/core/browser";
 import type { BboxNorm } from "@spc-up/core/browser";
 
 const EXTRA_COLUNAS_LABELS: Record<string, string> = {
@@ -132,6 +133,7 @@ export function PlanilhaView({
   const [batchQ, setBatchQ] = useState("");
   const [batchPessoas, setBatchPessoas] = useState<PessoaItem[]>([]);
   const [comparadorLinha, setComparadorLinha] = useState<PlanilhaLinha | null>(null);
+  const [destaqueLinhaId, setDestaqueLinhaId] = useState<string | null>(null);
 
   const filtered = useMemo(
     () => linhas.filter((l) => matchesFilter(l, filter)),
@@ -204,7 +206,10 @@ export function PlanilhaView({
     }
   }
 
-  async function abrirPdf(origem: PlanilhaOrigem) {
+  async function abrirPdf(origem: PlanilhaOrigem, linhaId?: string) {
+    if (linhaId) {
+      setDestaqueLinhaId(linhaId);
+    }
     if (origem.arquivoIngestaoId) {
       setPdfPanel({
         arquivoIngestaoId: origem.arquivoIngestaoId,
@@ -345,8 +350,29 @@ export function PlanilhaView({
               filtered.map((linha) => {
                 const key = rowKey(linha);
                 const isExpanded = expanded.has(linha.id);
+                const destaqueAtivo = destaqueLinhaId === linha.id;
                 return (
-                  <tr key={key} className="border-b border-border-default align-top hover:bg-slate-50/50">
+                  <tr
+                    key={key}
+                    className={`border-b border-border-default align-top hover:bg-slate-50/50 transition-colors ${
+                      destaqueAtivo ? "ring-2 ring-amber-400 bg-amber-50" : ""
+                    }`}
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest("button") ||
+                        target.closest("input") ||
+                        target.closest("a") ||
+                        target.closest("[role='button']")
+                      ) {
+                        return;
+                      }
+                      const orig = getOrigemDestaque(linha);
+                      if (orig) {
+                        void abrirPdf(orig, linha.id);
+                      }
+                    }}
+                  >
                     <td className="px-2 py-2">
                       <input
                         type="checkbox"
@@ -426,7 +452,7 @@ export function PlanilhaView({
                                     type="button"
                                     className="mt-1 text-primary underline"
                                     disabled={busy}
-                                    onClick={() => void abrirPdf(o)}
+                                    onClick={() => void abrirPdf(o, linha.id)}
                                   >
                                     Ver PDF
                                   </button>
@@ -489,7 +515,7 @@ export function PlanilhaView({
                             type="button"
                             className="text-left text-xs text-primary underline"
                             disabled={busy}
-                            onClick={() => void abrirPdf(linha.origens[0]!)}
+                            onClick={() => void abrirPdf(linha.origens[0]!, linha.id)}
                           >
                             Ver PDF
                           </button>
@@ -582,6 +608,11 @@ export function PlanilhaView({
           bbox={pdfPanel.bbox}
           highlightLabel={pdfPanel.highlightLabel}
           indiceLinha={pdfPanel.indiceLinha}
+          destaqueOrigem={{
+            pagina: pdfPanel.pagina,
+            indiceLinha: pdfPanel.indiceLinha,
+            bbox: pdfPanel.bbox,
+          }}
         />
       )}
     </div>

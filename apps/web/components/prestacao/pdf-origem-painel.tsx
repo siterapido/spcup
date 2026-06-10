@@ -21,6 +21,11 @@ export type PdfOrigemPainelProps = {
   dataMovimento: string;
   valor: string;
   descricaoRaw: string;
+  destaqueOrigem?: {
+    pagina: number;
+    indiceLinha?: number;
+    bbox?: BboxNorm;
+  };
 };
 
 const CANVAS_SCALE = 1.5;
@@ -47,6 +52,7 @@ export function PdfOrigemPainel({
   dataMovimento,
   valor,
   descricaoRaw,
+  destaqueOrigem,
 }: PdfOrigemPainelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -68,11 +74,13 @@ export function PdfOrigemPainel({
   const totalPaginas = pageCount > 0 ? pageCount : paginaInicial;
 
   useEffect(() => {
-    setPaginaAtual(paginaInicial);
-    setPaginaOrigem(paginaInicial);
-    setBboxAtual(bboxProp);
-    setHighlightModeAtual(bboxProp ? highlightModeProp : "none");
-  }, [arquivoIngestaoId, paginaInicial, bboxProp, highlightModeProp]);
+    const pag = destaqueOrigem?.pagina ?? paginaInicial;
+    const box = destaqueOrigem?.bbox ?? bboxProp;
+    setPaginaAtual(pag);
+    setPaginaOrigem(pag);
+    setBboxAtual(box);
+    setHighlightModeAtual(box ? "extracao" : (bboxProp ? highlightModeProp : "none"));
+  }, [arquivoIngestaoId, paginaInicial, bboxProp, highlightModeProp, destaqueOrigem]);
 
   useEffect(() => {
     if (bboxProp) {
@@ -190,10 +198,38 @@ export function PdfOrigemPainel({
     highlightModeAtual !== "none" &&
     paginaAtual === paginaOrigem;
 
+  useEffect(() => {
+    if (renderLoading || !showHighlight || !bboxAtual || !wrapRef.current || !canvasRef.current) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const canvasEl = canvasRef.current;
+      const wrapEl = wrapRef.current;
+      if (!canvasEl || !wrapEl) return;
+
+      const canvasWidth = canvasEl.clientWidth || canvasEl.width;
+      const canvasHeight = canvasEl.clientHeight || canvasEl.height;
+
+      const top = bboxAtual.y * canvasHeight - (wrapEl.clientHeight / 2) + (bboxAtual.h * canvasHeight / 2);
+      const left = bboxAtual.x * canvasWidth - (wrapEl.clientWidth / 2) + (bboxAtual.w * canvasWidth / 2);
+
+      wrapEl.scrollTo({
+        top,
+        left,
+        behavior: "smooth",
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [renderLoading, showHighlight, bboxAtual, paginaAtual]);
+
   const highlightClass =
-    highlightModeAtual === "estimada"
-      ? "border-2 border-blue-500 border-dashed bg-blue-400/15"
-      : "border-2 border-amber-500 bg-amber-400/20";
+    destaqueOrigem?.bbox != null
+      ? "border-2 border-amber-500 bg-amber-400/30"
+      : highlightModeAtual === "estimada"
+        ? "border-2 border-blue-500 border-dashed bg-blue-400/15"
+        : "border-2 border-amber-500 bg-amber-400/20";
 
   const loading = renderLoading || textLoading;
   const error = renderError ?? textError;

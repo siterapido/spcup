@@ -5,8 +5,8 @@
 Antes de afirmar que remetente/destinatário funciona:
 
 1. `pnpm --filter @spc-up/db migrate` — coluna `remetente_destinatario` existe
-2. `cd packages/core && npm test` — 306+ tests pass
-3. `pnpm --filter web exec tsc --noEmit` — sem erros
+2. `pnpm --filter @spc-up/core test` — 349+ tests pass (source nvm primeiro: `source ~/.nvm/nvm.sh`)
+3. `pnpm --filter web exec tsc --noEmit` — sem erros (ignorar erros de drizzle-orm mysql/singlestore — preexistentes)
 4. E2E opcional: `pnpm exec tsx scripts/test-remetente-match-e2e.ts` (NotebookLM + ~3 min; exige `nlm`, cadastro BA, PDF em `Documentos para teste /`)
 
 Critérios E2E OK: 100% linhas com `remetenteDestinatario`; maioria com PF/PJ; `compararNomeCadastro` majoritariamente `bate` (inclui abreviações de nome do meio no cadastro).
