@@ -14,6 +14,12 @@ import { and, eq, isNull } from "drizzle-orm";
 export type TipoPrestadorSessao =
   (typeof TIPO_PRESTADOR)[keyof typeof TIPO_PRESTADOR];
 
+export type SessaoPrestacaoDetalhe = SessaoPrestacao & {
+  diretorioEstadual: DiretorioEstadual | null;
+  diretorioMunicipal: DiretorioMunicipal | null;
+  arquivoBaseIngestaoId: string | null;
+};
+
 export interface CreateSessaoInput {
   uf: string;
   tipoPrestador: TipoPrestadorSessao;
@@ -122,13 +128,7 @@ export async function createSessao(
 export async function getSessao(
   db: Db,
   sessaoId: string,
-): Promise<
-  | (SessaoPrestacao & {
-      diretorioEstadual: DiretorioEstadual | null;
-      diretorioMunicipal: DiretorioMunicipal | null;
-    })
-  | undefined
-> {
+): Promise<SessaoPrestacaoDetalhe | undefined> {
   return db.query.sessaoPrestacao.findFirst({
     where: and(eq(sessaoPrestacao.id, sessaoId), isNull(sessaoPrestacao.deletedAt)),
     with: {
@@ -136,6 +136,17 @@ export async function getSessao(
       diretorioMunicipal: true,
     },
   });
+}
+
+export async function persistArquivoBaseIngestaoId(
+  db: Db,
+  sessaoId: string,
+  arquivoBaseIngestaoId: string | null,
+): Promise<void> {
+  await db
+    .update(sessaoPrestacao)
+    .set({ arquivoBaseIngestaoId })
+    .where(eq(sessaoPrestacao.id, sessaoId));
 }
 
 export function prestadorFromSessao(

@@ -1,5 +1,6 @@
 import type { CONSOLIDACAO_LINHA_PAPEL } from "@spc-up/db";
 
+import type { ExtratoModeloId } from "../ingest/extrato-modelo";
 import type { CadastroLinkTier } from "../match/cadastro-link";
 import type { OrigemAtributosEvento, OrigemExtracaoV1 } from "../provenance/types";
 
@@ -20,6 +21,7 @@ export type MovimentacaoCandidate = {
   origemExtracao: OrigemExtracaoV1 | null;
   contaBancariaId: string | null;
   camposExtracao?: Record<string, string | null> | null;
+  extratoModeloId?: ExtratoModeloId | null;
 };
 
 export type PessoaRef =

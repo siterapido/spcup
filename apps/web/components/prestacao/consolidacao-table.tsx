@@ -113,6 +113,20 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
   const [localEventos, setLocalEventos] = useState<ConsolidacaoEventoRow[]>(eventos);
   const [transitioningIds, setTransitioningIds] = useState<Record<string, "approving" | "rejecting">>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [pixOrfaos, setPixOrfaos] = useState<
+    Array<{
+      movimentacaoId: string;
+      dataMovimento: string;
+      valor: string;
+      direcao: string;
+      remetenteDestinatario: string | null;
+      nomeArquivo: string;
+    }>
+  >([]);
+  const [orfaosOpen, setOrfaosOpen] = useState(false);
+  const [recalcOpen, setRecalcOpen] = useState(false);
+  const [manterAprovados, setManterAprovados] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
 
   // New Client Modal state
   const [createModal, setCreateModal] = useState<{
@@ -128,6 +142,41 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
   const [webhookUrl, setWebhookUrl] = useState("https://n8n.seu-erp.com.br/webhook/consolidacao-bancaria");
   const [isSendingWebhook, setIsSendingWebhook] = useState(false);
   const [webhookSuccess, setWebhookSuccess] = useState(false);
+
+  useEffect(() => {
+    void fetch(`/api/prestacao/sessoes/${sessaoId}/consolidacao/orfaos-pix`)
+      .then((r) => r.json())
+      .then((json: { itens?: typeof pixOrfaos }) => {
+        setPixOrfaos(json.itens ?? []);
+      })
+      .catch(() => setPixOrfaos([]));
+  }, [sessaoId, localEventos.length]);
+
+  const handleRecalcular = useCallback(async () => {
+    setRecalculating(true);
+    try {
+      const res = await fetch(
+        `/api/prestacao/sessoes/${sessaoId}/consolidacao/recalcular`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ manterAprovados }),
+        },
+      );
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(json.error ?? "Falha ao recalcular consolidação");
+      }
+      setRecalcOpen(false);
+      setManterAprovados(false);
+      setMessage("Consolidação recalculada.");
+      router.refresh();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Erro ao recalcular");
+    } finally {
+      setRecalculating(false);
+    }
+  }, [sessaoId, manterAprovados, router]);
 
   // Sync prop changes
   useEffect(() => {
@@ -521,6 +570,96 @@ export function ConsolidacaoTable({ sessaoId, eventos, cadastroAlerta, uf = "SP"
           {message}
         </div>
       )}
+
+      {pixOrfaos.length > 0 ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50/80">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-amber-950"
+            onClick={() => setOrfaosOpen((v) => !v)}
+          >
+            <span>
+              {pixOrfaos.length} PIX sem par no extrato base
+            </span>
+            <span className="text-xs">{orfaosOpen ? "Ocultar" : "Ver"}</span>
+          </button>
+          {orfaosOpen ? (
+            <div className="border-t border-amber-200 px-3 py-2 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-amber-900/80">
+                    <th className="py-1 pr-2">Data</th>
+                    <th className="py-1 pr-2">Valor</th>
+                    <th className="py-1 pr-2">Dir.</th>
+                    <th className="py-1 pr-2">Nome</th>
+                    <th className="py-1">Arquivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pixOrfaos.map((o) => (
+                    <tr key={o.movimentacaoId} className="border-t border-amber-100">
+                      <td className="py-1 pr-2">{o.dataMovimento}</td>
+                      <td className="py-1 pr-2">{o.valor}</td>
+                      <td className="py-1 pr-2">{o.direcao}</td>
+                      <td className="py-1 pr-2">{o.remetenteDestinatario ?? "—"}</td>
+                      <td className="py-1">{o.nomeArquivo}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setRecalcOpen(true)}
+        >
+          Recalcular consolidação
+        </Button>
+      </div>
+
+      {recalcOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <Card className="max-w-md w-full p-4 space-y-3">
+            <CardTitle>Recalcular consolidação</CardTitle>
+            <p className="text-sm text-muted">
+              Por padrão, todos os eventos serão apagados e recriados com o extrato
+              base atual. Aprovações manuais serão perdidas.
+            </p>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={manterAprovados}
+                onChange={(e) => setManterAprovados(e.target.checked)}
+                className="mt-1"
+              />
+              <span>Manter eventos já aprovados (pode gerar duplicatas)</span>
+            </label>
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRecalcOpen(false)}
+                disabled={recalculating}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleRecalcular()}
+                disabled={recalculating}
+              >
+                {recalculating ? "Recalculando…" : "Recalcular"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       {/* 2. Tabs */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200">

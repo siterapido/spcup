@@ -9,6 +9,7 @@ import {
 import type { ExtratoColumnMap } from "../ingest/extrato-column-map";
 import type { ExtratoModeloId } from "../ingest/extrato-modelo";
 import { ARQUIVO_INGESTAO_STATUS, type PrestadorContext } from "../ingest/types";
+import { persistArquivoBaseOnProcessStart } from "./resolve-arquivo-base";
 import { getSessao, prestadorFromSessao } from "./sessao";
 
 export type ProcessPdfArquivoResult = {
@@ -62,6 +63,7 @@ export type ProcessSessaoPdfOptions = {
   skipConsolidacao?: boolean;
   extratoColumnMaps?: Record<string, ExtratoColumnMap>;
   extratoModeloIds?: Record<string, ExtratoModeloId>;
+  arquivoBaseIngestaoId?: string;
 };
 
 export async function processSessaoPdfArquivos(
@@ -101,6 +103,13 @@ async function runTraditionalPipeline(
   if (!sessao?.diretorioEstadual) {
     throw new Error("Sessão não encontrada ou sem diretório estadual");
   }
+
+  await persistArquivoBaseOnProcessStart(
+    db,
+    sessaoId,
+    sessao.arquivoBaseIngestaoId,
+    options,
+  );
 
   const prestadorBase = prestadorFromSessao(sessao);
   const prestador: PrestadorContext = {

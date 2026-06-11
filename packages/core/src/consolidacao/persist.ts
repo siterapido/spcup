@@ -14,7 +14,11 @@ function pickRemetenteDestinatarioFromFilhas(
   linhas: ConsolidacaoLinhaDraft[],
   remetenteByMovId: Map<string, string | null>,
 ): string | null {
-  for (const linha of linhas) {
+  const ordered = [
+    ...linhas.filter((l) => l.papel === "PIX"),
+    ...linhas.filter((l) => l.papel !== "PIX"),
+  ];
+  for (const linha of ordered) {
     const remetente = remetenteByMovId.get(linha.movimentacaoId);
     if (remetente != null && remetente.trim().length > 0) {
       return remetente;
@@ -35,6 +39,15 @@ export async function deletePendingConsolidacaoEvents(
         eq(consolidacaoEvento.status, CONSOLIDACAO_EVENTO_STATUS.PENDENTE),
       ),
     );
+}
+
+export async function deleteAllConsolidacaoEvents(
+  db: Db,
+  sessaoId: string,
+): Promise<void> {
+  await db
+    .delete(consolidacaoEvento)
+    .where(eq(consolidacaoEvento.sessaoPrestacaoId, sessaoId));
 }
 
 export async function persistConsolidacaoDrafts(

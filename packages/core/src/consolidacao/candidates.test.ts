@@ -3,6 +3,30 @@ import { describe, expect, it } from "vitest";
 import { buildConsolidacaoCandidates } from "./candidates";
 import type { MovimentacaoCandidate } from "./types";
 
+const BASE_ARQ = "arq-total";
+
+type CadastroCtx = Parameters<typeof buildConsolidacaoCandidates>[1];
+
+function draftsFrom(
+  movs: MovimentacaoCandidate[],
+  ctx: CadastroCtx,
+  baseArquivoId = BASE_ARQ,
+) {
+  return buildConsolidacaoCandidates(movs, ctx, {
+    arquivoBaseIngestaoId: baseArquivoId,
+  }).drafts;
+}
+
+function runCandidates(
+  movs: MovimentacaoCandidate[],
+  ctx: CadastroCtx,
+  baseArquivoId = BASE_ARQ,
+) {
+  return buildConsolidacaoCandidates(movs, ctx, {
+    arquivoBaseIngestaoId: baseArquivoId,
+  });
+}
+
 const pixLine: MovimentacaoCandidate = {
   id: "pix-1",
   arquivoIngestaoId: "arq-pix",
@@ -33,7 +57,7 @@ const completoLine: MovimentacaoCandidate = {
 
 describe("buildConsolidacaoCandidates", () => {
   it("pairs PIX nome-only with completo same date/value/direction", () => {
-    const events = buildConsolidacaoCandidates([pixLine, completoLine], {
+    const events = draftsFrom([pixLine, completoLine], {
       pessoaByCpf: new Map([
         [
           "12345678901",
@@ -51,20 +75,30 @@ describe("buildConsolidacaoCandidates", () => {
   });
 
   it("does not pair different valores", () => {
-    const events = buildConsolidacaoCandidates(
+    const events = draftsFrom(
       [pixLine, { ...completoLine, valor: "200.00" }],
       { pessoaByCpf: new Map(), pessoaByCnpj: new Map() },
     );
     expect(events.filter((e) => e.linhas.length === 2)).toHaveLength(0);
   });
 
-  it("creates single-line events for unpaired movimentacoes", () => {
-    const events = buildConsolidacaoCandidates([pixLine], {
+  it("creates single-line events for unpaired base movimentacoes", () => {
+    const events = draftsFrom([completoLine], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map(),
     });
     expect(events).toHaveLength(1);
     expect(events[0]!.linhas).toHaveLength(1);
+  });
+
+  it("puts PIX-only movimentacoes in pixOrfaos, not drafts", () => {
+    const { drafts, pixOrfaos } = runCandidates([pixLine], {
+      pessoaByCpf: new Map(),
+      pessoaByCnpj: new Map(),
+    });
+    expect(drafts).toHaveLength(0);
+    expect(pixOrfaos).toHaveLength(1);
+    expect(pixOrfaos[0]!.id).toBe("pix-1");
   });
 
   it("pairs PIX with CNPJ in completo same date/value/direction", () => {
@@ -94,7 +128,7 @@ describe("buildConsolidacaoCandidates", () => {
       cnpjExtraido: "12345678000199",
       origemExtracao: null,
     };
-    const events = buildConsolidacaoCandidates([pixLineCnpj, completoLineCnpj], {
+    const events = draftsFrom([pixLineCnpj, completoLineCnpj], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map([
         [
@@ -121,7 +155,7 @@ describe("buildConsolidacaoCandidates", () => {
       cnpjExtraido: "12345678000199",
       origemExtracao: null,
     };
-    const events = buildConsolidacaoCandidates([singleCnpjLine], {
+    const events = draftsFrom([singleCnpjLine], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map([
         [
@@ -150,7 +184,7 @@ describe("buildConsolidacaoCandidates", () => {
       origemExtracao: null,
     };
 
-    const events = buildConsolidacaoCandidates([onlyCpfDescricao], {
+    const { drafts, pixOrfaos } = runCandidates([onlyCpfDescricao], {
       pessoaByCpf: new Map([
         [
           "12345678901",
@@ -160,9 +194,8 @@ describe("buildConsolidacaoCandidates", () => {
       pessoaByCnpj: new Map(),
     });
 
-    expect(events).toHaveLength(1);
-    expect(events[0]!.pessoaFisicaId).toBeUndefined();
-    expect(events[0]!.confianca).toBe(0.4);
+    expect(drafts).toHaveLength(0);
+    expect(pixOrfaos).toHaveLength(1);
   });
 
   it("nao vincula cadastro por nome na descricao sem remetenteDestinatario", () => {
@@ -179,7 +212,7 @@ describe("buildConsolidacaoCandidates", () => {
       origemExtracao: null,
     };
 
-    const events = buildConsolidacaoCandidates([onlyDescricao], {
+    const { drafts, pixOrfaos } = runCandidates([onlyDescricao], {
       pessoaByCpf: new Map([
         [
           "12345678901",
@@ -189,12 +222,11 @@ describe("buildConsolidacaoCandidates", () => {
       pessoaByCnpj: new Map(),
     });
 
-    expect(events).toHaveLength(1);
-    expect(events[0]!.pessoaFisicaId).toBeUndefined();
-    expect(events[0]!.confianca).toBe(0.4);
+    expect(drafts).toHaveLength(0);
+    expect(pixOrfaos).toHaveLength(1);
   });
 
-  it("matches extracted remetenteDestinatario against abbreviated cadastro name", () => {
+  it("PIX-only with cadastro name match stays in pixOrfaos not base drafts", () => {
     const pixWithExtractedName: MovimentacaoCandidate = {
       id: "pix-rd",
       arquivoIngestaoId: "arq-pix",
@@ -210,7 +242,7 @@ describe("buildConsolidacaoCandidates", () => {
       contaBancariaId: "c-1",
     };
 
-    const events = buildConsolidacaoCandidates([pixWithExtractedName], {
+    const { drafts, pixOrfaos } = runCandidates([pixWithExtractedName], {
       pessoaByCpf: new Map([
         [
           "12345678901",
@@ -220,9 +252,8 @@ describe("buildConsolidacaoCandidates", () => {
       pessoaByCnpj: new Map(),
     });
 
-    expect(events).toHaveLength(1);
-    expect(events[0]!.confianca).toBe(0.8);
-    expect(events[0]!.pessoaFisicaId).toBe("pf-gabrielle");
+    expect(drafts).toHaveLength(0);
+    expect(pixOrfaos).toHaveLength(1);
   });
 
   it("pairs generic PIX line by extracted remetenteDestinatario and cadastro CPF", () => {
@@ -255,7 +286,7 @@ describe("buildConsolidacaoCandidates", () => {
       contaBancariaId: "c-1",
     };
 
-    const events = buildConsolidacaoCandidates([pixWithExtractedName, completoWithCpf], {
+    const events = draftsFrom([pixWithExtractedName, completoWithCpf], {
       pessoaByCpf: new Map([
         [
           "12345678901",
@@ -313,17 +344,18 @@ describe("buildConsolidacaoCandidates", () => {
       contaBancariaId: "c-1",
     };
 
-    const eventsGood = buildConsolidacaoCandidates([pixSat, compMon], {
+    const eventsGood = draftsFrom([pixSat, compMon], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map(),
     });
     expect(eventsGood.filter((e) => e.linhas.length === 2)).toHaveLength(1);
 
-    const eventsBad = buildConsolidacaoCandidates([pixSat, compTooLate], {
+    const eventsBad = draftsFrom([pixSat, compTooLate], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map(),
     });
     expect(eventsBad.filter((e) => e.linhas.length === 2)).toHaveLength(0);
+    expect(eventsGood[0]!.dataMovimento).toBe("2025-01-17");
   });
 
   it("handles duplicate amounts chronologically (FIFO)", () => {
@@ -384,7 +416,7 @@ describe("buildConsolidacaoCandidates", () => {
       contaBancariaId: "c-1",
     };
 
-    const events = buildConsolidacaoCandidates([pix1, pix2, comp1, comp2], {
+    const events = draftsFrom([pix1, pix2, comp1, comp2], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map(),
     });
@@ -405,20 +437,20 @@ describe("buildConsolidacaoCandidates", () => {
     );
   });
 
-  it("nao cria evento principal quando mesma data valor mas nomes divergem", () => {
+  it("nao cria par quando mesma data valor mas nomes divergem", () => {
     const pix = { ...pixLine, remetenteDestinatario: "ANA LIMA" };
     const comp = {
       ...completoLine,
       remetenteDestinatario: "CARLOS REIS",
       cpfExtraido: null,
     };
-    const events = buildConsolidacaoCandidates([pix, comp], {
+    const { drafts, pixOrfaos } = runCandidates([pix, comp], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map(),
     });
-    const paired = events.find((e) => e.linhas.length === 2);
-    expect(paired).toBeUndefined();
-    expect(events.filter((e) => e.linhas.length === 1).length).toBeGreaterThanOrEqual(2);
+    expect(drafts.find((e) => e.linhas.length === 2)).toBeUndefined();
+    expect(drafts.filter((e) => e.linhas.length === 1)).toHaveLength(1);
+    expect(pixOrfaos).toHaveLength(1);
   });
 
   it("downgrades pair to hipotese when hora diverges more than 60min", () => {
@@ -441,7 +473,7 @@ describe("buildConsolidacaoCandidates", () => {
     const pix = { ...pixLine, origemExtracao: origemPix };
     const comp = { ...completoLine, origemExtracao: origemComp };
 
-    const events = buildConsolidacaoCandidates([pix, comp], {
+    const { drafts, pixOrfaos } = runCandidates([pix, comp], {
       pessoaByCpf: new Map([
         [
           "12345678901",
@@ -451,10 +483,10 @@ describe("buildConsolidacaoCandidates", () => {
       pessoaByCnpj: new Map(),
     });
 
-    expect(events.filter((e) => e.linhas.length === 2)).toHaveLength(0);
-    const singles = events.filter((e) => e.linhas.length === 1);
-    expect(singles.length).toBeGreaterThanOrEqual(2);
-    const withHipotese = singles.filter((e) =>
+    expect(drafts.filter((e) => e.linhas.length === 2)).toHaveLength(0);
+    expect(drafts.filter((e) => e.linhas.length === 1)).toHaveLength(1);
+    expect(pixOrfaos).toHaveLength(1);
+    const withHipotese = drafts.filter((e) =>
       e.hipoteses.some((h) => h.tipo === "PAR_PDF_FRACO"),
     );
     expect(withHipotese.length).toBeGreaterThanOrEqual(1);
@@ -489,7 +521,7 @@ describe("buildConsolidacaoCandidates", () => {
       contaBancariaId: "acc-2",
     };
 
-    const events = buildConsolidacaoCandidates([pixAcc1, compAcc2], {
+    const events = draftsFrom([pixAcc1, compAcc2], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map(),
     });
@@ -527,7 +559,7 @@ describe("buildConsolidacaoCandidates", () => {
       }
     };
 
-    const events = buildConsolidacaoCandidates([pix, comp], {
+    const events = draftsFrom([pix, comp], {
       pessoaByCpf: new Map(),
       pessoaByCnpj: new Map(),
     });

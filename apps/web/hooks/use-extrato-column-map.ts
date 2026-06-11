@@ -32,6 +32,7 @@ export function useExtratoColumnMap(files: File[]) {
   const [selectedCampo, setSelectedCampo] = useState<string>("data");
   const [inferirDirecao, setInferirDirecao] = useState(true);
   const [customLabels, setCustomLabels] = useState<Record<string, string>>({});
+  const [arquivoBaseClientKey, setArquivoBaseClientKey] = useState<string | null>(null);
 
   useEffect(() => {
     const validKeys = new Set(pdfFiles.map((f) => clientFileKey(f)));
@@ -94,6 +95,33 @@ export function useExtratoColumnMap(files: File[]) {
       return firstKey;
     });
   }, [pdfFiles]);
+
+  const totalClientKeys = useMemo(
+    () =>
+      pdfFiles
+        .filter((f) => modeloByClientKey[clientFileKey(f)] === "caixa_total")
+        .map((f) => clientFileKey(f)),
+    [pdfFiles, modeloByClientKey],
+  );
+
+  useEffect(() => {
+    if (totalClientKeys.length === 1) {
+      setArquivoBaseClientKey(totalClientKeys[0]!);
+      return;
+    }
+    if (totalClientKeys.length === 0) {
+      setArquivoBaseClientKey(null);
+      return;
+    }
+    setArquivoBaseClientKey((prev) =>
+      prev && totalClientKeys.includes(prev) ? prev : null,
+    );
+  }, [totalClientKeys]);
+
+  const needsBaseSelection = totalClientKeys.length > 1;
+  const baseSelectionValid =
+    totalClientKeys.length <= 1 ||
+    (arquivoBaseClientKey != null && totalClientKeys.includes(arquivoBaseClientKey));
 
   const activeFile =
     pdfFiles.find((f) => clientFileKey(f) === activeKey) ?? pdfFiles[0] ?? null;
@@ -418,5 +446,10 @@ export function useExtratoColumnMap(files: File[]) {
     setColumnCountForActiveFile,
     validationError,
     copyMapToOtherPdfs,
+    totalClientKeys,
+    arquivoBaseClientKey,
+    setArquivoBaseClientKey,
+    needsBaseSelection,
+    baseSelectionValid,
   };
 }

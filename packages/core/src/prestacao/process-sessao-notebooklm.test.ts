@@ -40,12 +40,17 @@ vi.mock("../cadastro/upsert", () => ({
   upsertPessoa: (...args: any[]) => upsertPessoaMock(...args),
 }));
 
+vi.mock("./resolve-arquivo-base", () => ({
+  persistArquivoBaseOnProcessStart: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("./sessao", () => ({
   getSessao: vi.fn(async () => ({
     id: "sess-nb-1",
     uf: "BA",
     exercicio: 2026,
     consolidarExtratos: true,
+    arquivoBaseIngestaoId: null,
     diretorioEstadual: { cnpjPrestador: "23738595000182" },
     diretorioMunicipal: null,
     tipoPrestador: "ESTADUAL",
@@ -56,6 +61,7 @@ vi.mock("./sessao", () => ({
     sessaoPrestacaoId: "sess-nb-1",
     diretorioMunicipalId: null,
   })),
+  persistArquivoBaseIngestaoId: vi.fn().mockResolvedValue(undefined),
 }));
 
 import {

@@ -151,6 +151,9 @@ export function PrestacaoWizard() {
           files,
           extratoColumnMaps: hasPdf ? columnMapState.maps : undefined,
           extratoModeloIds: hasPdf ? columnMapState.modeloByClientKey : undefined,
+          arquivoBaseClientKey: hasPdf
+            ? columnMapState.arquivoBaseClientKey ?? undefined
+            : undefined,
           mesReferencia: mesReferencia || undefined,
         });
       if (warningMessage) {
@@ -235,7 +238,7 @@ export function PrestacaoWizard() {
     !isProcessing &&
     (tipo === "ESTADUAL" || (municipais.length > 0 && Boolean(municipalId))) &&
     !loadingMunicipais &&
-    (!hasPdf || columnMapState.allMapped);
+    (!hasPdf || (columnMapState.allMapped && columnMapState.baseSelectionValid));
 
   const continueLabel = "Continuar para planilha";
 
@@ -417,6 +420,44 @@ export function PrestacaoWizard() {
 
         {showColumnMap && hasPdf ? (
           <div className="space-y-4 rounded-md border border-border-default p-4">
+            {columnMapState.totalClientKeys.length === 1 ? (
+              <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
+                Extrato base:{" "}
+                <strong>
+                  {columnMapState.pdfFiles.find(
+                    (f) =>
+                      clientFileKey(f) === columnMapState.totalClientKeys[0],
+                  )?.name ?? "Total"}
+                </strong>
+              </p>
+            ) : null}
+            {columnMapState.needsBaseSelection ? (
+              <fieldset className="space-y-2 rounded-md border border-amber-200 bg-amber-50/50 p-3">
+                <legend className="text-xs font-semibold uppercase tracking-wide text-amber-900 px-1">
+                  Extrato base desta prestação (obrigatório)
+                </legend>
+                {columnMapState.totalClientKeys.map((key) => {
+                  const pdf = columnMapState.pdfFiles.find(
+                    (f) => clientFileKey(f) === key,
+                  );
+                  return (
+                    <label
+                      key={key}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name="extrato-base"
+                        checked={columnMapState.arquivoBaseClientKey === key}
+                        onChange={() => columnMapState.setArquivoBaseClientKey(key)}
+                        disabled={isProcessing}
+                      />
+                      {pdf?.name ?? key}
+                    </label>
+                  );
+                })}
+              </fieldset>
+            ) : null}
             {columnMapState.pdfFiles.length > 1 ? (
               <div className="flex flex-wrap items-center gap-2">
                 {columnMapState.pdfFiles.map((pdf, index) => {

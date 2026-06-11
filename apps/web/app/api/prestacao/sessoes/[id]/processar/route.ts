@@ -1,6 +1,7 @@
 import {
   parseExtratoColumnMap,
   processSessaoPdfArquivos,
+  ResolveArquivoBaseError,
   validateExtratoColumnMapPerPdf,
   validateExtratoColumnMapsSession,
   type ExtratoColumnMap,
@@ -62,6 +63,7 @@ export async function POST(
 
   let extratoColumnMaps: Record<string, ExtratoColumnMap> | undefined;
   let extratoModeloIds: Record<string, ExtratoModeloId> | undefined;
+  let arquivoBaseIngestaoId: string | undefined;
 
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
@@ -69,6 +71,7 @@ export async function POST(
       const body = (await request.json()) as {
         extratoColumnMaps?: Record<string, unknown>;
         extratoModeloIds?: Record<string, unknown>;
+        arquivoBaseIngestaoId?: string;
       };
 
       const parsedMaps = parseExtratoColumnMapsBody(body.extratoColumnMaps);
@@ -89,6 +92,13 @@ export async function POST(
         }
         extratoModeloIds = Object.keys(models).length > 0 ? models : undefined;
       }
+
+      if (
+        typeof body.arquivoBaseIngestaoId === "string" &&
+        body.arquivoBaseIngestaoId.trim().length > 0
+      ) {
+        arquivoBaseIngestaoId = body.arquivoBaseIngestaoId.trim();
+      }
     } catch {
       return NextResponse.json(
         { error: "Corpo JSON inválido" },
@@ -98,9 +108,16 @@ export async function POST(
   }
 
   try {
-    const result = await processSessaoPdfArquivos(db, id, { extratoColumnMaps, extratoModeloIds });
+    const result = await processSessaoPdfArquivos(db, id, {
+      extratoColumnMaps,
+      extratoModeloIds,
+      arquivoBaseIngestaoId,
+    });
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof ResolveArquivoBaseError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro no processamento da sessão" },
       { status: 500 },

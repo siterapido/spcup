@@ -5,12 +5,12 @@ import { getSessao } from "../prestacao/sessao";
 import { autoAprovarConsolidacaoEventos, applyMesmoValorRevisaoHumanaCap } from "./auto";
 import { buildConsolidacaoCandidates } from "./candidates";
 import { enrichAmbiguousWithAi } from "./ai";
+import { loadCadastroMatchContext, loadMovimentacaoCandidates } from "./load";
 import {
-  countPdfIngestoesForSessao,
-  loadCadastroMatchContext,
-  loadMovimentacaoCandidates,
-} from "./load";
-import { deletePendingConsolidacaoEvents, persistConsolidacaoDrafts } from "./persist";
+  deleteAllConsolidacaoEvents,
+  deletePendingConsolidacaoEvents,
+  persistConsolidacaoDrafts,
+} from "./persist";
 import { getConfiancaLimiarAlta } from "./thresholds";
 
 export type ConsolidateSessionResult =
@@ -33,9 +33,8 @@ export async function consolidateSession(
   if (!sessao) {
     throw new Error("Sessão não encontrada");
   }
-  const pdfCount = await countPdfIngestoesForSessao(db, sessaoId);
-  if (pdfCount < 2) {
-    return { skipped: true, reason: "LESS_THAN_TWO_PDF" };
+  if (!sessao.arquivoBaseIngestaoId) {
+    return { skipped: true, reason: "NO_BASE" };
   }
 
   const movs = await loadMovimentacaoCandidates(db, sessaoId);
@@ -43,9 +42,18 @@ export async function consolidateSession(
     return { skipped: true, reason: "NO_MOVIMENTACOES" };
   }
 
+  const baseMovCount = movs.filter(
+    (m) => m.arquivoIngestaoId === sessao.arquivoBaseIngestaoId,
+  ).length;
+  if (baseMovCount === 0) {
+    return { skipped: true, reason: "NO_BASE_MOVIMENTACOES" };
+  }
+
   const movById = new Map(movs.map((m) => [m.id, m]));
   const ctx = await loadCadastroMatchContext(db);
-  let drafts = buildConsolidacaoCandidates(movs, ctx);
+  let { drafts } = buildConsolidacaoCandidates(movs, ctx, {
+    arquivoBaseIngestaoId: sessao.arquivoBaseIngestaoId,
+  });
 
   if (process.env.OPENROUTER_API_KEY) {
     drafts = await enrichAmbiguousWithAi(db, drafts, movs, {
@@ -77,4 +85,18 @@ export async function consolidateSession(
     limiarAutoAprovacao,
     ...(erros.length > 0 ? { errosAutoAprovacao: erros } : {}),
   };
+}
+
+/** Rebuild consolidation events; optionally keep APROVADO rows (operator assumes risk). */
+export async function recalcularConsolidacao(
+  db: Db,
+  sessaoId: string,
+  options?: { manterAprovados?: boolean },
+): Promise<ConsolidateSessionResult> {
+  if (options?.manterAprovados) {
+    await deletePendingConsolidacaoEvents(db, sessaoId);
+  } else {
+    await deleteAllConsolidacaoEvents(db, sessaoId);
+  }
+  return consolidateSession(db, sessaoId);
 }

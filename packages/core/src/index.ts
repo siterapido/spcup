@@ -83,6 +83,7 @@ export {
 export {
   createSessao,
   getSessao,
+  persistArquivoBaseIngestaoId,
   prestadorFromSessao,
   resolveCnpjPrestador,
   type CreateSessaoInput,
@@ -102,6 +103,10 @@ export {
   type ProcessSessaoPdfOptions,
   type ProcessSessaoResult,
 } from "./prestacao/process-sessao";
+export {
+  ResolveArquivoBaseError,
+  resolveArquivoBaseId,
+} from "./prestacao/resolve-arquivo-base";
 export {
   getPrestacaoCliStatus,
   type PrestacaoCliStatus,
@@ -141,15 +146,21 @@ export { clampBbox, validateOrigemExtracao } from "./provenance/validate";
 export { origemFromExtratoItem, type AttachExtracaoCtx } from "./provenance/attach-extracao";
 export { buildOrigemAtributos, regraFromJustificativa } from "./provenance/build-origem-atributos";
 export { readArquivoIngestaoBuffer } from "./storage/read-arquivo";
-export { buildConsolidacaoCandidates } from "./consolidacao/candidates";
+export {
+  buildConsolidacaoCandidates,
+  type BuildConsolidacaoCandidatesResult,
+} from "./consolidacao/candidates";
 export {
   explicarDiferencaDataPixCompleto,
   type DiferencaDataPixCompleto,
 } from "./consolidacao/explicar-diferenca-data";
 export {
   consolidateSession,
+  recalcularConsolidacao,
   type ConsolidateSessionResult,
 } from "./consolidacao/run";
+export { listPixOrfaos, type ListPixOrfaosResult, type PixOrfaoItem } from "./consolidacao/orfaos-pix";
+export { resolveLinhaPapel } from "./consolidacao/classify-arquivo";
 export {
   listConsolidacaoForSessao,
   countPendingConsolidacao,

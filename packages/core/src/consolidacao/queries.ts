@@ -7,6 +7,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { hasStructuredContraparteDoc } from "../match/structured-contraparte-docs";
 import type { OrigemAtributosEvento, OrigemExtracaoV1 } from "../provenance/types";
+import { getSessao } from "../prestacao/sessao";
 import { countPdfIngestoesForSessao, loadCadastroMatchContext, loadMovimentacaoCandidates } from "./load";
 import { buildConsolidacaoCandidates } from "./candidates";
 
@@ -122,7 +123,12 @@ export async function listConsolidacaoForSessao(
   if (eventos.length === 0 && pdfCount >= 2) {
     const movs = await loadMovimentacaoCandidates(db, sessaoId);
     const ctx = await loadCadastroMatchContext(db);
-    const drafts = buildConsolidacaoCandidates(movs, ctx);
+    const sessao = await getSessao(db, sessaoId);
+    const drafts = sessao?.arquivoBaseIngestaoId
+      ? buildConsolidacaoCandidates(movs, ctx, {
+          arquivoBaseIngestaoId: sessao.arquivoBaseIngestaoId,
+        }).drafts
+      : [];
     const nomeOnlyPix = movs.some(
       (m) => /pix/i.test(m.nomeArquivo) && !hasStructuredContraparteDoc(m.origemExtracao),
     );
