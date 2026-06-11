@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 
-import type { IngestaoResumo, PlanilhaResumo } from "@spc-up/core/browser";
+import type {
+  IngestaoResumo,
+  PlanilhaOrdenacao,
+  PlanilhaResumo,
+} from "@spc-up/core/browser";
+import { PLANILHA_ORDENACAO_OPCOES } from "@spc-up/core/browser";
 
 import { PlanilhaIngestaoResumo } from "@/components/prestacao/planilha-ingestao-resumo";
 import { Button } from "@/components/ui/button";
@@ -32,6 +37,8 @@ type Props = {
   ingestaoResumo?: IngestaoResumo;
   activeFilter: PlanilhaFilter;
   onFilterChange: (filter: PlanilhaFilter) => void;
+  ordenacao: PlanilhaOrdenacao;
+  onOrdenacaoChange: (ordenacao: PlanilhaOrdenacao) => void;
   onExportBlockedClick: () => void;
 };
 
@@ -41,6 +48,8 @@ export function PlanilhaToolbar({
   ingestaoResumo,
   activeFilter,
   onFilterChange,
+  ordenacao,
+  onOrdenacaoChange,
   onExportBlockedClick,
 }: Props) {
   const pct = resumo.total > 0 ? Math.round((resumo.prontas / resumo.total) * 100) : 0;
@@ -97,7 +106,8 @@ export function PlanilhaToolbar({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = activeFilter === f.id;
           const n = f.count(resumo);
@@ -117,6 +127,23 @@ export function PlanilhaToolbar({
             </button>
           );
         })}
+        </div>
+
+        <label className="flex items-center gap-2 text-xs text-slate-700">
+          <span className="font-medium whitespace-nowrap">Ordenar por</span>
+          <select
+            className="rounded-md border border-border-default bg-white px-2 py-1.5 text-xs text-slate-800"
+            value={ordenacao}
+            onChange={(e) => onOrdenacaoChange(e.target.value as PlanilhaOrdenacao)}
+            aria-label="Ordenação da planilha"
+          >
+            {PLANILHA_ORDENACAO_OPCOES.map((opcao) => (
+              <option key={opcao.id} value={opcao.id}>
+                {opcao.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     </div>
   );

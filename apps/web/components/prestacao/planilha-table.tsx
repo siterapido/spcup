@@ -2,8 +2,18 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import type { PlanilhaLinha, PlanilhaOrigem, PlanilhaPayload } from "@spc-up/core/browser";
-import { getOrigemDestaque } from "@spc-up/core/browser";
+import type {
+  PlanilhaLinha,
+  PlanilhaOrdenacao,
+  PlanilhaOrigem,
+  PlanilhaPayload,
+} from "@spc-up/core/browser";
+import {
+  getOrigemDestaque,
+  isPlanilhaOrdenacao,
+  ordenarLinhasPlanilha,
+  PLANILHA_ORDENACAO_PADRAO,
+} from "@spc-up/core/browser";
 import type { BboxNorm } from "@spc-up/core/browser";
 
 const EXTRA_COLUNAS_LABELS: Record<string, string> = {
@@ -72,6 +82,16 @@ function rowKey(linha: PlanilhaLinha): string {
   return `${linha.fonte}:${linha.id}`;
 }
 
+function ordenacaoStorageKey(sessaoId: string): string {
+  return `spc-up:planilha-ordenacao:${sessaoId}`;
+}
+
+function readOrdenacaoSalva(sessaoId: string): PlanilhaOrdenacao {
+  if (typeof window === "undefined") return PLANILHA_ORDENACAO_PADRAO;
+  const raw = window.localStorage.getItem(ordenacaoStorageKey(sessaoId));
+  return raw && isPlanilhaOrdenacao(raw) ? raw : PLANILHA_ORDENACAO_PADRAO;
+}
+
 function linhaRemetenteDestinatario(linha: PlanilhaLinha): string {
   return linha.remetenteDestinatario ?? "";
 }
@@ -124,6 +144,9 @@ export function PlanilhaView({
   const [resumo, setResumo] = useState(initial.resumo);
   const [ingestaoResumo, setIngestaoResumo] = useState(initial.ingestaoResumo);
   const [filter, setFilter] = useState<PlanilhaFilter>("todos");
+  const [ordenacao, setOrdenacao] = useState<PlanilhaOrdenacao>(() =>
+    readOrdenacaoSalva(sessaoId),
+  );
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [pdfPanel, setPdfPanel] = useState<PdfPanel | null>(null);
@@ -135,10 +158,15 @@ export function PlanilhaView({
   const [comparadorLinha, setComparadorLinha] = useState<PlanilhaLinha | null>(null);
   const [destaqueLinhaId, setDestaqueLinhaId] = useState<string | null>(null);
 
-  const filtered = useMemo(
-    () => linhas.filter((l) => matchesFilter(l, filter)),
-    [linhas, filter],
-  );
+  const filtered = useMemo(() => {
+    const rows = linhas.filter((l) => matchesFilter(l, filter));
+    return ordenarLinhasPlanilha(rows, ordenacao);
+  }, [linhas, filter, ordenacao]);
+
+  function handleOrdenacaoChange(next: PlanilhaOrdenacao) {
+    setOrdenacao(next);
+    window.localStorage.setItem(ordenacaoStorageKey(sessaoId), next);
+  }
 
   const colunasExtras = useMemo(() => {
     const fixed = new Set(["data", "valor", "direcao", "documento", "historico", "remetente_destinatario"]);
@@ -290,6 +318,8 @@ export function PlanilhaView({
         ingestaoResumo={ingestaoResumo}
         activeFilter={filter}
         onFilterChange={setFilter}
+        ordenacao={ordenacao}
+        onOrdenacaoChange={handleOrdenacaoChange}
         onExportBlockedClick={scrollToPendencias}
       />
 

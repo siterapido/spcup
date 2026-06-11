@@ -27,7 +27,7 @@ import type {
 import { ExtratoModeloId, detectExtratoModeloFromFilename } from "../ingest/extrato-modelo";
 import { colunasFromModelos, colunasFromCamposUnion, PLANILHA_COLUNA_ORDER } from "./colunas-sessao";
 import { campoExtracao, type CamposExtracao } from "../ingest/campos-extracao";
-import { ordenarLinhasPlanilhaCronologicamente } from "./ordenar-linhas-cronologico";
+import { ordenarLinhasPlanilha } from "./ordenar-linhas";
 
 export type { ConsolidacaoEventoLinhaInput } from "./map-consolidacao-linha";
 export { mapConsolidacaoEventoToLinha } from "./map-consolidacao-linha";
@@ -352,7 +352,7 @@ export async function listPlanilhaForSessao(
     return a.localeCompare(b);
   });
 
-  const linhasOrdenadas = ordenarLinhasPlanilhaCronologicamente(linhas);
+  const linhasOrdenadas = ordenarLinhasPlanilha(linhas);
 
   return {
     sessao: { id: sessao.id, uf: sessao.uf, exercicio: sessao.exercicio, mesReferencia: sessao.mesReferencia },

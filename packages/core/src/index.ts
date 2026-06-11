@@ -393,6 +393,17 @@ export {
 } from "./planilha/list";
 export { getOrigemDestaque } from "./planilha";
 export {
+  ordenarLinhasPlanilha,
+  isPlanilhaOrdenacao,
+  PLANILHA_ORDENACAO_PADRAO,
+  PLANILHA_ORDENACAO_OPCOES,
+  type PlanilhaOrdenacao,
+} from "./planilha/ordenar-linhas";
+export {
+  compareLinhasPlanilhaCronologicamente,
+  ordenarLinhasPlanilhaCronologicamente,
+} from "./planilha/ordenar-linhas-cronologico";
+export {
   PLANILHA_COLUNA_ORDER,
   colunasFromModelos,
   colunasFromCamposUnion,
