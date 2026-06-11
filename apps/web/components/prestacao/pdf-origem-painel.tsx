@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { usePdfTextLayer } from "@/hooks/use-pdf-text-layer";
 import { loadPdfJs } from "@/lib/pdfjs-browser";
 
-import { localizarLinhaPdf, type BboxNorm } from "@spc-up/core/browser";
+import {
+  localizarLinhaPdf,
+  type BboxNorm,
+  type OrigemAncoragem,
+} from "@spc-up/core/browser";
 
 export type HighlightMode = "extracao" | "estimada" | "none";
 
@@ -21,6 +25,24 @@ export type PdfOrigemPainelProps = {
   dataMovimento: string;
   valor: string;
   descricaoRaw: string;
+  remetenteDestinatario?: string | null;
+  documento?: string | null;
+  hora?: string | null;
+  relaxarDataNaLinha?: boolean;
+  /** Ingest tentou ancorar e não achou linha — não estimar por índice */
+  ancoragem?: OrigemAncoragem | null;
+  allowEstimatedHighlight?: boolean;
+  /**
+   * Sem bbox: tenta localizar linha no PDF.
+   * - text: só busca por data/valor/texto
+   * - row-index: só faixa por indiceLinha
+   * - text-then-row-index: busca texto, depois índice
+   */
+  highlightFallback?: "none" | "text" | "row-index" | "text-then-row-index";
+  /** Oculta cabeçalho duplicado quando embutido em outro painel */
+  compact?: boolean;
+  /** Preenche altura do container pai (comparador lado a lado) */
+  fillHeight?: boolean;
   destaqueOrigem?: {
     pagina: number;
     indiceLinha?: number;
@@ -52,8 +74,20 @@ export function PdfOrigemPainel({
   dataMovimento,
   valor,
   descricaoRaw,
+  remetenteDestinatario,
+  documento,
+  hora,
+  relaxarDataNaLinha = false,
+  ancoragem = null,
+  allowEstimatedHighlight = true,
+  highlightFallback,
+  compact = false,
+  fillHeight = false,
   destaqueOrigem,
 }: PdfOrigemPainelProps) {
+  const fallbackMode =
+    highlightFallback ??
+    (allowEstimatedHighlight ? "text-then-row-index" : "none");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -87,21 +121,54 @@ export function PdfOrigemPainel({
       return;
     }
 
+    if (ancoragem === "nao_localizado") {
+      setHighlightModeAtual("none");
+      setBboxAtual(undefined);
+      return;
+    }
+
     if (textLoading) {
       return;
     }
 
-    // Se houver erro de extração ou nenhuma página de texto, tenta o fallback pelo indiceLinha
-    if (textError || paginas.length === 0 || paginas.every((p) => p.itens.length === 0)) {
-      if (indiceLinha != null && indiceLinha > 0) {
-        const isPage1 = paginaInicial === 1;
-        const yStart = isPage1 ? 0.35 : 0.15;
-        const rowHeight = 0.04;
-        const y = Math.min(0.95, yStart + (indiceLinha - 1) * rowHeight);
-        setBboxAtual({ x: 0.02, y, w: 0.96, h: rowHeight });
-        setHighlightModeAtual("estimada");
-      } else {
+    if (fallbackMode === "none") {
+      setHighlightModeAtual("none");
+      setBboxAtual(undefined);
+      return;
+    }
+
+    function applyRowIndexHighlight(): boolean {
+      if (
+        (fallbackMode !== "row-index" && fallbackMode !== "text-then-row-index") ||
+        indiceLinha == null ||
+        indiceLinha <= 0
+      ) {
+        return false;
+      }
+      const isPage1 = paginaInicial === 1;
+      const yStart = isPage1 ? 0.35 : 0.15;
+      const rowHeight = 0.04;
+      const y = Math.min(0.95, yStart + (indiceLinha - 1) * rowHeight);
+      setBboxAtual({ x: 0.02, y, w: 0.96, h: rowHeight });
+      setHighlightModeAtual("estimada");
+      return true;
+    }
+
+    const semTexto =
+      textError || paginas.length === 0 || paginas.every((p) => p.itens.length === 0);
+
+    if (semTexto) {
+      if (!applyRowIndexHighlight()) {
         setHighlightModeAtual("none");
+        setBboxAtual(undefined);
+      }
+      return;
+    }
+
+    if (fallbackMode === "row-index") {
+      if (!applyRowIndexHighlight()) {
+        setHighlightModeAtual("none");
+        setBboxAtual(undefined);
       }
       return;
     }
@@ -114,6 +181,10 @@ export function PdfOrigemPainel({
         dataMovimento,
         valor,
         descricaoRaw,
+        remetenteDestinatario,
+        documento,
+        hora,
+        relaxarDataNaLinha,
       });
 
       if (cancelled) {
@@ -128,24 +199,32 @@ export function PdfOrigemPainel({
         return;
       }
 
-      // Fallback caso a heurística de texto não encontre nada, mas temos o indiceLinha
-      if (indiceLinha != null && indiceLinha > 0) {
-        const isPage1 = paginaInicial === 1;
-        const yStart = isPage1 ? 0.35 : 0.15;
-        const rowHeight = 0.04;
-        const y = Math.min(0.95, yStart + (indiceLinha - 1) * rowHeight);
-        setBboxAtual({ x: 0.02, y, w: 0.96, h: rowHeight });
-        setHighlightModeAtual("estimada");
-        return;
+      if (!applyRowIndexHighlight()) {
+        setHighlightModeAtual("none");
+        setBboxAtual(undefined);
       }
-
-      setHighlightModeAtual("none");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [bboxProp, textLoading, textError, paginas, dataMovimento, valor, descricaoRaw, indiceLinha, paginaInicial]);
+  }, [
+    bboxProp,
+    textLoading,
+    textError,
+    paginas,
+    dataMovimento,
+    valor,
+    descricaoRaw,
+    indiceLinha,
+    paginaInicial,
+    fallbackMode,
+    remetenteDestinatario,
+    documento,
+    hora,
+    relaxarDataNaLinha,
+    ancoragem,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,50 +313,82 @@ export function PdfOrigemPainel({
   const loading = renderLoading || textLoading;
   const error = renderError ?? textError;
 
+  const scrollClass = fillHeight
+    ? "relative min-h-0 flex-1 overflow-auto bg-slate-100/80"
+    : "relative max-h-[60vh] overflow-auto rounded-md border border-slate-100 bg-slate-50/50 p-2";
+
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-background p-3">
-      <div>
-        <p className="text-sm font-medium">
-          {papel ? `${papel} · ` : ""}
-          {nomeArquivo}
-        </p>
-        {indiceLinha != null && (
-          <p className="text-xs text-muted">Linha {indiceLinha}</p>
-        )}
-      </div>
+    <div
+      className={`flex min-h-0 flex-col ${fillHeight ? "h-full gap-1" : "gap-3"} ${
+        compact ? "" : "rounded-lg border border-slate-200 bg-background p-3"
+      }`}
+    >
+      {!compact && (
+        <div>
+          <p className="text-sm font-medium">
+            {papel ? `${papel} · ` : ""}
+            {nomeArquivo}
+          </p>
+          {indiceLinha != null && (
+            <p className="text-xs text-muted">Linha {indiceLinha}</p>
+          )}
+        </div>
+      )}
 
-      {loading && <p className="text-sm text-muted">Carregando PDF…</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="shrink-0 text-xs text-muted">Carregando…</p>}
+      {error && <p className="shrink-0 text-xs text-red-600">{error}</p>}
 
-      <div className="flex items-center justify-between gap-2">
-        <Button
+      <div className="flex shrink-0 items-center justify-between gap-1 text-xs text-muted">
+        <button
           type="button"
-          variant="outline"
+          className="rounded px-1.5 py-0.5 hover:bg-slate-200 disabled:opacity-40"
           disabled={paginaAtual <= 1}
           onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
           aria-label="Página anterior"
         >
           ‹
-        </Button>
-        <p className="text-sm text-muted">
-          pág {paginaAtual} de {totalPaginas}
-        </p>
-        <Button
+        </button>
+        <span className="min-w-0 truncate">
+          {paginaAtual}/{totalPaginas}
+          {highlightModeAtual !== "none" && (
+            <span
+              className={
+                highlightModeAtual === "extracao"
+                  ? "ml-1 text-emerald-700"
+                  : "ml-1 text-blue-700"
+              }
+            >
+              · {legendaHighlight(highlightModeAtual)}
+              {highlightModeAtual === "estimada" && indiceLinha != null
+                ? ` (linha ${indiceLinha})`
+                : ""}
+            </span>
+          )}
+          {compact && paginaAtual !== paginaOrigem && (
+            <button
+              type="button"
+              className="ml-2 text-blue-700 underline"
+              onClick={() => setPaginaAtual(paginaOrigem)}
+            >
+              voltar
+            </button>
+          )}
+        </span>
+        <button
           type="button"
-          variant="outline"
+          className="rounded px-1.5 py-0.5 hover:bg-slate-200 disabled:opacity-40"
           disabled={pageCount > 0 ? paginaAtual >= pageCount : false}
           onClick={() => setPaginaAtual((p) => (pageCount > 0 ? Math.min(pageCount, p + 1) : p + 1))}
           aria-label="Próxima página"
         >
           ›
-        </Button>
+        </button>
       </div>
 
-      <div
-        ref={wrapRef}
-        className="relative max-h-[60vh] overflow-auto rounded-md border border-slate-100 bg-slate-50/50 p-2"
-      >
-        <div className="relative mx-auto w-fit overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg">
+      <div ref={wrapRef} className={scrollClass}>
+        <div
+          className={`relative mx-auto w-fit ${fillHeight ? "py-2" : "overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"}`}
+        >
           <canvas ref={canvasRef} className="block" />
           {showHighlight && bboxAtual && (
             <div
@@ -293,17 +404,18 @@ export function PdfOrigemPainel({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted">{legendaHighlight(highlightModeAtual)}</p>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={paginaAtual === paginaOrigem}
-          onClick={() => setPaginaAtual(paginaOrigem)}
-        >
-          Voltar à origem
-        </Button>
-      </div>
+      {!compact && paginaAtual !== paginaOrigem && (
+        <div className="shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => setPaginaAtual(paginaOrigem)}
+          >
+            Voltar à origem
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

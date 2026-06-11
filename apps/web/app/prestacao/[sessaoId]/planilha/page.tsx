@@ -19,6 +19,20 @@ function formatMesReferencia(mesReferencia?: string | null): string {
   return `${meses[mesIndex]}/${ano}`;
 }
 
+function formatIsoDateBr(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
+function formatPeriodoPrestacao(periodo?: { dataInicio: string; dataFim: string } | null) {
+  if (!periodo) return "";
+  if (periodo.dataInicio === periodo.dataFim) {
+    return formatIsoDateBr(periodo.dataInicio);
+  }
+  return `${formatIsoDateBr(periodo.dataInicio)} a ${formatIsoDateBr(periodo.dataFim)}`;
+}
+
 export default async function PlanilhaPage({
   params,
 }: {
@@ -35,10 +49,17 @@ export default async function PlanilhaPage({
         <div>
           <CardTitle>
             Prestação {payload.sessao.uf} {payload.sessao.exercicio}
-            {payload.sessao.mesReferencia
-              ? ` — ${formatMesReferencia(payload.sessao.mesReferencia)}`
-              : ""}
+            {payload.sessao.periodo
+              ? ` — ${formatPeriodoPrestacao(payload.sessao.periodo)}`
+              : payload.sessao.mesReferencia
+                ? ` — ${formatMesReferencia(payload.sessao.mesReferencia)}`
+                : ""}
           </CardTitle>
+          {payload.sessao.periodo && payload.sessao.mesReferencia ? (
+            <p className="mt-1 text-sm text-muted">
+              Mês de referência: {formatMesReferencia(payload.sessao.mesReferencia)}
+            </p>
+          ) : null}
           <p className="mt-1 text-sm text-muted">
             Vincule PF/PJ, resolva merges pendentes e libere a exportação quando todas as linhas
             estiverem prontas.

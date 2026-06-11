@@ -39,6 +39,7 @@ import {
   type ParsedTransactionRow,
 } from "../ingest/types";
 import { normalizeName } from "../normalize";
+import { anexarBboxOrigensPorArquivo } from "../provenance/anexar-bbox-origens";
 import { readArquivoIngestaoBuffer } from "../storage/read-arquivo";
 import type { ProcessSessaoResult, ProcessPdfArquivoResult } from "./process-sessao";
 import { getSessao, prestadorFromSessao } from "./sessao";
@@ -626,6 +627,17 @@ export async function processSessaoWithNotebookLM(
           },
           transactions,
         );
+
+        if (created > 0) {
+          const storageRow = pendingById.get(arq.arquivoId);
+          if (storageRow?.caminhoStorage) {
+            const pdfBuffer = await readArquivoIngestaoBuffer(storageRow.caminhoStorage);
+            await anexarBboxOrigensPorArquivo(db, arq.arquivoId, pdfBuffer, {
+              nomeArquivo: arq.nome,
+              modeloId,
+            });
+          }
+        }
 
         arq.movimentacoes_criadas = created;
         totalMovs += created;

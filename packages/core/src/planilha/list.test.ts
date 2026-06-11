@@ -221,6 +221,48 @@ describe("mapConsolidacaoEventoToLinha", () => {
     expect(linha.camposExtracao.historico).toBe("PIX ENVIADO JOAO");
     expect(linha.camposExtracao.saldo).toBe("1000.00");
   });
+
+  it("usa documento de camposExtracao como Doc./Extrato consolidado", () => {
+    const linha = mapConsolidacaoEventoToLinha({
+      id: "ev-doc",
+      status: "PENDENTE",
+      dataMovimento: "2025-01-10",
+      valor: "10.00",
+      direcao: "ENTRADA",
+      confianca: 0.75,
+      justificativa: null,
+      pessoa: null,
+      linhas: [
+        {
+          movimentacaoId: "m-pix",
+          papel: "PIX",
+          descricaoRaw: "PIX RECEBIDO",
+          nrExtratoBancario: null,
+          nomeArquivo: "pix.pdf",
+          origemExtracao: null,
+          camposExtracao: {
+            remetente_destinatario: "VITOR HUGO MOREAU CUNHA",
+            hora: "07:52:22",
+          },
+        },
+        {
+          movimentacaoId: "m-total",
+          papel: "COMPLETO",
+          descricaoRaw: "CRED PIX",
+          nrExtratoBancario: null,
+          nomeArquivo: "total.pdf",
+          origemExtracao: null,
+          camposExtracao: {
+            documento: "100752",
+            historico: "CRED PIX",
+          },
+        },
+      ],
+    });
+
+    expect(linha.nrExtratoBancario).toBe("100752");
+    expect(linha.origens[1]?.nrExtratoBancario).toBe("100752");
+  });
 });
 
 describe("mapMovimentacaoToLinha", () => {

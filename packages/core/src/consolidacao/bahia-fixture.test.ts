@@ -43,4 +43,54 @@ describe("consolidacao bahia fixtures", () => {
     expect(events[0]!.confianca).toBeGreaterThanOrEqual(0.9);
     expect(events[0]!.linhas).toHaveLength(2);
   });
+
+  it("pareia PIX com extrato total por documento DDHHMM quando total não traz nome", () => {
+    const pix: MovimentacaoCandidate = {
+      id: "pix-1",
+      arquivoIngestaoId: "a-pix",
+      nomeArquivo: "Extrato Jan PIX (1).pdf",
+      dataMovimento: "2025-01-10",
+      valor: "10.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "PIX RECEBIDO",
+      remetenteDestinatario: "VITOR HUGO MOREAU CUNHA",
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+      contaBancariaId: null,
+      camposExtracao: {
+        hora: "07:52:22",
+        remetente_destinatario: "VITOR HUGO MOREAU CUNHA",
+      },
+    };
+    const total: MovimentacaoCandidate = {
+      id: "total-1",
+      arquivoIngestaoId: "a-total",
+      nomeArquivo: "EXTRATO TOTAL JANEIRO (1) (1).pdf",
+      dataMovimento: "2025-01-10",
+      valor: "10.00",
+      direcao: "ENTRADA",
+      descricaoRaw: "CRED PIX",
+      remetenteDestinatario: null,
+      cpfExtraido: null,
+      cnpjExtraido: null,
+      origemExtracao: null,
+      contaBancariaId: null,
+      camposExtracao: {
+        documento: "100752",
+        historico: "CRED PIX",
+      },
+    };
+
+    const events = buildConsolidacaoCandidates([pix, total], {
+      pessoaByCpf: new Map([
+        ["07315922717", { kind: "PF", id: "pf-vitor", nome: "VITOR HUGO M CUNHA" }],
+      ]),
+      pessoaByCnpj: new Map(),
+    });
+
+    expect(events[0]!.linhas).toHaveLength(2);
+    expect(events[0]!.confianca).toBeGreaterThanOrEqual(0.75);
+    expect(events[0]!.justificativa).toContain("DDHHMM");
+  });
 });

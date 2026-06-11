@@ -8,6 +8,7 @@ export type IngestFase =
   | "filtro_doc"
   | "persist"
   | "match"
+  | "bbox_anchor"
   | "concluido"
   | "storage";
 
@@ -25,6 +26,10 @@ export interface IngestLogFields {
   modo?: string;
   codigoErro?: string;
   causa?: string;
+  ancoradas?: number;
+  falhas?: number;
+  ignoradas?: number;
+  total?: number;
 }
 
 export function ingestLog(level: IngestLogLevel, fields: IngestLogFields): void {

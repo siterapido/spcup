@@ -18,6 +18,11 @@ export type LocalizarLinhaPdfInput = {
   dataMovimento: string;
   valor: string;
   descricaoRaw: string;
+  remetenteDestinatario?: string | null;
+  documento?: string | null;
+  hora?: string | null;
+  /** Extrato PIX Caixa: data costuma ficar fora da linha da transação */
+  relaxarDataNaLinha?: boolean;
 };
 
 export type LocalizarLinhaPdfResult =

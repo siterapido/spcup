@@ -59,7 +59,7 @@ function origensFromLinhas(
     nomeArquivo: l.nomeArquivo,
     pagina: l.origemExtracao?.pagina,
     descricaoRaw: l.descricaoRaw,
-    nrExtratoBancario: l.nrExtratoBancario,
+    nrExtratoBancario: campoExtracao(l, "documento"),
     papel: l.papel,
     origemExtracao: l.origemExtracao,
     indiceLinha: l.origemExtracao?.indiceLinha,
@@ -82,7 +82,7 @@ function nrExtratoBancarioFromLinhas(
   linhas: ConsolidacaoEventoLinhaInput["linhas"],
 ): string | null {
   const primary = linhas.find((l) => l.papel === "COMPLETO") ?? linhas[0];
-  return primary?.nrExtratoBancario ?? null;
+  return primary ? campoExtracao(primary, "documento") : null;
 }
 
 function deriveCadastroLinkTier(
@@ -159,6 +159,8 @@ export function mapConsolidacaoEventoToLinha(
     direcao: evento.direcao,
     descricao: descricaoFromLinhas(evento.linhas),
     descricaoRaw: descricaoRawFromLinhas(evento.linhas),
+    justificativa: evento.justificativa,
+    matchEvidencias: evidencias.length > 0 ? evidencias : undefined,
     nrExtratoBancario: nrExtratoBancarioFromLinhas(evento.linhas),
     confianca: evento.confianca,
     status: deriveLinhaStatus({

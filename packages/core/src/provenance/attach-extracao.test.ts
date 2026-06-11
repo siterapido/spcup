@@ -16,5 +16,6 @@ describe("origemFromExtratoItem", () => {
     expect(o?.pagina).toBe(2);
     expect(o?.indiceLinha).toBe(2);
     expect(o?.bbox).toEqual({ x: 0.1, y: 0.2, w: 0.8, h: 0.05 });
+    expect(o?.ancoragem).toBe("modelo");
   });
 });

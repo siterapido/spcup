@@ -115,9 +115,17 @@ export {
   type CampoExtrato,
   type OrigemAtributosEvento,
   type OrigemEnriquecimentoV1,
+  type OrigemAncoragem,
   type OrigemExtracaoV1,
   type OrigemRef,
 } from "./provenance/types";
+export {
+  anexarBboxOrigensPorArquivo,
+  precisaAncorarBbox,
+  type AnexarBboxOrigensOptions,
+  type AnexarBboxOrigensResult,
+} from "./provenance/anexar-bbox-origens";
+export { extractPdfTextLayer } from "./pdf-locate/extract-pdf-text-layer";
 export {
   agruparItensEmLinhas,
   localizarLinhaPdf,
@@ -135,6 +143,10 @@ export { buildOrigemAtributos, regraFromJustificativa } from "./provenance/build
 export { readArquivoIngestaoBuffer } from "./storage/read-arquivo";
 export { buildConsolidacaoCandidates } from "./consolidacao/candidates";
 export {
+  explicarDiferencaDataPixCompleto,
+  type DiferencaDataPixCompleto,
+} from "./consolidacao/explicar-diferenca-data";
+export {
   consolidateSession,
   type ConsolidateSessionResult,
 } from "./consolidacao/run";
@@ -144,10 +156,14 @@ export {
   type ConsolidacaoListItem,
 } from "./consolidacao/queries";
 export {
+  formatPeriodoPrestacao,
   getKanbanPayload,
+  getPeriodoPrestacao,
+  getPeriodosPrestacaoBatch,
   listRecentSessoes,
   type KanbanCard,
   type KanbanPayload,
+  type PeriodoPrestacao,
 } from "./prestacao/kanban";
 export { updateMovimentacaoStatus } from "./prestacao/status";
 export {

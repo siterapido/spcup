@@ -40,6 +40,8 @@ export type PlanilhaLinha = {
   direcao: string;
   descricao: string;
   descricaoRaw: string;
+  justificativa?: string | null;
+  matchEvidencias?: Array<{ tipo: string }>;
   nrExtratoBancario: string | null;
   confianca: number;
   status: PlanilhaLinhaStatus;
@@ -100,7 +102,13 @@ export type IngestaoResumo = {
 };
 
 export type PlanilhaPayload = {
-  sessao: { id: string; uf: string; exercicio: number; mesReferencia?: string | null };
+  sessao: {
+    id: string;
+    uf: string;
+    exercicio: number;
+    mesReferencia?: string | null;
+    periodo?: { dataInicio: string; dataFim: string } | null;
+  };
   linhas: PlanilhaLinha[];
   resumo: PlanilhaResumo;
   ingestaoResumo: IngestaoResumo;

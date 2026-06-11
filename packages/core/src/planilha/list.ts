@@ -9,6 +9,7 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { loadCadastroMatchContext } from "../consolidacao/load";
 import type { ConsolidacaoListItem } from "../consolidacao/queries";
 import { listConsolidacaoForSessao } from "../consolidacao/queries";
+import { getPeriodoPrestacao } from "../prestacao/periodo";
 import { getSessao } from "../prestacao/sessao";
 import { compararNomeComPessoa, type CadastroLinkTier } from "../match/cadastro-link";
 import type { NomeCadastroComparacao } from "../match/nome-cadastro";
@@ -175,6 +176,8 @@ export function mapMovimentacaoToLinha(mov: MovimentacaoLinhaInput): PlanilhaLin
     direcao: mov.direcao,
     descricao: cleanDescricao(mov.descricaoRaw),
     descricaoRaw: mov.descricaoRaw,
+    justificativa: null,
+    matchEvidencias: evidencias.length > 0 ? evidencias : undefined,
     nrExtratoBancario: mov.nrExtratoBancario,
     confianca: mov.confiancaGlobal,
     status: deriveLinhaStatus({
@@ -352,10 +355,17 @@ export async function listPlanilhaForSessao(
     return a.localeCompare(b);
   });
 
+  const periodo = await getPeriodoPrestacao(db, sessaoId);
   const linhasOrdenadas = ordenarLinhasPlanilha(linhas);
 
   return {
-    sessao: { id: sessao.id, uf: sessao.uf, exercicio: sessao.exercicio, mesReferencia: sessao.mesReferencia },
+    sessao: {
+      id: sessao.id,
+      uf: sessao.uf,
+      exercicio: sessao.exercicio,
+      mesReferencia: sessao.mesReferencia,
+      periodo,
+    },
     linhas: linhasOrdenadas,
     resumo,
     ingestaoResumo,

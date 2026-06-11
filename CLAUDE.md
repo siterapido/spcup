@@ -28,6 +28,7 @@
 - **Consolidation:** Removido guarda `consolidarExtratos` de `consolidateSession()` (jun/2026). Consolidation roda automaticamente com ≥2 PDFs independente da flag da sessão. `skipConsolidacao` é o mecanismo correto de opt-out.
 - **Mudança de schema:** `consolidarExtratos` coluna existe ainda no DB mas não bloqueia mais consolidação. Pode ser obsoleta.
 - **Batch:** Não `campoExtracao()` na planilha já faz fallback p/ `camposExtracao.jsonb` antes de usar `remetenteDestinatario` direto. Fix aplicado em list.ts:187 e map-consolidacao-linha.ts:173.
+- **Bbox PDF:** Após extração, ingest roda `anexarBboxOrigensPorArquivo` (text layer + `localizarLinhaPdf`) e persiste `origemExtracao.bbox` + `ancoragem: text_layer|modelo|nao_localizado`. Backfill: `pnpm exec tsx scripts/anchor-origem-pdf.ts --sessao <id>`. UI não estima por índice quando `ancoragem === nao_localizado`.
 
 ## Docs
 

@@ -20,6 +20,7 @@ import { upsertIngestaoPagina } from "./ingestao-pagina";
 import { IngestError, toIngestError } from "./errors";
 import { fileHashBuffer } from "./hash";
 import { ingestLog } from "./log";
+import { anexarBboxOrigensPorArquivo } from "../provenance/anexar-bbox-origens";
 import { persistTransactions } from "./ofx";
 import { rowsFromExtratoTransactions } from "./pdf";
 import { extractPdfText } from "./pdf-text";
@@ -337,6 +338,10 @@ export async function processarPaginaPdfExtrato(
         await applyDeterministicMatch(db, mov.id);
       }
       movimentacoes_criadas = created.length;
+
+      await anexarBboxOrigensPorArquivo(db, arquivoId, buffer, {
+        nomeArquivo: filename,
+      });
     }
 
     const insertedPendentes: IncertaPreview[] = [];

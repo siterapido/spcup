@@ -168,6 +168,47 @@ describe("localizarLinhaPdf", () => {
     });
   });
 
+  it("prefere remetente quando várias linhas têm o mesmo valor (PIX Caixa)", () => {
+    const result = localizarLinhaPdf({
+      paginas: [
+        pagina(1, [
+          item("EFETIVADO ERICK SUZART SOUZA R$ 100,00", 0.1, 0.5, 0.8),
+          item("EFETIVADO NADSON SILVA DOS SANTOS R$ 100,00", 0.1, 0.6, 0.8),
+        ]),
+      ],
+      dataMovimento: "2025-01-03",
+      valor: "100.00",
+      descricaoRaw: "PIX RECEBIDO",
+      remetenteDestinatario: "NADSON SILVA DOS SANTOS",
+      relaxarDataNaLinha: true,
+    });
+
+    expect(result.encontrado).toBe(true);
+    if (result.encontrado) {
+      expect(result.bbox.y).toBeCloseTo(0.6, 2);
+    }
+  });
+
+  it("localiza completo por documento DDHHMM na linha", () => {
+    const result = localizarLinhaPdf({
+      paginas: [
+        pagina(1, [
+          item("02/01/2025 000000 SALDO DO DIA", 0.1, 0.4, 0.7),
+          item("03/01/2025 031240 CRED PIX", 0.1, 0.5, 0.7),
+        ]),
+      ],
+      dataMovimento: "2025-01-03",
+      valor: "100.00",
+      descricaoRaw: "CRED PIX",
+      documento: "031240",
+    });
+
+    expect(result.encontrado).toBe(true);
+    if (result.encontrado) {
+      expect(result.bbox.y).toBeCloseTo(0.5, 2);
+    }
+  });
+
   it("strips CPF/CNPJ from descricaoRaw for tiebreaker", () => {
     const result = localizarLinhaPdf({
       paginas: [

@@ -65,6 +65,57 @@ function remetenteOuHistorico(m: MovimentacaoCandidate, papel: ConsolidacaoLinha
   return remetenteFromMov(m);
 }
 
+function minutesFromHora(raw: string | null | undefined): number | null {
+  const match = raw?.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = match[3] ? Number(match[3]) : 0;
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  return hours * 60 + minutes + seconds / 60;
+}
+
+function dayFromDate(date: string): number | null {
+  const match = date.match(/^\d{4}-\d{2}-(\d{2})$/);
+  return match ? Number(match[1]) : null;
+}
+
+function dayTimeFromDocumento(raw: string | null | undefined): {
+  day: number;
+  minutes: number;
+} | null {
+  const digits = raw?.replace(/\D/g, "") ?? "";
+  if (digits.length !== 6) return null;
+  const day = Number(digits.slice(0, 2));
+  const hours = Number(digits.slice(2, 4));
+  const minutes = Number(digits.slice(4, 6));
+  if (day < 1 || day > 31 || hours > 23 || minutes > 59) return null;
+  return { day, minutes: hours * 60 + minutes };
+}
+
+function pixTotalDocumentoHoraMatch(a: MovimentacaoCandidate, b: MovimentacaoCandidate): boolean {
+  const papelA = classifyArquivoPapel(a.nomeArquivo);
+  const papelB = classifyArquivoPapel(b.nomeArquivo);
+  if (!(
+    (papelA === "PIX" && papelB === "COMPLETO") ||
+    (papelA === "COMPLETO" && papelB === "PIX")
+  )) {
+    return false;
+  }
+
+  const pix = papelA === "PIX" ? a : b;
+  const completo = papelA === "COMPLETO" ? a : b;
+  const pixDay = dayFromDate(pix.dataMovimento);
+  const pixMinutes = minutesFromHora(campoExtracao(pix, "hora"));
+  const completoDayTime = dayTimeFromDocumento(campoExtracao(completo, "documento"));
+  if (pixDay == null || pixMinutes == null || !completoDayTime) return false;
+
+  return (
+    completoDayTime.day === pixDay &&
+    Math.abs(completoDayTime.minutes - pixMinutes) <= 5
+  );
+}
+
 function nomesBatem(extraido: string, cadastro: string): boolean {
   return compararNomeCadastro(extraido, cadastro) === "bate";
 }
@@ -78,6 +129,7 @@ function pairEligible(a: MovimentacaoCandidate, b: MovimentacaoCandidate): boole
   const papelB = classifyArquivoPapel(b.nomeArquivo);
   const nomeA = remetenteOuHistorico(a, papelA);
   const nomeB = remetenteOuHistorico(b, papelB);
+  if (pixTotalDocumentoHoraMatch(a, b)) return true;
   if (nomeA.length >= 3 && nomeB.length >= 3 && nomesBatem(nomeA, nomeB)) return true;
   if ((docsA.cpf || docsA.cnpj || docsB.cpf || docsB.cnpj) && nomesBatem(nomeA, nomeB)) {
     return true;
@@ -152,6 +204,26 @@ function scorePair(
   const nomeCompleto = remetenteOuHistorico(b, papelB);
   const pessoaByCpf = cpfCompleto ? resolvePessoa(cpfCompleto, null, ctx) : null;
   const pessoaByCnpj = cnpjCompleto ? resolvePessoa(null, cnpjCompleto, ctx) : null;
+
+  if (pixTotalDocumentoHoraMatch(a, b)) {
+    const nomePix = papelA === "PIX"
+      ? remetenteFromMov(a)
+      : papelB === "PIX"
+        ? remetenteFromMov(b)
+        : "";
+    const pessoa =
+      pessoaByCpf ??
+      pessoaByCnpj ??
+      findUniquePessoaByNome(ctx, nomePix) ??
+      null;
+    return {
+      confianca: pessoa ? 0.85 : 0.75,
+      justificativa: pessoa
+        ? "Mesmo valor/direção e documento DDHHMM alinhado ao PIX e cadastro"
+        : "Mesmo valor/direção e documento DDHHMM alinhado ao horário do PIX",
+      pessoa,
+    };
+  }
 
   if (
     cpfCompleto &&

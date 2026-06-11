@@ -1,3 +1,4 @@
+import { compararNomeCadastro } from "../match/nome-cadastro";
 import { stripDocumentsFromDescricao } from "../match/document-in-text";
 import type { BboxNorm } from "../provenance/types";
 import type {
@@ -105,7 +106,7 @@ function formatDatasBr(isoDate: string): string[] {
   const mm = month!;
   const yyyy = year!;
   const yy = yyyy.slice(-2);
-  return [`${dd}/${mm}/${yyyy}`, `${dd}/${mm}/${yy}`];
+  return [`${dd}/${mm}/${yyyy}`, `${dd}/${mm}/${yy}`, `${dd}/${mm}`];
 }
 
 function tokenize(text: string): string[] {
@@ -138,6 +139,75 @@ function linhaContemData(texto: string, dataPatterns: string[]): boolean {
   return dataPatterns.some((p) => texto.includes(p));
 }
 
+function linhaContemDocumento(texto: string, documento: string): boolean {
+  const digits = documento.replace(/\D/g, "");
+  if (digits.length < 4) return false;
+  return texto.replace(/\D/g, "").includes(digits);
+}
+
+function linhaContemHora(texto: string, hora: string): boolean {
+  const hhmm = hora.match(/^(\d{1,2}):(\d{2})/);
+  if (!hhmm) return false;
+  return texto.includes(`${hhmm[1]!.padStart(2, "0")}:${hhmm[2]}`);
+}
+
+function textoBusca(input: LocalizarLinhaPdfInput): string {
+  return [input.remetenteDestinatario, input.descricaoRaw]
+    .filter((s) => s != null && s.trim() !== "")
+    .join(" ");
+}
+
+function scoreLinha(
+  linha: LinhaPdfAgrupada,
+  input: LocalizarLinhaPdfInput,
+  valorPatterns: string[],
+  dataPatterns: string[],
+): number {
+  const hasValor = linhaContemValor(linha.texto, valorPatterns);
+  const hasData = linhaContemData(linha.texto, dataPatterns);
+  const docDigits = input.documento?.replace(/\D/g, "") ?? "";
+  const hasDocumento =
+    docDigits.length >= 4 &&
+    linhaContemDocumento(linha.texto, input.documento!);
+
+  /** Extrato completo Caixa: valor costuma ficar fora da linha de documento/histórico */
+  const docLed = hasDocumento && hasData;
+  const valorLed = hasValor && (hasData || input.relaxarDataNaLinha);
+
+  if (!docLed && !valorLed) {
+    return -1;
+  }
+
+  let score = docLed ? 25 : hasData ? 10 : 1;
+  if (hasValor) score += 5;
+
+  const busca = textoBusca(input);
+  score += tokenOverlap(linha.texto, busca) * 5;
+
+  if (input.remetenteDestinatario?.trim()) {
+    const nomeCmp = compararNomeCadastro(
+      linha.texto,
+      input.remetenteDestinatario,
+    );
+    if (nomeCmp === "bate") score += 50;
+    else if (nomeCmp === "difere") return -1;
+  }
+
+  if (input.documento?.trim()) {
+    if (linhaContemDocumento(linha.texto, input.documento)) {
+      score += 40;
+    } else if (!input.relaxarDataNaLinha) {
+      score -= 5;
+    }
+  }
+
+  if (input.hora?.trim() && linhaContemHora(linha.texto, input.hora)) {
+    score += 15;
+  }
+
+  return score;
+}
+
 export function localizarLinhaPdf(
   input: LocalizarLinhaPdfInput,
 ): LocalizarLinhaPdfResult {
@@ -146,44 +216,53 @@ export function localizarLinhaPdf(
     return { encontrado: false, motivo: "Valor inválido" };
   }
 
-  const valorPatterns = formatBrValor(valorNum);
+  const valorPatterns = [...new Set(formatBrValor(valorNum))];
   const dataPatterns = formatDatasBr(input.dataMovimento);
   if (dataPatterns.length === 0) {
     return { encontrado: false, motivo: "Data inválida" };
   }
 
+  let melhorGlobal: LinhaPdfAgrupada | null = null;
+  let melhorPagina = 0;
+  let melhorScore = -1;
+
   for (const pag of input.paginas) {
     const linhas = agruparItensEmLinhas(pag.itens);
-    const candidatas = linhas.filter(
-      (l) =>
-        linhaContemValor(l.texto, valorPatterns) &&
-        linhaContemData(l.texto, dataPatterns),
-    );
 
-    if (candidatas.length === 0) continue;
-
-    let melhor = candidatas[0]!;
-    let melhorScore = tokenOverlap(melhor.texto, input.descricaoRaw);
-
-    for (let i = 1; i < candidatas.length; i++) {
-      const cand = candidatas[i]!;
-      const score = tokenOverlap(cand.texto, input.descricaoRaw);
+    for (const linha of linhas) {
+      const score = scoreLinha(linha, input, valorPatterns, dataPatterns);
       if (score > melhorScore) {
-        melhor = cand;
         melhorScore = score;
+        melhorGlobal = linha;
+        melhorPagina = pag.pagina;
       }
     }
+  }
 
+  if (!melhorGlobal || melhorScore < 1) {
     return {
-      encontrado: true,
-      pagina: pag.pagina,
-      bbox: melhor.bbox,
-      confianca: "estimada",
+      encontrado: false,
+      motivo: "Nenhuma linha com valor e data na mesma linha",
     };
   }
 
+  if (input.remetenteDestinatario?.trim()) {
+    const nomeCmp = compararNomeCadastro(
+      melhorGlobal.texto,
+      input.remetenteDestinatario,
+    );
+    if (nomeCmp === "difere") {
+      return {
+        encontrado: false,
+        motivo: "Linhas com valor encontradas, mas nenhuma com o remetente esperado",
+      };
+    }
+  }
+
   return {
-    encontrado: false,
-    motivo: "Nenhuma linha com valor e data na mesma linha",
+    encontrado: true,
+    pagina: melhorPagina,
+    bbox: melhorGlobal.bbox,
+    confianca: "estimada",
   };
 }

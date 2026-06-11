@@ -5,6 +5,7 @@ import {
   prestadorFromSessao,
   softDeleteSessoes,
 } from "@spc-up/core";
+import { getPeriodosPrestacaoBatch } from "@spc-up/core/prestacao/periodo";
 import { getDb } from "@spc-up/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -39,6 +40,10 @@ export async function GET(request: Request) {
     uf: ufParam && ufParam.length === 2 ? ufParam : undefined,
     exercicio: exercicio != null && Number.isFinite(exercicio) ? exercicio : undefined,
   });
+  const periodos = await getPeriodosPrestacaoBatch(
+    db,
+    sessoes.map((s) => s.id),
+  );
 
   return NextResponse.json({
     items: sessoes.map((s) => {
@@ -57,6 +62,7 @@ export async function GET(request: Request) {
         prestadorNome:
           s.diretorioMunicipal?.nomeMunicipio ?? s.diretorioEstadual?.nome ?? "",
         consolidarExtratos: s.consolidarExtratos,
+        periodo: periodos.get(s.id) ?? null,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
       };

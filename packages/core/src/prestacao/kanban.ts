@@ -181,3 +181,10 @@ export async function listRecentSessoes(db: Db, filters: ListSessoesFilters = {}
     },
   });
 }
+
+export {
+  formatPeriodoPrestacao,
+  getPeriodoPrestacao,
+  getPeriodosPrestacaoBatch,
+  type PeriodoPrestacao,
+} from "./periodo";

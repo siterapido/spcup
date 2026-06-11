@@ -17,6 +17,15 @@ vi.mock("./pdf-text", () => ({
   extractPdfText: vi.fn(),
 }));
 
+vi.mock("../provenance/anexar-bbox-origens", () => ({
+  anexarBboxOrigensPorArquivo: vi.fn().mockResolvedValue({
+    total: 0,
+    ancoradas: 0,
+    falhas: 0,
+    ignoradas: 0,
+  }),
+}));
+
 vi.mock("./ofx", () => ({
   persistTransactions: vi.fn(),
   computeHashMovimento: vi.fn(),

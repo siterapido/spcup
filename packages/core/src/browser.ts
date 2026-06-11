@@ -17,6 +17,7 @@ export {
 export type {
   BboxNorm,
   CampoExtrato,
+  OrigemAncoragem,
   OrigemAtributosEvento,
   OrigemEnriquecimentoV1,
   OrigemExtracaoV1,
@@ -83,7 +84,6 @@ export type {
 
 export { getOrigemDestaque } from "./planilha";
 
-
 export {
   ordenarLinhasPlanilha,
   isPlanilhaOrdenacao,
@@ -96,3 +96,10 @@ export {
   compareLinhasPlanilhaCronologicamente,
   ordenarLinhasPlanilhaCronologicamente,
 } from "./planilha/ordenar-linhas-cronologico";
+
+export {
+  explicarDiferencaDataPixCompleto,
+  type DiferencaDataPixCompleto,
+} from "./consolidacao/explicar-diferenca-data";
+
+

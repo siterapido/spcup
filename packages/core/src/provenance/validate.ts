@@ -15,9 +15,8 @@ export function clampBbox(bbox: BboxNorm): BboxNorm | undefined {
 }
 
 export function validateOrigemExtracao(
-  raw: Omit<OrigemExtracaoV1, "versao" | "bbox" | "campos"> & {
+  raw: Omit<OrigemExtracaoV1, "versao" | "bbox"> & {
     bbox?: BboxNorm;
-    campos?: OrigemExtracaoV1["campos"];
   },
   pageCount: number,
 ): OrigemExtracaoV1 | null {
@@ -39,5 +38,7 @@ export function validateOrigemExtracao(
     cpfContraparte: raw.cpfContraparte ?? null,
     cnpjContraparte: raw.cnpjContraparte ?? null,
     horaContraparte: raw.horaContraparte ?? null,
+    dual: raw.dual,
+    ancoragem: raw.ancoragem,
   };
 }

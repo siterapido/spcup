@@ -17,6 +17,7 @@ import { normalizeName } from "../normalize";
 import { structuredDocsFromExtratoItem } from "../match/structured-contraparte-docs";
 import { toIngestError } from "./errors";
 import { ingestLog } from "./log";
+import { anexarBboxOrigensPorArquivo } from "../provenance/anexar-bbox-origens";
 import { origemFromExtratoItem } from "../provenance/attach-extracao";
 import { getPdfPageCount } from "./pdf-split";
 import { extractPdfText } from "./pdf-text";
@@ -280,6 +281,18 @@ export async function ingestPdfExtrato(
     }
 
     const created = await persistTransactions(db, uf, exercicio, arquivoId, rows, prestador);
+
+    if (created.length > 0) {
+      const anchor = await anexarBboxOrigensPorArquivo(db, arquivoId, buffer, {
+        nomeArquivo: filename,
+      });
+      ingestLog("info", {
+        fase: "bbox_anchor",
+        arquivoId,
+        filename,
+        ...anchor,
+      });
+    }
 
     const movimentacoes: Movimentacao[] = [];
     for (const movimentacao of created) {

@@ -1,5 +1,8 @@
 export type BboxNorm = { x: number; y: number; w: number; h: number };
 
+/** Como a âncora espacial no PDF foi obtida (undefined = legado / não tentou). */
+export type OrigemAncoragem = "modelo" | "text_layer" | "nao_localizado";
+
 export type CampoExtrato =
   | "data"
   | "valor"
@@ -36,6 +39,7 @@ export type OrigemExtracaoV1 = {
     Record<CampoExtrato, { pagina: number; indiceLinha: number; bbox?: BboxNorm }>
   >;
   dual?: OrigemExtracaoDualMeta;
+  ancoragem?: OrigemAncoragem;
 };
 
 export type OrigemRef =

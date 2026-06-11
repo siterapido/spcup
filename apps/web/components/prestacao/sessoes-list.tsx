@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
 
+type PeriodoPrestacao = {
+  dataInicio: string;
+  dataFim: string;
+};
+
 type SessaoItem = {
   id: string;
   uf: string;
@@ -17,6 +22,7 @@ type SessaoItem = {
   cnpjPrestador: string;
   prestadorNome: string;
   consolidarExtratos: boolean;
+  periodo: PeriodoPrestacao | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +44,20 @@ function formatDate(iso: string) {
     dateStyle: "short",
     timeStyle: "short",
   });
+}
+
+function formatIsoDateBr(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
+function formatPeriodo(periodo: PeriodoPrestacao | null | undefined) {
+  if (!periodo) return "—";
+  if (periodo.dataInicio === periodo.dataFim) {
+    return formatIsoDateBr(periodo.dataInicio);
+  }
+  return `${formatIsoDateBr(periodo.dataInicio)} a ${formatIsoDateBr(periodo.dataFim)}`;
 }
 
 export function SessoesList({
@@ -233,6 +253,7 @@ export function SessoesList({
               <Th>Prestador</Th>
               <Th>UF</Th>
               <Th>Exercício</Th>
+              <Th>Período</Th>
               <Th>Tipo</Th>
               <Th>Status</Th>
               <Th className="text-right">Ações</Th>
@@ -258,6 +279,7 @@ export function SessoesList({
                 </Td>
                 <Td>{s.uf}</Td>
                 <Td>{s.exercicio}</Td>
+                <Td className="whitespace-nowrap text-sm">{formatPeriodo(s.periodo)}</Td>
                 <Td>{s.tipoPrestador === "MUNICIPAL" ? "Municipal" : "Estadual"}</Td>
                 <Td>
                   <Badge tone={statusTone(s.status)}>

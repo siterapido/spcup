@@ -30,7 +30,7 @@ export function origemFromExtratoItem(
       : undefined;
 
   const docs = structuredDocsFromExtratoItem(item);
-  return validateOrigemExtracao(
+  const validated = validateOrigemExtracao(
     {
       arquivoIngestaoId: ctx.arquivoIngestaoId,
       nomeArquivo: ctx.nomeArquivo,
@@ -43,4 +43,8 @@ export function origemFromExtratoItem(
     },
     ctx.pageCount,
   );
+  if (validated?.bbox) {
+    return { ...validated, ancoragem: "modelo" };
+  }
+  return validated;
 }
