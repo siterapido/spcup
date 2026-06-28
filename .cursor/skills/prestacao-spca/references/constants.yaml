@@ -1,0 +1,51 @@
+# Constantes TSE/SPCA por Estado/Escopo
+# Fonte da verdade: diretorios.xlsx do projeto. Atualizar aqui quando mudar lá.
+
+versao: 1
+atualizado_em: 2026-06-24
+
+estados:
+  Bahia:
+    uf: BA
+    cnpj_prestador: "47939572000102"
+    modelo_extrato: caixa_1
+  "Santa Catarina":
+    uf: SC
+    cnpj_prestador: "83655975000130"
+    modelo_extrato: bb_unificado
+  Paraíba:
+    uf: PB
+    estadual:
+      cnpj_prestador: "36667299000180"
+      modelo_extrato: caixa_1
+    municipios:
+      joao-pessoa:
+        cnpj_prestador: "36734940000151"
+        modelo_extrato: caixa_1
+      patos:
+        cnpj_prestador: "36886749000125"
+        modelo_extrato: bb_unificado
+      campina-grande:
+        cnpj_prestador: "36734808000140"
+        modelo_extrato: caixa_1
+
+# Defaults XML origemRecurso (Caixa)
+xml_defaults_caixa:
+  banco: "104"
+  natureza: "0"
+  classificacao: "320"
+  fonte: "OR"
+
+# Defaults XML origemRecurso (BB)
+xml_defaults_bb:
+  banco: "001"
+  natureza: "0"
+  classificacao: "320"
+  fonte: "OR"
+
+# Thresholds fuzzy
+fuzzy:
+  match_exato: 1.0
+  match_alto: 0.85
+  match_revisar: 0.55
+  match_rejeitar: 0.55

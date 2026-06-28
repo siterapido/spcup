@@ -1,0 +1,14 @@
+{
+  "janeiro": { "nome": "Janeiro" },
+  "fevereiro": { "nome": "Fevereiro" },
+  "marco": { "nome": "Março" },
+  "abril": { "nome": "Abril" },
+  "maio": { "nome": "Maio" },
+  "junho": { "nome": "Junho" },
+  "julho": { "nome": "Julho" },
+  "agosto": { "nome": "Agosto" },
+  "setembro": { "nome": "Setembro" },
+  "outubro": { "nome": "Outubro" },
+  "novembro": { "nome": "Novembro" },
+  "dezembro": { "nome": "Dezembro" }
+}

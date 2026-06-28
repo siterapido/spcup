@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<spcaImportacaoArquivo xmlns="http://www.tse.jus.br/2012/XMLSchema/origemRecurso.xsd">
+<CABECALHO>
+<nrCnpjPrestador>47939572000102</nrCnpjPrestador>
+<anoExercicio>2025</anoExercicio>
+</CABECALHO>
+<CORPO>
+<origens>
+<totalOrigem>1</totalOrigem>
+<origem>
+<data>2025-01-15</data>
+<cpf>12345678901</cpf>
+<nome>JOAO SILVA</nome>
+<agenciaDestino>0141</agenciaDestino>
+<contaCorrente>000123</contaCorrente>
+<vrOrigem>100.00</vrOrigem>
+</origem>
+</origens>
+</CORPO>
+</spcaImportacaoArquivo>
