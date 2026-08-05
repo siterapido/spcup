@@ -40,4 +40,4 @@ jobs:
       - name: CLI package smoke
         run: |
           node apps/cli/dist/main.js --help | grep prestacao
-          npm pack --workspace @spc-up/cli --pack-destination /tmp
+          pnpm -C apps/cli pack --pack-destination /tmp
