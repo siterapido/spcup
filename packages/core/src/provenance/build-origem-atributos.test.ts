@@ -20,6 +20,7 @@ function mov(partial: Partial<MovimentacaoCandidate> & Pick<MovimentacaoCandidat
       pagina: 1,
       indiceLinha: 2,
     },
+    contaBancariaId: null,
     ...partial,
   };
 }

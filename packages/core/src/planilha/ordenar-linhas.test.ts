@@ -15,6 +15,7 @@ function mov(
     valor,
     direcao: "ENTRADA",
     descricaoRaw: "CRED PIX",
+    nrExtratoBancario: null,
     confiancaGlobal,
     pessoaFisica: null,
     pessoaJuridica: null,

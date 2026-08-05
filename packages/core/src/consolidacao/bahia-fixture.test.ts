@@ -18,6 +18,7 @@ describe("consolidacao bahia fixtures", () => {
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
+      contaBancariaId: null,
     };
     const total: MovimentacaoCandidate = {
       id: "2",
@@ -31,6 +32,7 @@ describe("consolidacao bahia fixtures", () => {
       cpfExtraido: "12345678901",
       cnpjExtraido: null,
       origemExtracao: null,
+      contaBancariaId: null,
     };
 
     const events = buildConsolidacaoCandidates([pix, total], {

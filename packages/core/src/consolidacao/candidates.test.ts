@@ -15,6 +15,7 @@ const pixLine: MovimentacaoCandidate = {
   cpfExtraido: null,
   cnpjExtraido: null,
   origemExtracao: null,
+  contaBancariaId: null,
 };
 
 const completoLine: MovimentacaoCandidate = {
@@ -29,6 +30,7 @@ const completoLine: MovimentacaoCandidate = {
   cpfExtraido: "12345678901",
   cnpjExtraido: null,
   origemExtracao: null,
+  contaBancariaId: null,
 };
 
 describe("buildConsolidacaoCandidates", () => {
@@ -80,6 +82,7 @@ describe("buildConsolidacaoCandidates", () => {
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
+      contaBancariaId: null,
     };
     const completoLineCnpj: MovimentacaoCandidate = {
       id: "comp-2",
@@ -93,6 +96,7 @@ describe("buildConsolidacaoCandidates", () => {
       cpfExtraido: null,
       cnpjExtraido: "12345678000199",
       origemExtracao: null,
+      contaBancariaId: null,
     };
     const events = buildConsolidacaoCandidates([pixLineCnpj, completoLineCnpj], {
       pessoaByCpf: new Map(),
@@ -120,6 +124,7 @@ describe("buildConsolidacaoCandidates", () => {
       cpfExtraido: null,
       cnpjExtraido: "12345678000199",
       origemExtracao: null,
+      contaBancariaId: null,
     };
     const events = buildConsolidacaoCandidates([singleCnpjLine], {
       pessoaByCpf: new Map(),
@@ -148,6 +153,7 @@ describe("buildConsolidacaoCandidates", () => {
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
+      contaBancariaId: null,
     };
 
     const events = buildConsolidacaoCandidates([onlyCpfDescricao], {
@@ -177,6 +183,7 @@ describe("buildConsolidacaoCandidates", () => {
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
+      contaBancariaId: null,
     };
 
     const events = buildConsolidacaoCandidates([onlyDescricao], {
@@ -509,6 +516,7 @@ describe("buildConsolidacaoCandidates", () => {
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
+      contaBancariaId: null,
     };
     const comp: MovimentacaoCandidate = {
       id: "comp-1",
@@ -522,6 +530,7 @@ describe("buildConsolidacaoCandidates", () => {
       cpfExtraido: null,
       cnpjExtraido: null,
       origemExtracao: null,
+      contaBancariaId: null,
       camposExtracao: {
         historico: "PIX RECEBIDO - MARIA SILVA"
       }

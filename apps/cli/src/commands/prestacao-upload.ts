@@ -16,7 +16,7 @@ export async function runPrestacaoUpload(opts: {
 
   const result = await uploadFilesToSessao(db, {
     sessaoId: sessao.id,
-    diretorioEstadualId: sessao.diretorioEstadualId,
+    diretorioEstadualId: sessao.diretorioEstadualId!,
     uf: sessao.uf,
     exercicio: sessao.exercicio,
     prestador: {

@@ -52,7 +52,7 @@ export async function runCadastroImport(opts: {
       `Importação: ${result.inseridos} inseridos, ${result.atualizados} atualizados, ${result.conflitos} conflitos.`,
     );
     for (const e of payload.erros) {
-      console.error(`  ERRO linha ${e.linha}: ${e.mensagem}`);
+      console.error(`  ERRO linha ${e.linha}: ${e.motivo}`);
     }
   }
 }

@@ -22,6 +22,9 @@ const baseMov = {
   movimentacaoCanonicaId: null,
   origemExtracao: null,
   origemEnriquecimento: null,
+  deletedAt: null,
+  remetenteDestinatario: null,
+  camposExtracao: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

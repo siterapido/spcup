@@ -25,6 +25,7 @@ function linha(partial: Partial<PlanilhaLinha>): PlanilhaLinha {
     origens: [],
     extracaoDuvidosa: false,
     extracaoConfirmada: false,
+    camposExtracao: {},
     ...partial,
   };
 }

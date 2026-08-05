@@ -11,6 +11,8 @@ function linha(partial: Partial<PlanilhaLinha>): PlanilhaLinha {
     valor: "100.00",
     direcao: "ENTRADA",
     descricao: "TESTE",
+    descricaoRaw: "TESTE",
+    nrExtratoBancario: null,
     confianca: 0.9,
     status: "pendente",
     pessoa: null,
@@ -19,6 +21,7 @@ function linha(partial: Partial<PlanilhaLinha>): PlanilhaLinha {
     eventoStatus: "PENDENTE",
     extracaoDuvidosa: false,
     extracaoConfirmada: false,
+    camposExtracao: {},
     ...partial,
   };
 }
