@@ -35,15 +35,16 @@ describe("consolidacao bahia fixtures", () => {
       contaBancariaId: null,
     };
 
-    const events = buildConsolidacaoCandidates([pix, total], {
+    const { drafts } = buildConsolidacaoCandidates([pix, total], {
       pessoaByCpf: new Map([
         ["12345678901", { kind: "PF", id: "pf-gabriel", nome: "GABRIEL REIS DA SILVA" }],
       ]),
       pessoaByCnpj: new Map(),
-    });
+    }, { arquivoBaseIngestaoId: "a-total" });
 
-    expect(events[0]!.confianca).toBeGreaterThanOrEqual(0.9);
-    expect(events[0]!.linhas).toHaveLength(2);
+    expect(drafts[0]!.confianca).toBeGreaterThanOrEqual(0.9);
+    expect(drafts[0]!.linhas).toHaveLength(2);
+    expect(drafts[0]!.dataMovimento).toBe("2025-01-15");
   });
 
   it("pareia PIX com extrato total por documento DDHHMM quando total não traz nome", () => {
@@ -84,15 +85,16 @@ describe("consolidacao bahia fixtures", () => {
       },
     };
 
-    const events = buildConsolidacaoCandidates([pix, total], {
+    const { drafts } = buildConsolidacaoCandidates([pix, total], {
       pessoaByCpf: new Map([
         ["07315922717", { kind: "PF", id: "pf-vitor", nome: "VITOR HUGO M CUNHA" }],
       ]),
       pessoaByCnpj: new Map(),
-    });
+    }, { arquivoBaseIngestaoId: "a-total" });
 
-    expect(events[0]!.linhas).toHaveLength(2);
-    expect(events[0]!.confianca).toBeGreaterThanOrEqual(0.75);
-    expect(events[0]!.justificativa).toContain("DDHHMM");
+    expect(drafts[0]!.linhas).toHaveLength(2);
+    expect(drafts[0]!.confianca).toBeGreaterThanOrEqual(0.75);
+    expect(drafts[0]!.justificativa).toContain("DDHHMM");
+    expect(drafts[0]!.dataMovimento).toBe("2025-01-10");
   });
 });

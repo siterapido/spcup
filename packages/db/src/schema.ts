@@ -74,6 +74,7 @@ export const sessaoPrestacao = pgTable("sessao_prestacao", {
   mesReferencia: varchar("mes_referencia", { length: 7 }),
   status: varchar("status", { length: 20 }).notNull().default(SESSAO_STATUS.ABERTA),
   consolidarExtratos: boolean("consolidar_extratos").notNull().default(false),
+  arquivoBaseIngestaoId: uuid("arquivo_base_ingestao_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

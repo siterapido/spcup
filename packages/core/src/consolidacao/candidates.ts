@@ -3,7 +3,7 @@ import type { CadastroLinkTier } from "../match/cadastro-link";
 import { normalizeName } from "../normalize";
 import { buildOrigemAtributos } from "../provenance/build-origem-atributos";
 import type { OrigemExtracaoV1 } from "../provenance/types";
-import { classifyArquivoPapel } from "./classify-arquivo";
+import { classifyArquivoPapel, resolveLinhaPapel } from "./classify-arquivo";
 import type {
   CadastroMatchContext,
   ConsolidacaoEventDraft,
@@ -27,11 +27,14 @@ function transactionKey(m: MovimentacaoCandidate): string {
   return [m.dataMovimento, m.valor, m.direcao.toUpperCase()].join("|");
 }
 
-function linhaDraft(m: MovimentacaoCandidate): ConsolidacaoLinhaDraft {
+function linhaDraft(
+  m: MovimentacaoCandidate,
+  arquivoBaseIngestaoId: string,
+): ConsolidacaoLinhaDraft {
   return {
     movimentacaoId: m.id,
     arquivoIngestaoId: m.arquivoIngestaoId,
-    papel: classifyArquivoPapel(m.nomeArquivo),
+    papel: resolveLinhaPapel(m, arquivoBaseIngestaoId),
     descricaoRaw: m.descricaoRaw,
   };
 }
@@ -310,6 +313,45 @@ function scoreSingle(
   return { confianca: 0.4, justificativa: "Sem vínculo cadastro", pessoa: null };
 }
 
+/** Score cadastro for a base line without PIX — parse histórico only for match, not Rem/Dest column. */
+function scoreSingleBase(
+  m: MovimentacaoCandidate,
+  ctx: CadastroMatchContext,
+): { confianca: number; justificativa: string; pessoa: PessoaRef | null } {
+  const fromDocs = scoreSingle(m, ctx);
+  if (fromDocs.pessoa) {
+    return fromDocs;
+  }
+  const historico = campoExtracao(m, "historico");
+  const parsed = contraparteDoHistorico(historico ?? "");
+  if (parsed) {
+    const byNome = findUniquePessoaByNome(ctx, parsed);
+    if (byNome) {
+      return {
+        confianca: 0.55,
+        justificativa: "Nome inferido do histórico (cadastro)",
+        pessoa: byNome,
+      };
+    }
+  }
+  return fromDocs;
+}
+
+function isPixCandidate(m: MovimentacaoCandidate, arquivoBaseIngestaoId: string): boolean {
+  if (m.arquivoIngestaoId === arquivoBaseIngestaoId) {
+    return false;
+  }
+  if (m.extratoModeloId === "caixa_pix") {
+    return true;
+  }
+  return classifyArquivoPapel(m.nomeArquivo) === "PIX";
+}
+
+export type BuildConsolidacaoCandidatesResult = {
+  drafts: ConsolidacaoEventDraft[];
+  pixOrfaos: MovimentacaoCandidate[];
+};
+
 type PairCandidate = {
   a: MovimentacaoCandidate;
   b: MovimentacaoCandidate;
@@ -388,141 +430,151 @@ function isDateWindowMatch(a: MovimentacaoCandidate, b: MovimentacaoCandidate): 
 export function buildConsolidacaoCandidates(
   movs: MovimentacaoCandidate[],
   ctx: CadastroMatchContext,
-): ConsolidacaoEventDraft[] {
+  options: { arquivoBaseIngestaoId: string },
+): BuildConsolidacaoCandidatesResult {
+  const { arquivoBaseIngestaoId } = options;
   const movById = new Map(movs.map((m) => [m.id, m]));
-  const used = new Set<string>();
+  const baseMovs = movs.filter((m) => m.arquivoIngestaoId === arquivoBaseIngestaoId);
+  const pixMovs = movs.filter((m) => isPixCandidate(m, arquivoBaseIngestaoId));
+
+  const usedPix = new Set<string>();
   const events: ConsolidacaoEventDraft[] = [];
 
-  // Sort movimentacoes chronologically to guarantee stable chronological pairing (FIFO) for repeating values
-  const sortedMovs = [...movs].sort((x, y) => x.dataMovimento.localeCompare(y.dataMovimento));
+  const sortedBase = [...baseMovs].sort((x, y) =>
+    x.dataMovimento.localeCompare(y.dataMovimento),
+  );
+  const sortedPix = [...pixMovs].sort((x, y) =>
+    x.dataMovimento.localeCompare(y.dataMovimento),
+  );
 
-  const pairCandidates: PairCandidate[] = [];
-  const weakPairCandidates: WeakPairCandidate[] = [];
-  for (let i = 0; i < sortedMovs.length; i++) {
-    for (let j = i + 1; j < sortedMovs.length; j++) {
-      const a = sortedMovs[i]!;
-      const b = sortedMovs[j]!;
-      if (a.arquivoIngestaoId === b.arquivoIngestaoId) {
+  type BasePixPair = PairCandidate & { base: MovimentacaoCandidate; pix: MovimentacaoCandidate };
+
+  const pairCandidates: BasePixPair[] = [];
+  const weakPairCandidates: (BasePixPair & { justificativa: string })[] = [];
+
+  for (const base of sortedBase) {
+    for (const pix of sortedPix) {
+      if (base.contaBancariaId && pix.contaBancariaId && base.contaBancariaId !== pix.contaBancariaId) {
         continue;
       }
-      // Ensure transactions belong to the same bank account if specified
-      if (a.contaBancariaId && b.contaBancariaId && a.contaBancariaId !== b.contaBancariaId) {
+      if (base.valor !== pix.valor || base.direcao !== pix.direcao || !isDateWindowMatch(pix, base)) {
         continue;
       }
-      if (a.valor !== b.valor || a.direcao !== b.direcao || !isDateWindowMatch(a, b)) {
-        continue;
-      }
-      const scored = scorePair(a, b, ctx);
-      const horaVerdict = horaReinforcesPair(a.origemExtracao, b.origemExtracao);
+      const scored = scorePair(pix, base, ctx);
+      const horaVerdict = horaReinforcesPair(pix.origemExtracao, base.origemExtracao);
       if (horaVerdict === "weak") {
         weakPairCandidates.push({
-          a,
-          b,
+          a: pix,
+          b: base,
+          base,
+          pix,
           ...scored,
           justificativa: `${scored.justificativa}; hora divergente (>60min)`,
         });
         continue;
       }
       if (scored.confianca === 0.55) {
-        weakPairCandidates.push({ a, b, ...scored });
+        weakPairCandidates.push({ a: pix, b: base, base, pix, ...scored });
         continue;
       }
-      if (!pairEligible(a, b)) {
+      if (!pairEligible(pix, base)) {
         continue;
       }
-      pairCandidates.push({ a, b, ...scored });
+      pairCandidates.push({ a: pix, b: base, base, pix, ...scored });
     }
   }
 
-  // Sort by confidence descending, then by chronological order of transaction to preserve FIFO resolution
   pairCandidates.sort((x, y) => {
     if (y.confianca !== x.confianca) {
       return y.confianca - x.confianca;
     }
-    return x.a.dataMovimento.localeCompare(y.a.dataMovimento);
+    return x.base.dataMovimento.localeCompare(y.base.dataMovimento);
   });
 
+  const baseToPix = new Map<string, MovimentacaoCandidate>();
+
   for (const pair of pairCandidates) {
-    if (used.has(pair.a.id) || used.has(pair.b.id)) {
+    if (usedPix.has(pair.pix.id) || baseToPix.has(pair.base.id)) {
       continue;
     }
-    used.add(pair.a.id);
-    used.add(pair.b.id);
-
-    const linhas = [linhaDraft(pair.a), linhaDraft(pair.b)];
-    const hipoteses: ConsolidacaoHipoteseDraft[] = [];
-
-    const evidencias = [
-      {
-        tipo: "CRUZAMENTO_PDF",
-        detalhe: `Par ${pair.a.nomeArquivo} ↔ ${pair.b.nomeArquivo}`,
-        peso: pair.confianca,
-      },
-    ];
-    if (pair.pessoa) {
-      evidencias.push({
-        tipo: "CADASTRO_UF",
-        detalhe: `${pair.pessoa.kind} ${pair.pessoa.nome}`,
-        peso: 0.85,
-      });
-    }
-
-    events.push(
-      finalizeDraft(
-        {
-          dataMovimento: pair.a.dataMovimento,
-          valor: pair.a.valor,
-          direcao: pair.a.direcao,
-          confianca: pair.confianca,
-          justificativa: pair.justificativa,
-          cadastroLinkTier: cadastroLinkTierFromScore(
-            pair.confianca,
-            pair.pessoa,
-            hasDocOnEitherSide(pair.a, pair.b),
-          ),
-          ...pessoaIds(pair.pessoa),
-          linhas,
-          hipoteses,
-          evidencias,
-        },
-        movById,
-      ),
-    );
+    usedPix.add(pair.pix.id);
+    baseToPix.set(pair.base.id, pair.pix);
   }
 
-  const weakHipotesesByMovId = new Map<string, ConsolidacaoHipoteseDraft[]>();
+  const weakHipotesesByBaseId = new Map<string, ConsolidacaoHipoteseDraft[]>();
   for (const weak of weakPairCandidates) {
-    for (const [self, other] of [
-      [weak.a, weak.b] as const,
-      [weak.b, weak.a] as const,
-    ]) {
-      const list = weakHipotesesByMovId.get(self.id) ?? [];
-      list.push(hipoteseFromWeakPair(other, weak.justificativa));
-      weakHipotesesByMovId.set(self.id, list);
-    }
-  }
-
-  for (const m of movs) {
-    if (used.has(m.id)) {
+    if (baseToPix.has(weak.base.id)) {
       continue;
     }
-    const single = scoreSingle(m, ctx);
-    const hipoteses = weakHipotesesByMovId.get(m.id) ?? [];
+    const list = weakHipotesesByBaseId.get(weak.base.id) ?? [];
+    list.push(hipoteseFromWeakPair(weak.pix, weak.justificativa));
+    weakHipotesesByBaseId.set(weak.base.id, list);
+  }
+
+  for (const base of sortedBase) {
+    const pix = baseToPix.get(base.id);
+    const hipoteses = weakHipotesesByBaseId.get(base.id) ?? [];
+
+    if (pix) {
+      const scored = scorePair(pix, base, ctx);
+      const evidencias = [
+        {
+          tipo: "CRUZAMENTO_PDF",
+          detalhe: `Par ${pix.nomeArquivo} ↔ ${base.nomeArquivo}`,
+          peso: scored.confianca,
+        },
+      ];
+      if (scored.pessoa) {
+        evidencias.push({
+          tipo: "CADASTRO_UF",
+          detalhe: `${scored.pessoa.kind} ${scored.pessoa.nome}`,
+          peso: 0.85,
+        });
+      }
+
+      events.push(
+        finalizeDraft(
+          {
+            dataMovimento: base.dataMovimento,
+            valor: base.valor,
+            direcao: base.direcao,
+            confianca: scored.confianca,
+            justificativa: scored.justificativa,
+            cadastroLinkTier: cadastroLinkTierFromScore(
+              scored.confianca,
+              scored.pessoa,
+              hasDocOnEitherSide(pix, base),
+            ),
+            ...pessoaIds(scored.pessoa),
+            linhas: [
+              linhaDraft(base, arquivoBaseIngestaoId),
+              linhaDraft(pix, arquivoBaseIngestaoId),
+            ],
+            hipoteses,
+            evidencias,
+          },
+          movById,
+        ),
+      );
+      continue;
+    }
+
+    const single = scoreSingleBase(base, ctx);
     events.push(
       finalizeDraft(
         {
-          dataMovimento: m.dataMovimento,
-          valor: m.valor,
-          direcao: m.direcao,
+          dataMovimento: base.dataMovimento,
+          valor: base.valor,
+          direcao: base.direcao,
           confianca: single.confianca,
           justificativa: single.justificativa,
           cadastroLinkTier: cadastroLinkTierFromScore(
             single.confianca,
             single.pessoa,
-            hasDocOnEitherSide(m),
+            hasDocOnEitherSide(base),
           ),
           ...pessoaIds(single.pessoa),
-          linhas: [linhaDraft(m)],
+          linhas: [linhaDraft(base, arquivoBaseIngestaoId)],
           hipoteses,
           evidencias: single.pessoa
             ? [
@@ -539,5 +591,10 @@ export function buildConsolidacaoCandidates(
     );
   }
 
-  return events.sort((a, b) => b.confianca - a.confianca);
+  const pixOrfaos = sortedPix.filter((p) => !usedPix.has(p.id));
+
+  return {
+    drafts: events.sort((a, b) => b.confianca - a.confianca),
+    pixOrfaos,
+  };
 }

@@ -43,6 +43,7 @@ import { anexarBboxOrigensPorArquivo } from "../provenance/anexar-bbox-origens";
 import { readArquivoIngestaoBuffer } from "../storage/read-arquivo";
 import type { ProcessSessaoResult, ProcessPdfArquivoResult } from "./process-sessao";
 import { getSessao, prestadorFromSessao } from "./sessao";
+import { persistArquivoBaseOnProcessStart } from "./resolve-arquivo-base";
 import { buildCamposExtracaoFromNotebookTx, espelharCamposLegados } from "../ingest/campos-extracao";
 import type { OrigemExtracaoV1 } from "../provenance/types";
 import { detectExtratoModeloFromFilename, type ExtratoModeloId } from "../ingest/extrato-modelo";
@@ -468,6 +469,7 @@ export type ProcessSessaoNotebookLmOptions = {
   skipConsolidacao?: boolean;
   extratoColumnMaps?: Record<string, ExtratoColumnMap>;
   extratoModeloIds?: Record<string, ExtratoModeloId>;
+  arquivoBaseIngestaoId?: string;
 };
 
 export async function processSessaoWithNotebookLM(
@@ -479,6 +481,13 @@ export async function processSessaoWithNotebookLM(
   if (!sessao?.diretorioEstadual) {
     throw new Error("Sessão não encontrada ou sem diretório estadual");
   }
+
+  await persistArquivoBaseOnProcessStart(
+    db,
+    sessaoId,
+    sessao.arquivoBaseIngestaoId,
+    options,
+  );
 
   const { uf, exercicio } = sessao;
   const prestadorBase = prestadorFromSessao(sessao);

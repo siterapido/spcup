@@ -7,6 +7,8 @@ import {
 } from "@spc-up/db";
 import { and, eq, isNull } from "drizzle-orm";
 
+import type { ExtratoModeloId } from "../ingest/extrato-modelo";
+import { detectExtratoModeloFromFilename } from "../ingest/extrato-modelo";
 import { structuredDocsFromOrigemExtracao } from "../match/structured-contraparte-docs";
 import type { OrigemExtracaoV1 } from "../provenance/types";
 import type { CadastroMatchContext, MovimentacaoCandidate, PessoaRef } from "./types";
@@ -20,6 +22,7 @@ export async function loadMovimentacaoCandidates(
       id: movimentacao.id,
       arquivoIngestaoId: movimentacao.arquivoIngestaoId,
       nomeArquivo: arquivoIngestao.nomeArquivo,
+      metadados: arquivoIngestao.metadados,
       dataMovimento: movimentacao.dataMovimento,
       valor: movimentacao.valor,
       direcao: movimentacao.direcao,
@@ -41,6 +44,9 @@ export async function loadMovimentacaoCandidates(
   return rows.map((row) => {
     const origemExtracao = (row.origemExtracao as OrigemExtracaoV1 | null) ?? null;
     const docs = structuredDocsFromOrigemExtracao(origemExtracao);
+    const meta = row.metadados as { extratoModeloId?: ExtratoModeloId } | null;
+    const extratoModeloId =
+      meta?.extratoModeloId ?? detectExtratoModeloFromFilename(row.nomeArquivo);
     return {
       id: row.id,
       arquivoIngestaoId: row.arquivoIngestaoId ?? "",
@@ -55,6 +61,7 @@ export async function loadMovimentacaoCandidates(
       origemExtracao,
       contaBancariaId: row.contaBancariaId,
       camposExtracao: row.camposExtracao as Record<string, string | null> | null,
+      extratoModeloId,
     };
   });
 }

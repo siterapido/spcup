@@ -16,12 +16,17 @@ vi.mock("./process-sessao-notebooklm", () => ({
   processSessaoWithNotebookLM: (...args: unknown[]) => processSessaoWithNotebookLmMock(...args),
 }));
 
+vi.mock("./resolve-arquivo-base", () => ({
+  persistArquivoBaseOnProcessStart: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("./sessao", () => ({
   getSessao: vi.fn(async () => ({
     id: "sess-1",
     uf: "BA",
     exercicio: 2025,
     consolidarExtratos: true,
+    arquivoBaseIngestaoId: null,
     diretorioEstadual: { cnpjPrestador: "23738595000182" },
     diretorioMunicipal: null,
     tipoPrestador: "ESTADUAL",
@@ -31,6 +36,7 @@ vi.mock("./sessao", () => ({
     tipoPrestador: "ESTADUAL",
     sessaoPrestacaoId: "sess-1",
   })),
+  persistArquivoBaseIngestaoId: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { processSessaoPdfArquivos } from "./process-sessao";

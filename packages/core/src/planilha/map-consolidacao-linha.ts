@@ -148,9 +148,19 @@ export function mapConsolidacaoEventoToLinha(
           comparacaoNome ?? "indefinido",
         )
       : null;
+  const linhaPix = evento.linhas.find((l) => l.papel === "PIX");
   const camposExtracao = (evento.linhas || []).reduce((acc, l) => {
     return mergeCamposExtracao(acc, (l.camposExtracao as CamposExtracao) ?? {});
   }, {} as CamposExtracao);
+  const remetenteFromPix = linhaPix
+    ? campoExtracao(
+        {
+          camposExtracao: (linhaPix.camposExtracao as CamposExtracao) ?? {},
+          remetenteDestinatario: null,
+        },
+        "remetente_destinatario",
+      )
+    : null;
   return {
     id: evento.id,
     fonte: "consolidacao",
@@ -172,7 +182,13 @@ export function mapConsolidacaoEventoToLinha(
       extracaoConfirmada,
     }),
     pessoa,
-    remetenteDestinatario: campoExtracao({ camposExtracao, remetenteDestinatario: evento.remetenteDestinatario }, 'remetente_destinatario') ?? null,
+    remetenteDestinatario:
+      remetenteFromPix ??
+      campoExtracao(
+        { camposExtracao, remetenteDestinatario: evento.remetenteDestinatario },
+        "remetente_destinatario",
+      ) ??
+      null,
     origens,
     eventoStatus: evento.status,
     extracaoDuvidosa,

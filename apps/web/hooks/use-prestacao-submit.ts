@@ -98,6 +98,8 @@ export type PrestacaoSubmitInput = {
   /** Maps keyed by `clientFileKey(file)` for PDF column hints during extraction. */
   extratoColumnMaps?: Record<string, ExtratoColumnMap>;
   extratoModeloIds?: Record<string, ExtratoModeloId>;
+  /** `clientFileKey` do PDF marcado como extrato base (Total). */
+  arquivoBaseClientKey?: string;
   mesReferencia?: string;
 };
 
@@ -671,6 +673,30 @@ export function usePrestacaoSubmit() {
               pdfCount,
             );
 
+            if (input.arquivoBaseClientKey && pdfJobs.length > 0) {
+              const baseJob = pdfJobs.find(
+                (j) => j.clientFileKey === input.arquivoBaseClientKey,
+              );
+              if (baseJob) {
+                const baseRes = await fetch(`/api/prestacao/sessoes/${sessaoId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ arquivoBaseIngestaoId: baseJob.arquivoId }),
+                  signal: submitSignal,
+                });
+                if (!baseRes.ok) {
+                  const errJson = (await baseRes.json().catch(() => ({}))) as {
+                    error?: string;
+                  };
+                  throw new Error(errJson.error ?? "Falha ao definir extrato base");
+                }
+              }
+            }
+
+            const baseArquivoId = input.arquivoBaseClientKey
+              ? pdfJobs.find((j) => j.clientFileKey === input.arquivoBaseClientKey)?.arquivoId
+              : undefined;
+
             const isNotebookLm = serverSupportsNotebookLm;
 
             if (isNotebookLm) {
@@ -714,6 +740,7 @@ export function usePrestacaoSubmit() {
                       body: JSON.stringify({
                         extratoColumnMaps: Object.keys(extratoColumnMapsByArquivoId).length > 0 ? extratoColumnMapsByArquivoId : undefined,
                         extratoModeloIds: Object.keys(extratoModeloIdsByArquivoId).length > 0 ? extratoModeloIdsByArquivoId : undefined,
+                        arquivoBaseIngestaoId: baseArquivoId,
                       }),
                     }
                   : {}),

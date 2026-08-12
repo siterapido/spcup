@@ -25,7 +25,8 @@
 - Cadastro BA: `pessoas bahia (1).xlsx` — headers `nome`, `documento`, `tipo` (257 linhas).
 - Nomes no cadastro às vezes abreviam nomes do meio (`GABRIELLE D PIMENTEL` vs extrato `GABRIELLE DIAS PIMENTEL`); `compararNomeCadastro` trata iniciais de 1 letra.
 - Fixture mapa Caixa PIX: `EXTRATO_COLUMN_MAP_CAIXA_PIX_JAN` em `packages/core/src/ingest/extrato-column-map-fixtures.ts`.
-- **Consolidation:** Removido guarda `consolidarExtratos` de `consolidateSession()` (jun/2026). Consolidation roda automaticamente com ≥2 PDFs independente da flag da sessão. `skipConsolidacao` é o mecanismo correto de opt-out.
+- **Extrato base:** `sessao_prestacao.arquivo_base_ingestao_id` (migration `0015`) — PDF Total confirmado no wizard. Planilha = 1 linha por mov. do base; PIX enriquece nome. Spec: `docs/superpowers/specs/2026-06-11-extrato-base-consolidacao-design.md`.
+- **Consolidation:** `consolidateSession` exige `arquivo_base_ingestao_id` (não mais `pdfCount < 2`). Roda com só base ou base+PIX. `skipConsolidacao` opt-out. Recalcular: `POST .../consolidacao/recalcular` (`manterAprovados` opcional).
 - **Mudança de schema:** `consolidarExtratos` coluna existe ainda no DB mas não bloqueia mais consolidação. Pode ser obsoleta.
 - **Batch:** Não `campoExtracao()` na planilha já faz fallback p/ `camposExtracao.jsonb` antes de usar `remetenteDestinatario` direto. Fix aplicado em list.ts:187 e map-consolidacao-linha.ts:173.
 - **Bbox PDF:** Após extração, ingest roda `anexarBboxOrigensPorArquivo` (text layer + `localizarLinhaPdf`) e persiste `origemExtracao.bbox` + `ancoragem: text_layer|modelo|nao_localizado`. Backfill: `pnpm exec tsx scripts/anchor-origem-pdf.ts --sessao <id>`. UI não estima por índice quando `ancoragem === nao_localizado`.
